@@ -8,6 +8,8 @@
  */
 
 import { ensureDirSync } from "@std/fs";
+import { blue } from "@std/fmt/colors";
+import { format } from "@std/fmt/duration";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { DeDuplicator } from "@architecture/DeDuplicator.ts";
@@ -358,15 +360,18 @@ export class Neat {
   discoveryComplete: ResponseData[] = [];
   trainingComplete: ResponseData[] = [];
   /**
-   * Issue #4107: IDs of the training results `evolve()` has merged this
-   * generation (each logged `Training <id> completed`) whose generation has not
-   * committed yet. `processCompletedResults` fills it; the commit clears it. A
+   * Issue #4107: the training results `evolve()` has merged this generation
+   * whose generation has not committed yet, as train ID to result duration in
+   * ms (if any). `processCompletedResults` fills it; the commit logs
+   * `Training <id> completed` for each and clears it, through
+   * {@link commitMergedTraining} (Issue #4099: only a committed task gets the
+   * completed line, so each task ends with exactly one terminal line). A
    * hard-deadline abandon drops those creatures, and the abandoned `evolve()`
    * may never reach its commit guard (it can wait forever on breeding requests
    * the teardown's worker termination dropped), so the teardown names whatever
    * is left too: see {@link discardMergedUncommittedTraining}.
    */
-  readonly mergedUncommittedTrainIDs = new Set<string>();
+  readonly mergedUncommittedTrainIDs = new Map<string, number | undefined>();
   /**
    * Issue #3435: monotonic abandon token, bumped whenever in-flight
    * discovery/training work is abandoned past the hard deadline
@@ -1281,7 +1286,7 @@ export class Neat {
     // A generation that threw part-way through processCompletedResults() has
     // recorded a task as merged while it is still queued in trainingComplete;
     // name such a task once, by the merged line, and skip its queued entry.
-    const namedAsMerged = new Set(this.mergedUncommittedTrainIDs);
+    const namedAsMerged = new Set(this.mergedUncommittedTrainIDs.keys());
     let discarded = this.discardMergedUncommittedTraining(
       abandonedPastDeadline
         ? DISCARD_REASON_ABANDONED_PAST_HARD_DEADLINE
@@ -1311,11 +1316,32 @@ export class Neat {
   }
 
   /**
+   * Issue #4099: log `Training <id> completed` for each training task merged
+   * into the generation that has just committed, then forget them. Called by
+   * `evolve()` at the commit. Logged whatever `verbose` says, so the count
+   * matches the unconditional `scheduled` line.
+   *
+   * @returns the number of training tasks logged as completed
+   */
+  commitMergedTraining(): number {
+    const committed = this.mergedUncommittedTrainIDs.size;
+    for (const [id, duration] of this.mergedUncommittedTrainIDs) {
+      getLogger().info(
+        `Training ${blue(id)} completed ${
+          duration ? "after " + format(duration, { ignoreZero: true }) : ""
+        }`,
+      );
+    }
+    this.mergedUncommittedTrainIDs.clear();
+    return committed;
+  }
+
+  /**
    * Issue #4107: log `Training <id> discarded: <reason>` once for each training
    * result merged into a generation that has not committed, then forget them.
    * Called by `evolve()` when the hard deadline abandons its generation, and by
    * the teardown ({@link discardUnprocessedResults}) for an abandoned `evolve()`
-   * that never reached that point. Whichever runs first names a task; the set
+   * that never reached that point. Whichever runs first names a task; the map
    * is cleared, so the other finds nothing and no task is named twice.
    *
    * @param reason why the generation's creatures were dropped
@@ -1325,7 +1351,7 @@ export class Neat {
     reason: string = DISCARD_REASON_ABANDONED_PAST_HARD_DEADLINE,
   ): number {
     const discarded = this.mergedUncommittedTrainIDs.size;
-    for (const trainID of this.mergedUncommittedTrainIDs) {
+    for (const trainID of this.mergedUncommittedTrainIDs.keys()) {
       getLogger().warn(`Training ${trainID} discarded: ${reason}`);
     }
     this.mergedUncommittedTrainIDs.clear();

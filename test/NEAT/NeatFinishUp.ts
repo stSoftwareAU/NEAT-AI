@@ -828,7 +828,14 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
     );
 
     const sink = { discoveryIDs: [], replayKeys: [] };
-    const merged = processCompletedResults(neat, fittest, {} as never, sink);
+    const mergedIDs = new Map<string, number | undefined>();
+    const merged = processCompletedResults(
+      neat,
+      fittest,
+      {} as never,
+      sink,
+      mergedIDs,
+    );
     assertEquals(
       sink,
       { discoveryIDs: [], replayKeys: [] },
@@ -845,6 +852,22 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
       1,
       "the merged creature must be tagged with the settled task's trainID",
     );
+
+    assert(
+      mergedIDs.has("late1234"),
+      "the merge must record the settled task as merged",
+    );
+    assert(
+      !/Training\s+late1234\s+completed/.test(
+        stripAnsi(log.lines.join("\n")),
+      ),
+      "the completed line must wait for the generation to commit (Issue #4099)",
+    );
+    // Stand in for the commit evolve() makes once the generation is accepted.
+    for (const [id, duration] of mergedIDs) {
+      neat.mergedUncommittedTrainIDs.set(id, duration);
+    }
+    assertEquals(neat.commitMergedTraining(), 1);
 
     const plain = stripAnsi(log.lines.join("\n"));
     assert(

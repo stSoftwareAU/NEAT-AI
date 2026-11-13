@@ -188,9 +188,13 @@ the `trainingComplete` scan above cannot see it. When the hard deadline abandons
 that generation before it commits (Issue #4050), the generation's trained
 creatures are dropped with it, and each task is logged
 `Training <id> discarded: generation abandoned past the hard deadline` exactly
-once (Issue #4107). `processCompletedResults()` records the merged IDs on the
-`Neat` instance (`mergedUncommittedTrainIDs`) and the commit clears them. Two
-places name what is left, and whichever runs first clears the set:
+once (Issue #4107). `processCompletedResults()` records the merged IDs, with
+each result's duration, on the `Neat` instance (`mergedUncommittedTrainIDs`).
+The `Training <id> completed after <duration>` line is not written at merge
+time: the commit (`Neat.commitMergedTraining()`) logs it for each recorded task
+and clears them, so an abandoned or failed generation's task is logged only as
+discarded and never carries both lines (Issue #4099). Two places name what is
+left, and whichever runs first clears the set:
 
 - the abandoned branch of `evolve()`, when the abandoned generation reaches its
   commit guard;

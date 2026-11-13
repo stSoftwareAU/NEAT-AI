@@ -8,7 +8,6 @@
 
 import { assert } from "@std/assert";
 import { blue } from "@std/fmt/colors";
-import { format } from "@std/fmt/duration";
 import { addTag, getTag, removeTag } from "@stsoftware/tags/mod";
 
 import { Creature } from "@creature";
@@ -40,17 +39,19 @@ export interface MergedExternalResults {
  * Issue #4115: each discovery and replay creature actually merged is also
  * recorded in `merged` (by discovery ID and replay key), so a later
  * hard-deadline abandon can log what it discarded.
- * Issue #4107: when `mergedTrainIDs` is given, the ID of every training result
- * merged here (each one logged `Training <id> completed`) is added to it. A
- * creature's `trainID` tag cannot stand in for this: discovery and replay
- * creatures built from a trained fittest inherit its tag.
+ * Issue #4107: the ID and duration of every training result merged here are
+ * recorded in `mergedTrainIDs`. A creature's `trainID` tag cannot stand in for
+ * this: discovery and replay creatures built from a trained fittest inherit
+ * its tag. Issue #4099: the `Training <id> completed` line is not logged here
+ * but by `Neat.commitMergedTraining()` when the generation commits, so a task
+ * whose generation is abandoned logs only its `discarded` line.
  */
 export function processCompletedResults(
   neat: Neat,
   fittest: Creature,
   _genus: Genus,
   merged: MergedExternalResults,
-  mergedTrainIDs?: Set<string>,
+  mergedTrainIDs: Map<string, number | undefined>,
 ): Creature[] {
   const trainedPopulation: Creature[] = [];
 
@@ -62,15 +63,9 @@ export function processCompletedResults(
     }
 
     const json = r.train.creature;
-    // Issue #4099: the terminal line for a merged training task is logged
-    // whatever `verbose` says. `scheduled` is unconditional too (NeatScheduling),
-    // so the two counts match in a default run.
-    getLogger().info(
-      `Training ${blue(r.train.ID)} completed ${
-        r.duration ? "after " + format(r.duration, { ignoreZero: true }) : ""
-      }`,
-    );
-    mergedTrainIDs?.add(r.train.ID);
+    // Issue #4099: the terminal `completed` line is logged at commit by
+    // `Neat.commitMergedTraining()`, whatever `verbose` says.
+    mergedTrainIDs.set(r.train.ID, r.duration);
 
     // Issue #1913: Preserve PC approach tag from trace if present.
     const traceJSON = r.train.trace ? r.train.trace : null;

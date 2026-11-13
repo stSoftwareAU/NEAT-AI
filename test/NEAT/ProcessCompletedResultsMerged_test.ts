@@ -105,6 +105,7 @@ Deno.test("processCompletedResults: a merged discovery and replay are recorded b
       fittest,
       {} as never,
       merged,
+      new Map(),
     );
 
     assertEquals(creatures.length, 2);
@@ -121,7 +122,7 @@ Deno.test("processCompletedResults: a replay without a key is recorded as 'repla
     neat.discoveryReplayQueue.getCompletedResults = () => [replay];
 
     const merged = emptySink();
-    processCompletedResults(neat, fittest, {} as never, merged);
+    processCompletedResults(neat, fittest, {} as never, merged, new Map());
 
     assertEquals(merged, { discoveryIDs: [], replayKeys: ["replay"] });
   });
@@ -138,6 +139,7 @@ Deno.test("processCompletedResults: a discovery with no improved creature record
       fittest,
       {} as never,
       merged,
+      new Map(),
     );
 
     assertEquals(creatures.length, 0);

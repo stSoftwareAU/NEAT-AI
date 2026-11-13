@@ -1202,7 +1202,9 @@ export async function evolve(
     neat.population = budgeted.population; // Keep pseudo sorted.
     // Issue #4107: this generation's trained creatures are committed now, so
     // its merged training tasks are no longer at risk of being discarded.
-    neat.mergedUncommittedTrainIDs.clear();
+    // Issue #4099: log each one's `completed` line here, at commit, so a task
+    // ends with exactly one terminal line.
+    neat.commitMergedTraining();
 
     if (budgeted.dropped.length > 0 && neat.config.verbose) {
       getLogger().info(

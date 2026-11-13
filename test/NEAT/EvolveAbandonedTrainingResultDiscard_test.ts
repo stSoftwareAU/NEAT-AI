@@ -189,8 +189,8 @@ Deno.test(
         captured.filter((line) =>
           line.text.includes(`Training ${TASK_ID} completed`)
         ).length,
-        1,
-        "the trained task must still log its completed line",
+        0,
+        "a task whose generation is abandoned must log only its discarded line, not completed (Issue #4099)",
       );
       assertEquals(
         captured.filter((line) =>
@@ -399,12 +399,16 @@ Deno.test(
         }),
       ]);
 
+      assert(
+        neat.mergedUncommittedTrainIDs.has(TASK_ID),
+        "the training result must have been merged before breeding is awaited",
+      );
       assertEquals(
         captured.filter((line) =>
           line.text.includes(`Training ${TASK_ID} completed`)
         ).length,
-        1,
-        "the training result must have been merged before breeding is awaited",
+        0,
+        "not logged completed before the generation commits (Issue #4099)",
       );
       assertEquals(neat.trainingComplete.length, 0);
       assertEquals(discardLines(), [], "nothing is discarded yet");
@@ -451,6 +455,13 @@ Deno.test(
         discardLines().length,
         1,
         "each merged task is named exactly once, whichever path runs first",
+      );
+      assertEquals(
+        captured.filter((line) =>
+          line.text.includes(`Training ${TASK_ID} completed`)
+        ).length,
+        0,
+        "an abandoned generation never logs completed (Issue #4099)",
       );
     } finally {
       // Let a still-parked evolve() finish so nothing leaks past the test.
@@ -510,6 +521,13 @@ Deno.test(
         "the task must be named exactly once",
       );
       assertEquals(neat.trainingComplete.length, 0);
+      assertEquals(
+        captured.filter((line) =>
+          line.text.includes(`Training ${TASK_ID} completed`)
+        ).length,
+        0,
+        "a task that never committed must not log completed (Issue #4099)",
+      );
     } finally {
       setLogger(previousLogger);
       await terminateWorkers(workers);

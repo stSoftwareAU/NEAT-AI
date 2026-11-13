@@ -36,6 +36,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   (`phase=native-returned`) and one when finalisation ends (`phase=finalised`),
   so a hang can be placed inside the native call or after it. See
   [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
+- **Issue #4099:** the `Training <id> completed after <duration>` line is now
+  written when the generation commits, not when `processCompletedResults()`
+  merges the result. `Neat.commitMergedTraining()`, called from the commit
+  branch of `evolve()`, logs it for each merged task, using the durations held
+  in `mergedUncommittedTrainIDs` (now a `Map` of train ID to duration). A task
+  whose generation the hard deadline abandons, or which throws before commit, is
+  logged only as `Training <id> discarded: ...`, so every scheduled training
+  task ends with exactly one terminal line.
 - **Issue #4141:** a discovery chunk whose combined analysis failed is no longer
   re-run without the per-chunk deadline: the analysis loop reuses the first
   call's outcome, and the fallback analyses (missing-neuron, helpful-synapse and
