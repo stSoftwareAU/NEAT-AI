@@ -96,7 +96,7 @@ export type NativeBackpropSymbols = {
 };
 
 /** The `Deno.dlopen` declaration of the native trainer symbols. */
-export const NATIVE_BACKPROP_SYMBOLS: NativeBackpropSymbols = {
+const NATIVE_BACKPROP_SYMBOLS: NativeBackpropSymbols = {
   "neat_backprop_abi_version": {
     parameters: [],
     result: "u32",
@@ -847,8 +847,11 @@ function readTrainResponse(
 function freeOwnedBuffer(lib: NativeBackpropHandle, outStruct: Uint8Array) {
   try {
     lib.symbols["neat_backprop_buffer_free"](outStruct);
-  } catch {
-    // Best-effort free if the call partially populated the buffer.
+  } catch (error) {
+    getLogger().error(
+      "Failed to release native training response buffer",
+      error,
+    );
   }
 }
 
@@ -894,19 +897,13 @@ export function nativeBackpropTrain(
  * normal completion they are released; termination abandons them until process
  * exit because JavaScript cleanup cannot run in the terminated isolate.
  *
- * @throws as {@link nativeBackpropTrain}, and when the loaded handle lacks
- *         `neat_backprop_train_nonblocking`.
+ * @throws as {@link nativeBackpropTrain}, or if native resources cannot be retained.
  */
 export async function nativeBackpropTrainAsync(
   request: NativeBackpropTrainRequest,
 ): Promise<NativeBackpropTrainResponse> {
   const { lib, deadlineCapable, libraryPath } = prepareTrain(request);
   const trainAsync = lib.symbols["neat_backprop_train_nonblocking"];
-  if (typeof trainAsync !== "function") {
-    throw new Error(
-      "the loaded libneat_ai_backpropagation handle lacks neat_backprop_train_nonblocking",
-    );
-  }
 
   const requestBytes = new TextEncoder().encode(JSON.stringify(request));
   // Test doubles have no loaded code to retain. Real handles carry their path.

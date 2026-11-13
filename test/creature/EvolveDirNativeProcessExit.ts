@@ -6,14 +6,14 @@ import {
   REPO_ROOT,
 } from "../architecture/training/_nativeProcessFixture.ts";
 
-async function runQuarantine(lateReturn: boolean): Promise<void> {
+async function runQuarantine(lateReturn: boolean, cli = false): Promise<void> {
   const dir = await Deno.makeTempDir({ prefix: "evolve-native-exit-" });
   let child: Deno.ChildProcess | undefined;
   let exited = false;
   let killed = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const fixture = await nativeProcessFixture(dir);
+    const fixture = await nativeProcessFixture(dir, cli);
     child = new Deno.Command(Deno.execPath(), {
       args: [
         "run",
@@ -47,7 +47,6 @@ async function runQuarantine(lateReturn: boolean): Promise<void> {
         pending = lines.pop()!;
         for (const line of lines) {
           stdout.push(line);
-          if (line.startsWith("NATIVE_TRAIN_ENTERED")) process.kill("SIGUSR1");
           if (lateReturn && line === "EVOLVE_RETURNED") await fixture.release();
           if (lateReturn && line === "NATIVE_TRAIN_FINISHED") {
             process.kill("SIGUSR2");
@@ -63,13 +62,31 @@ async function runQuarantine(lateReturn: boolean): Promise<void> {
     ]);
     exited = true;
     const output = stdout.join("\n") + "\n" + stderr;
-    assertStringIncludes(output, "NATIVE_TRAIN_ENTERED", output);
+    assertStringIncludes(output, "NATIVE_CALL_STARTED", output);
     assertStringIncludes(output, "TRAINING_QUARANTINED", output);
     assertStringIncludes(output, "quarantined — training task", output);
     assertStringIncludes(output, "EVOLVE_RETURNED", output);
     assertStringIncludes(output, "CALLER_LAST_STATEMENT", output);
     assertEquals(killed, false, output);
     assertEquals(status.code, 0, output);
+    if (cli) {
+      const marker = stdout.find((line) =>
+        line.startsWith("NATIVE_CALL_STARTED pid=")
+      )!;
+      const pid = marker.slice("NATIVE_CALL_STARTED pid=".length);
+      const check = await new Deno.Command("ps", {
+        args: ["-p", pid, "-o", "stat="],
+        stdin: "null",
+        stdout: "piped",
+        stderr: "piped",
+      }).output();
+      // A zombie has exited too; its parent/runtime reaps it, never runs training.
+      const state = new TextDecoder().decode(check.stdout).trim();
+      assert(
+        check.code === 1 || state.startsWith("Z"),
+        `CLI child ${pid} survived worker termination: ${state}`,
+      );
+    }
     if (lateReturn) {
       assertStringIncludes(output, "NATIVE_TRAIN_FINISHED", output);
       const request = JSON.parse(
@@ -102,4 +119,11 @@ Deno.test({
     "native training can return safely after evolveDir terminates its worker",
   ignore: Deno.build.os === "windows", // POSIX C fixture and signals.
   fn: () => runQuarantine(true),
+});
+
+Deno.test({
+  name:
+    "evolveDir exits and kills the CLI trainer when its worker is quarantined",
+  ignore: Deno.build.os === "windows", // POSIX C fixture and signals.
+  fn: () => runQuarantine(false, true),
 });

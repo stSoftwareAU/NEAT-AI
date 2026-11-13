@@ -37,7 +37,7 @@
  *     step, so a future silent-child log is diagnosable rather than a mystery.
  *  4. **Guard the exit (Issue #4126).** A worker that could not be stopped —
  *     detached, or terminated while its thread is still blocked in native code
- *     — keeps the process alive after the run returns. One warning names the
+ *     — may keep the process alive after the run returns. One warning names the
  *     count. When the caller opted in (`exitOnUnreclaimableWorkers`), the exit
  *     is armed as the very last step, after the persist and the replay drain,
  *     so no persisted work is lost.
@@ -285,8 +285,8 @@ export function handleUnreclaimableWorkers(
   options.onUnreclaimableWorkersHandled?.();
   if (count === 0) return;
   const exitOnUnreclaimable = options.exitOnUnreclaimableWorkers === true;
-  const cause = `${count} worker(s) could not be stopped — a thread blocked ` +
-    `in native code ignores terminate(), so the process will not exit on its own`;
+  const cause = `${count} worker(s) could not be stopped — unanswered tasks ` +
+    `may still have native work running after terminate()`;
   getLogger().warn(
     exitOnUnreclaimable
       ? `[${label}] teardown: ${cause}; it will be exited after the grace period`

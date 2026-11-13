@@ -4,7 +4,7 @@ import { fromFileUrl, join } from "@std/path";
 export const REPO_ROOT = new URL("../../../", import.meta.url);
 
 /** Build the ABI fixture; the process tests require a C compiler on macOS/Linux. */
-export async function nativeProcessFixture(dir: string): Promise<{
+export async function nativeProcessFixture(dir: string, cli = false): Promise<{
   library: string;
   env: Record<string, string>;
   release: () => Promise<void>;
@@ -13,18 +13,27 @@ export async function nativeProcessFixture(dir: string): Promise<{
     dir,
     Deno.build.os === "darwin" ? "trainer.dylib" : "trainer.so",
   );
+  const binary = join(dir, "trainer");
   const compiled = await new Deno.Command("cc", {
     args: [
-      Deno.build.os === "darwin" ? "-dynamiclib" : "-shared",
+      ...(cli
+        ? ["-DTRAINER_CLI"]
+        : [Deno.build.os === "darwin" ? "-dynamiclib" : "-shared"]),
       "-fPIC",
       "-o",
-      library,
+      cli ? binary : library,
       fromFileUrl(new URL("fixtures/WedgedNativeTrainer.c", import.meta.url)),
     ],
     stdin: "null",
     stderr: "piped",
   }).output();
   assertEquals(compiled.code, 0, new TextDecoder().decode(compiled.stderr));
+  if (cli) {
+    await Deno.writeTextFile(
+      library,
+      "Deliberately unavailable FFI: exercise the CLI.",
+    );
+  }
   const pipe = join(dir, "release");
   const made = await new Deno.Command("mkfifo", {
     args: [pipe],
@@ -37,7 +46,8 @@ export async function nativeProcessFixture(dir: string): Promise<{
     env: {
       NEAT_AI_BACKPROP_ENABLED: "1",
       NEAT_AI_BACKPROP_LIB_PATH: library,
-      NEAT_AI_BACKPROP_REQUIRE_FFI: "1",
+      NEAT_AI_BACKPROP_REQUIRE_FFI: cli ? "0" : "1",
+      NEAT_AI_BACKPROP_BINARY_PATH: binary,
       NEAT_TEST_CAPABILITIES: fromFileUrl(
         new URL(
           "test/fixtures/native-backprop/capabilities-new.json",
@@ -52,6 +62,7 @@ export async function nativeProcessFixture(dir: string): Promise<{
       ),
       NEAT_TEST_RELEASE: pipe,
       NEAT_TEST_REQUEST: join(dir, "request.json"),
+      NEAT_TEST_STARTED: join(dir, "started"),
     },
     release: async () => {
       using file = await Deno.open(pipe, { read: true, write: true });

@@ -1203,8 +1203,11 @@ function refuseCliWhenFfiRequired(): void {
 async function removeWorkDirAsync(workDir: string): Promise<void> {
   try {
     await Deno.remove(workDir, { recursive: true });
-  } catch {
-    // Temp dir cleanup is best-effort.
+  } catch (error) {
+    getLogger().warn(
+      `Failed to remove native training work directory ${workDir}`,
+      error,
+    );
   }
 }
 

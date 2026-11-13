@@ -2,9 +2,9 @@
  * C library heap helpers (Issue #4126).
  *
  * Buffers handed to a `nonblocking` FFI call must outlive the worker isolate:
- * a terminated worker's ArrayBuffers are freed, and Deno does not keep a
- * nonblocking call's `buffer` arguments alive, so a late native write into them
- * would be a write-after-free. Memory from the C heap is never freed by Deno.
+ * Deno 2.7 does not retain a nonblocking call's ArrayBuffers. C-heap ownership
+ * also works on newer runtimes that retain them. Deno cannot free this memory
+ * when it drops the worker isolate.
  *
  * Failures throw; there is no fallback.
  */

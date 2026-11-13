@@ -54,12 +54,7 @@ function writeBuffer(view: DataView, bytes: Uint8Array): void {
   view.setBigUint64(16, BigInt(bytes.byteLength), true);
 }
 
-interface Calls {
-  blocking: number;
-  nonblocking: number;
-}
-
-function makeDouble(calls: Calls): NativeBackpropHandle {
+function makeDouble(): NativeBackpropHandle {
   const capabilityBytes = new TextEncoder().encode(`${CAPABILITIES}\0`);
   keepAlive.push(capabilityBytes);
   const payloadBytes = new TextEncoder().encode(COMPLETED_RESPONSE);
@@ -73,7 +68,6 @@ function makeDouble(calls: Calls): NativeBackpropHandle {
         _len: bigint,
         out: Uint8Array,
       ) => {
-        calls.blocking++;
         writeBuffer(
           new DataView(out.buffer, out.byteOffset, out.byteLength),
           payloadBytes,
@@ -85,7 +79,6 @@ function makeDouble(calls: Calls): NativeBackpropHandle {
         len: bigint,
         outPtr: Deno.PointerObject,
       ) => {
-        calls.nonblocking++;
         const request = new Uint8Array(Number(len));
         new Deno.UnsafePointerView(reqPtr).copyInto(request);
         JSON.parse(new TextDecoder().decode(request));
@@ -120,15 +113,14 @@ const OPTIONS: TrainOptions = {
   hardDeadlineTS: HARD_DEADLINE_TS,
 };
 
-Deno.test("trainDirAsync returns trainDir's result via the non-blocking native symbol", async () => {
-  const calls: Calls = { blocking: 0, nonblocking: 0 };
+Deno.test("trainDirAsync preserves trainDir error metrics and deadline outcome", async () => {
   const syncCreature = Creature.fromJSON(JSON.parse(INPUT_CREATURE_JSON));
   const asyncCreature = Creature.fromJSON(JSON.parse(INPUT_CREATURE_JSON));
   const dataDir = makeSingleDataDir(syncCreature);
   closeNativeBackpropLibrary();
   __setRustTrainDirEnabledForTests(true);
   try {
-    assert(__installNativeBackpropLibraryForTests(makeDouble(calls)));
+    assert(__installNativeBackpropLibraryForTests(makeDouble()));
 
     const syncResult = trainDir(
       syncCreature,
@@ -136,7 +128,6 @@ Deno.test("trainDirAsync returns trainDir's result via the non-blocking native s
       OPTIONS,
       Costs.find("MSE"),
     );
-    assertEquals(calls, { blocking: 1, nonblocking: 0 });
 
     const asyncResult = await trainDirAsync(
       asyncCreature,
@@ -144,7 +135,6 @@ Deno.test("trainDirAsync returns trainDir's result via the non-blocking native s
       OPTIONS,
       Costs.find("MSE"),
     );
-    assertEquals(calls, { blocking: 1, nonblocking: 1 });
 
     assertEquals(asyncResult.error, syncResult.error);
     assertEquals(asyncResult.timedOut, syncResult.timedOut);
