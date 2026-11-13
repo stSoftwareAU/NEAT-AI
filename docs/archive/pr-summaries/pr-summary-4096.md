@@ -1,11 +1,15 @@
 ## Summary
 
 The downstream log archive now holds two field breach lines that carry the
-heartbeat age: neat-ai 7.1.14 on GRQ-19 and 7.1.17 on GRQ-21. Both read
-`lastHeartbeatAgeMs≈1,990,000 inFlightPhase=breeding`. They are recorded in
-`docs/TIMEOUTS.md` as closing evidence. They show the main loop was blocked (not
-just slow), on hosts with no swap-backed heap, in the breeding window rather
-than fitness.
+heartbeat age: neat-ai 7.1.14 on GRQ-19 and 7.1.17 on GRQ-21. They read
+`lastHeartbeatAgeMs=1999298` and `=1982754`, both with `inFlightPhase=breeding`.
+They are recorded in `docs/TIMEOUTS.md` as closing evidence. They show the main
+loop was blocked, not just slow. The hosts had no swap-backed heap, and at the
+kill the main thread was in the breeding window, not in fitness. For GRQ-21, a
+worker log line the parent relays only when its event loop turns places the
+start of the synchronous run still in progress at the kill after
+`await breedingPromise`. That assumes worker breeding, which loop 2's logs do
+not show.
 
 The line could not say which main-thread step in that window blocked, or how
 full the heap was, so this PR adds both:
@@ -48,23 +52,52 @@ reproduced, so the root-cause criterion stays partial. Part of #4096.
 
 ### Undiscoverable Facts
 
-- The two source logs (`GRQ-19-sloth.log` at GRQ-logs commit `a34f9c1`,
+- The two source logs (`GRQ-19-sloth.log` at archive commit `a34f9c1`,
   `GRQ-21-sloth.log` at `d78afa4`) were removed by the archive's later triage
   commits (`adb8dd6`, `54c6fac`). They are only reachable through the archive's
   git history.
 - In the same runs, the non-fatal `breeding` → `deduplication` stalls match the
-  same generation's `mutation=` timing to within 1–2.5 s. A second set of
-  stalls, from `fitness`/`write-scores` → `breeding`, is not itemised by
-  `[Timing]`.
+  same generation's `mutation=` timing to within 1–2.5 s.
+- A second set of stalls runs from `fitness`/`write-scores` → `breeding`.
+  `[Timing]` itemises `sort=`, `writeScores=` (with `speciation=`), and
+  `resultProcessing=` and `mainThreadOverlap=` inside `breeding=`. It does not
+  itemise four parts:
+  - the tail of fitness;
+  - the post-fitness bookkeeping before sort;
+  - the unmarked span between write-scores and parent selection;
+  - parent selection inside `breeding=`.
+
+  In GRQ-21 generations 1 and 4, the stall is longer than all the itemised steps
+  it could overlap: 30398 ms against 22678 ms, and 15121 ms against 9506 ms. So
+  at least 7.7 s and 5.6 s of those blocks were in code `[Timing]` does not
+  itemise. The generation 4 stall started in write-scores, so for it that code
+  is the span between write-scores and parent selection.
+- `inFlightPhase=` names where the main thread was at the kill, not where the
+  block began.
+  - For GRQ-21 (7.1.17), the last line is the relayed
+    `[training-backend] task=7600c3d3 …`. The parent writes it only when the
+    event loop turns, and `await breedingPromise` is the only yield between
+    write-scores and mutation. So the run still blocking at the kill began after
+    that await, in a callback during breeding. The most likely callback is the
+    per-offspring `Creature.fromJSON` / memetic `discover`. The heartbeat age
+    may also count time before the await, because a handler can block before the
+    timer fires. The placement assumes worker breeding: the `breedSingle`
+    fallback never turns the loop, and the logs do not show which path loop 2
+    took.
+  - For GRQ-19 (7.1.14, no relay), part of the block may lie earlier.
+- Loop 1 on both hosts ended with V8's GC trace at 4,214–4,257 MB of the 4,326
+  MB grant, with average mutator utilisation 0.272 and 0.350. So about 65–73 %
+  of the time was going to garbage collection just before the OOM retry halved
+  the heap.
 
 ## Evidence
 
 Backend-only change. No UI file is touched.
 
-Archive search (GRQ-logs `Develop`, deepened to 3000 commits):
-`git log -S"lastHeartbeatAgeMs"` returned `a34f9c1`, `adb8dd6`, `d78afa4` and
-`54c6fac`. The breach lines, quoted from `git show a34f9c1:GRQ-19-sloth.log` and
-`git show d78afa4:GRQ-21-sloth.log`:
+Archive search (the downstream production log archive's `Develop` branch,
+deepened to 3000 commits): `git log -S"lastHeartbeatAgeMs"` returned `a34f9c1`,
+`adb8dd6`, `d78afa4` and `54c6fac`. The breach lines, quoted from
+`git show a34f9c1:GRQ-19-sloth.log` and `git show d78afa4:GRQ-21-sloth.log`:
 
 ```text
 [Neat] First generation wedged after 2100s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=1999298 inFlightPhase=breeding heartbeatIntervalMS=1000
@@ -94,6 +127,10 @@ Issue numbers cited, each looked up with `gh` in this run:
   caller-side per-loop hard kill
 - #4086: Document the event-loop limit and the caller-side per-loop hard kill
   (#4068)
+- #4146: Recurrence of #4119 on 7.1.12 + engine 0.1.50: training tasks still
+  overrun the per-task deadline, return no result and get quarantined. Its fix
+  relays worker log lines such as `[training-backend]` through the parent's
+  worker `message` listener.
 
 ## Reproduction
 
@@ -121,11 +158,15 @@ Issue numbers cited, each looked up with `gh` in this run:
 - **partial** — Root cause of the generation-11 stall identified, or reproduced
   or excluded with quoted evidence. In particular: is it paging on a swap-backed
   heap, or main-thread work inside fitness? — evidence: `docs/TIMEOUTS.md`
-  ("Field observation (2026-11-13)") — reviewer: partial — reason: the quoted
-  7.1.x wedges were measured blocked in `breeding` on hosts with no swap, so
-  they need neither paging nor fitness. The non-fatal stalls are shown to be the
-  synchronous `mutator.mutate`. The generation-11 case itself (7.0.62, swap
-  host) is not reproduced, and the fatal block's step and heap state wait on a
+  ("Field observation (2026-11-13)") — reviewer: partial — reason: the
+  generation-11 case itself (7.0.62, 8 GB swap-backed host, abandoned "stalled
+  in fitness") is not reproduced, identified or ruled out. The paging and
+  fitness exclusions apply only to the two generation-1 wedges on 16 GB hosts
+  with no swap. Their cause is still inferred (garbage collection near the 2163
+  MB limit, after a loop-1 GC trace at 65–73 % GC time). The run still blocking
+  at GRQ-21's kill is placed after `await breedingPromise`, assuming worker
+  breeding. Only the `breeding` → `deduplication` stalls are shown to be the
+  synchronous `mutator.mutate`. The fatal block's step and heap state wait on a
   field breach carrying this PR's heap fields and phases.
 - **met** — Regression test: a subprocess run whose main thread busy-loops in
   generation ≥ 2 is killed with a breach line carrying `lastHeartbeatAgeMs` ≥
@@ -205,6 +246,10 @@ Issue numbers cited, each looked up with `gh` in this run:
   removed. The exact per-generation walk for `evolveDir`, `evolveEnv` and
   `evolveRL` still fails without the new markers.
 - **Ran on the head:**
+  - `deno test -A test/docs/*.ts` (every doc guard, including
+    `LiveDocsNoPrivateGrqReference.ts` and `ArchiveDocsNoPrivateRepoSlugs.ts`,
+    which failed before the private repo name was reworded) — 318 passed, 0
+    failed.
   - `NEAT_AI_BACKPROP_ENABLED=0 deno test -A --parallel` on 10 files —
     `test/NEAT/EventLoopWatchdog_test.ts`,
     `test/NEAT/EvolveBreedingPhaseMarks_test.ts`,
