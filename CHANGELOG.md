@@ -23,6 +23,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #4096:** the event-loop watchdog breach line now ends with
+  `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>` (V8 heap used at the last
+  main-thread heartbeat and the heap limit), and `inFlightPhase` can read
+  `parent-selection` or `result-processing`, which split the old `breeding`
+  window; see `docs/TIMEOUTS.md`.
+
 ### Fixed
 
 - **Issue #4146:** a hung native training task now says which backend ran and

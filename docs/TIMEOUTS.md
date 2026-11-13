@@ -708,13 +708,13 @@ the start of the main try block and before the population is seeded. With no
   error and the SIGTERM path all release it.
 - **Breach.** At the scheduled deadline the watchdog writes one stderr line,
   then SIGKILLs the process, which exits with status 137. `<s>` is the run's
-  elapsed seconds at the breach. The three trailing heartbeat fields
-  (`lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms>`) are
-  appended to the end of the line; the text before them is unchanged:
+  elapsed seconds at the breach. The five trailing heartbeat fields
+  (`lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms> lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>`)
+  are appended to the end of the line; the text before them is unchanged:
   - during generation 1:
-    `[Neat] First generation wedged after <s>s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms>`
+    `[Neat] First generation wedged after <s>s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms> lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>`
   - later:
-    `[Neat] Run wedged after <s>s at generation <n> (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms>`,
+    `[Neat] Run wedged after <s>s at generation <n> (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms> lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>`,
     where `<n>` is the number of generations completed.
 
 ```mermaid
@@ -745,9 +745,12 @@ measurement that tells the two apart.
 
 - **Written by the main thread.** The main thread writes the epoch-ms of its
   latest timer tick into a `SharedArrayBuffer` every `heartbeatIntervalMS`, and
-  once at arm. The default is `DEFAULT_HEARTBEAT_INTERVAL_MS` (1000 ms), set
-  with the `heartbeatIntervalMS` option on `armEventLoopWatchdog`. The timer is
-  unreferenced, so it never keeps the process alive, and `disarm()` clears it.
+  once at arm. It writes the V8 heap used (`Deno.memoryUsage().heapUsed`)
+  alongside each tick, and the isolate's heap limit once at arm, into a separate
+  `SharedArrayBuffer`. The default is `DEFAULT_HEARTBEAT_INTERVAL_MS` (1000 ms),
+  set with the `heartbeatIntervalMS` option on `armEventLoopWatchdog`. The timer
+  is unreferenced, so it never keeps the process alive, and `disarm()` clears
+  it.
 - **Read at breach.** The Worker reads the buffer when the deadline passes.
   `lastHeartbeatAgeMs` is the time since the main thread's latest tick.
 - **Non-fatal stall line.** The main thread also checks each tick. When a tick
@@ -759,8 +762,16 @@ measurement that tells the two apart.
   clock, so a clock step can produce a false line.
 - **`inFlightPhase`** is the phase the main thread most recently entered: one of
   `untracked` (outside any tracked phase, for example checkpoint or bookkeeping
-  between generations), `fitness`, `sort`, `write-scores`, `breeding`,
-  `mutation`, `pre-warm` or `deduplication`. `NeatEvolution` sets it per
+  between generations), `fitness`, `sort`, `write-scores`, `parent-selection`,
+  `breeding`, `result-processing`, `mutation`, `pre-warm` or `deduplication`.
+  `parent-selection` covers parent selection, breeding-quota allocation and the
+  synchronous start of breeding (ranking, pair selection and each worker's first
+  breeding request export) before the first await. `result-processing` covers
+  merging the completed training and discovery results
+  (`processCompletedResults`) while the workers breed. `breeding` covers only
+  the wait for worker breeding: in it the main thread configures the mutator and
+  handles each offspring a worker returns (`Creature.fromJSON`, memetic
+  `discover`, and exporting the next pair). `NeatEvolution` sets it per
   generation through `neat.markPhase`, and `RunWatchdog.setPhase` forwards it. A
   marker is cleared back to `untracked` when its work returns, so spans between
   tracked phases (speciation, pre-selection, population assembly) read
@@ -770,6 +781,10 @@ measurement that tells the two apart.
   [`src/NEAT/EventLoopWatchdog.ts`](../src/NEAT/EventLoopWatchdog.ts).
 - **`heartbeatIntervalMS`** is the interval in force, so the age can be read
   against it.
+- **`lastHeartbeatHeapUsedMB`** is the V8 heap used (MiB) the main thread
+  recorded at its last heartbeat tick. **`heapLimitMB`** is the isolate's V8
+  heap limit (MiB, `heap_size_limit` from `node:v8`), read once at arm. Either
+  reads `unknown` when it was not measured.
 
 Read `lastHeartbeatAgeMs` against `heartbeatIntervalMS`:
 
@@ -784,15 +799,22 @@ line, such as `(event loop blocked past the hard cap; …)`, describes the
 condition the deadline was set to catch. It is fixed wording, not a measurement,
 so decide from the trailing fields.
 
+When the age says blocked, read the heap fields. A last reading close to
+`heapLimitMB` points at garbage collection near the heap limit (V8 runs
+back-to-back full collections on the main thread). A reading with plenty of
+headroom points at synchronous main-thread work in `inFlightPhase`. This is an
+inference aid, not a measurement of GC time.
+
 An illustrative breach example, with the values made concrete:
 
 ```text
-[Neat] Run wedged after 1834s at generation 4 (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=312044 inFlightPhase=fitness heartbeatIntervalMS=1000
+[Neat] Run wedged after 1834s at generation 4 (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=312044 inFlightPhase=fitness heartbeatIntervalMS=1000 lastHeartbeatHeapUsedMB=2071 heapLimitMB=2163
 ```
 
 Read this as: the main thread had not ticked for about 312 s, and it was last in
-`fitness`. The kill happens whatever the age; the field changes the diagnosis,
-not the action.
+`fitness`. The heap was within about 5% of its limit at the last tick, so
+garbage collection near the limit is the first suspect. The kill happens
+whatever the age; the field changes the diagnosis, not the action.
 
 Callers that treat exit 137 plus the breach line as a wedge should read
 `lastHeartbeatAgeMs` first. A large age supports the wedge reading and points at
@@ -825,6 +847,62 @@ heartbeat-age reading: the heartbeat already existed, but its age was reported
 only on a fatal breach. It cannot distinguish CPU starvation from paging or
 identify the generation-11 cause. This is field evidence, not the illustrative
 breach example above.
+
+#### Field observation (2026-11-13)
+
+Source: the downstream production log archive (GRQ-logs `Develop`), two
+learning-run logs that the archive's triage later removed: `GRQ-19-sloth.log`
+(commit `a34f9c1`, 2026-11-09, neat-ai 7.1.14) and `GRQ-21-sloth.log` (commit
+`d78afa4`, 2026-11-12, neat-ai 7.1.17). Both hosts have 10 CPUs and 16 GB RAM,
+with about 13-14 GB available and no swap-backed heap grant.
+
+Both sampler loop 1 runs died of a V8 heap-limit abort (`Learn.ts exited 133`)
+at a 4326 MB heap. The OOM retry relaunched loop 2 at half the heap (2163 MB),
+with `heavyWorkers 1, threads 1` and popSize 5, and generation 1 of loop 2
+wedged on both hosts (first GRQ-19, second GRQ-21):
+
+```text
+[Neat] First generation wedged after 2100s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=1999298 inFlightPhase=breeding heartbeatIntervalMS=1000
+[Neat] First generation wedged after 2100s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=1982754 inFlightPhase=breeding heartbeatIntervalMS=1000
+```
+
+What is measured: the main loop was blocked for about 1,983-1,999 s of the 2,100
+s bound, so these were wedges, not slow runs. The phase was `breeding`, so
+neither fitness nor paging on a swap-backed heap is needed to explain them.
+`setPhase` writes shared memory synchronously, so the `mutation` marker had not
+been reached: the block was in the breeding window, not in mutation.
+
+Recurring non-fatal stalls in the same runs line up with the main-thread
+`mutation` timing of the same generation. The stall line names the phase at the
+last tick and at the next one, so a synchronous mutation reads `breeding` ->
+`deduplication`.
+
+| Host   | Generation | `main loop stalled for` | `mutation=` |
+| ------ | ---------- | ----------------------- | ----------- |
+| GRQ-19 | 1          | 17500 ms                | 16197 ms    |
+| GRQ-19 | 2          | 77491 ms                | 74993 ms    |
+| GRQ-21 | 1          | 17829 ms                | 16774 ms    |
+| GRQ-21 | 2          | 106255 ms               | 103899 ms   |
+
+One source pair, verbatim:
+
+```text
+[Neat] main loop stalled for 106255ms (heartbeat every 1000ms) at generation 1; phase at last heartbeat: breeding, phase now: deduplication
+[Timing] fitness=19041ms breeding=31382ms breedingWorker=31382ms mainThreadOverlap=2ms resultProcessing=0ms preWarm=610ms pipelineOverlap=614ms sort=0ms writeScores=10ms mutation=103899ms deduplication=1416ms speciation=4ms total=172667ms
+```
+
+The multi-second to multi-minute non-fatal stalls are the synchronous
+`mutator.mutate` on the main thread.
+
+Inferred, not measured: both fatal wedges followed an OOM at twice the heap, so
+the leading suspect for the 2,000 s block is garbage collection near the 2163 MB
+limit inside the breeding window. Those logs predate the heap fields and the
+split of the breeding window, so they cannot confirm it. A breach line from a
+release carrying `lastHeartbeatHeapUsedMB`/`heapLimitMB` and the
+`parent-selection`/`result-processing` phases will.
+
+The generation-11 case in Issue #4096 (7.0.62, 8 GB swap-backed host) was not
+reproduced; these logs are from different hosts and generation 1.
 
 ## ✅ Verifying the guarantee
 
