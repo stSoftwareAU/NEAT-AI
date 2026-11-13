@@ -785,6 +785,8 @@
     "msvcrt",
     "DTRAINER",
     "dynamiclib",
-    "mkfifo"
+    "mkfifo",
+    "dlclose",
+    "evolvedir"
   ]
 }
