@@ -135,6 +135,10 @@ Tuning guides and benchmark research.
   own outcomes (Jin 2011 §5). Off by default; it observes and changes no
   selection. What it measured is in
   [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
+- **[evidence/census-restart-4157.md](evidence/census-restart-4157.md)** — the
+  offspring-census restart study (Issue #4157): census-triggered against
+  plateau-triggered restarts on a synthetic objective. Negative result; run it
+  with `deno task census-restart-study`.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
