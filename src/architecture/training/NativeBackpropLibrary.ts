@@ -35,6 +35,7 @@
 import { join } from "@std/path/join";
 import { getLogger } from "@utils/Logger.ts";
 import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
+import { retainNativeLibrary } from "./NativeLibraryLease.ts";
 import {
   allocNativeCopy,
   allocNativeZeroed,
@@ -234,6 +235,9 @@ export interface NativeBackpropTrainResponse {
 }
 
 let nativeLib: NativeBackpropHandle | null = null;
+let nativeLibPath: string | undefined;
+const pendingCalls = new Map<NativeBackpropHandle, number>();
+const deferredClose = new Set<NativeBackpropHandle>();
 let loadAttempted = false;
 let loggedAvailability = false;
 /** Capability of the currently loaded handle; `null` until first probed. */
@@ -652,6 +656,7 @@ function loadNativeBackpropLibrary(): boolean {
 
   try {
     nativeLib = Deno.dlopen(libPath, NATIVE_BACKPROP_SYMBOLS);
+    nativeLibPath = libPath;
     const abi = nativeLib.symbols["neat_backprop_abi_version"]();
     if (abi !== NEAT_BACKPROP_ABI_VERSION) {
       nativeLib.close();
@@ -685,9 +690,11 @@ function loadNativeBackpropLibrary(): boolean {
  */
 export function closeNativeBackpropLibrary(): void {
   if (nativeLib !== null) {
-    nativeLib.close();
+    if (pendingCalls.has(nativeLib)) deferredClose.add(nativeLib);
+    else nativeLib.close();
     nativeLib = null;
   }
+  nativeLibPath = undefined;
   loadAttempted = false;
   loggedAvailability = false;
   deadlineCapabilityCache = null;
@@ -792,7 +799,11 @@ function readOwnedUtf8(structBytes: Uint8Array): string {
  */
 function prepareTrain(
   request: NativeBackpropTrainRequest,
-): { lib: NativeBackpropHandle; deadlineCapable: boolean } {
+): {
+  lib: NativeBackpropHandle;
+  deadlineCapable: boolean;
+  libraryPath?: string;
+} {
   if (!loadNativeBackpropLibrary() || nativeLib === null) {
     throw new Error(MISSING_LIBRARY_MESSAGE);
   }
@@ -815,7 +826,7 @@ function prepareTrain(
       );
     }
   }
-  return { lib, deadlineCapable };
+  return { lib, deadlineCapable, libraryPath: nativeLibPath };
 }
 
 /** Shared response handling: read the owned payload, check status, parse. */
@@ -879,9 +890,9 @@ export function nativeBackpropTrain(
  * terminated and the process can exit. Validation, errors and response
  * handling are identical to the synchronous function.
  *
- * The request and output buffers live on the C heap, not in the isolate: a
- * terminated worker's ArrayBuffers are freed while the native thread may still
- * write into them.
+ * C-heap buffers and an OS loader reference outlive worker termination. On
+ * normal completion they are released; termination abandons them until process
+ * exit because JavaScript cleanup cannot run in the terminated isolate.
  *
  * @throws as {@link nativeBackpropTrain}, and when the loaded handle lacks
  *         `neat_backprop_train_nonblocking`.
@@ -889,7 +900,7 @@ export function nativeBackpropTrain(
 export async function nativeBackpropTrainAsync(
   request: NativeBackpropTrainRequest,
 ): Promise<NativeBackpropTrainResponse> {
-  const { lib, deadlineCapable } = prepareTrain(request);
+  const { lib, deadlineCapable, libraryPath } = prepareTrain(request);
   const trainAsync = lib.symbols["neat_backprop_train_nonblocking"];
   if (typeof trainAsync !== "function") {
     throw new Error(
@@ -898,21 +909,22 @@ export async function nativeBackpropTrainAsync(
   }
 
   const requestBytes = new TextEncoder().encode(JSON.stringify(request));
-  const reqPtr = allocNativeCopy(requestBytes);
-  let outPtr: Deno.PointerObject;
+  // Test doubles have no loaded code to retain. Real handles carry their path.
+  const releaseLibrary = libraryPath === undefined
+    ? undefined
+    : retainNativeLibrary(libraryPath);
+  let reqPtr: Deno.PointerObject | undefined;
+  let outPtr: Deno.PointerObject | undefined;
+  pendingCalls.set(lib, (pendingCalls.get(lib) ?? 0) + 1);
   try {
+    reqPtr = allocNativeCopy(requestBytes);
     outPtr = allocNativeZeroed(BACKPROP_BUFFER_BYTES);
-  } catch (error) {
-    freeNative(reqPtr);
-    throw error;
-  }
-  const local = new Uint8Array(BACKPROP_BUFFER_BYTES);
-  try {
     const status = await trainAsync(
       reqPtr,
       BigInt(requestBytes.byteLength),
       outPtr,
     );
+    const local = new Uint8Array(BACKPROP_BUFFER_BYTES);
     new Deno.UnsafePointerView(outPtr).copyInto(local);
     try {
       return readTrainResponse(status, local, deadlineCapable);
@@ -920,11 +932,15 @@ export async function nativeBackpropTrainAsync(
       freeOwnedBuffer(lib, local);
     }
   } finally {
-    // Reached only once the await settles: if the worker is terminated
-    // mid-call these two allocations deliberately leak rather than risk a
-    // late native write into freed memory.
-    freeNative(reqPtr);
-    freeNative(outPtr);
+    if (reqPtr !== undefined) freeNative(reqPtr);
+    if (outPtr !== undefined) freeNative(outPtr);
+    const remaining = (pendingCalls.get(lib) ?? 1) - 1;
+    if (remaining > 0) pendingCalls.set(lib, remaining);
+    else {
+      pendingCalls.delete(lib);
+      if (deferredClose.delete(lib)) lib.close();
+    }
+    releaseLibrary?.();
   }
 }
 

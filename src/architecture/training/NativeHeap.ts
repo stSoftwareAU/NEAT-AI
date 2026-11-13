@@ -31,6 +31,7 @@ const HEAP_SYMBOLS = {
 } as const;
 
 let heap: Deno.DynamicLibrary<typeof HEAP_SYMBOLS> | null = null;
+let allocations = 0;
 
 function loadHeap(): Deno.DynamicLibrary<typeof HEAP_SYMBOLS> {
   if (heap !== null) return heap;
@@ -57,10 +58,15 @@ export function allocNativeZeroed(byteLength: number): Deno.PointerObject {
   }
   const ptr = loadHeap().symbols.calloc(1n, BigInt(byteLength));
   if (ptr === null) {
+    if (allocations === 0) {
+      heap?.close();
+      heap = null;
+    }
     throw new Error(
       `calloc in ${LIBC_NAME} returned null for ${byteLength} bytes`,
     );
   }
+  allocations++;
   return ptr;
 }
 
@@ -72,7 +78,7 @@ export function allocNativeCopy(bytes: Uint8Array): Deno.PointerObject {
       loadHeap().symbols.memcpy(ptr, bytes, BigInt(bytes.byteLength));
     }
   } catch (error) {
-    loadHeap().symbols.free(ptr);
+    freeNative(ptr);
     throw error;
   }
   return ptr;
@@ -81,4 +87,8 @@ export function allocNativeCopy(bytes: Uint8Array): Deno.PointerObject {
 /** Release memory from {@link allocNativeCopy} / {@link allocNativeZeroed}. */
 export function freeNative(ptr: Deno.PointerObject): void {
   loadHeap().symbols.free(ptr);
+  if (--allocations === 0) {
+    heap?.close();
+    heap = null;
+  }
 }
