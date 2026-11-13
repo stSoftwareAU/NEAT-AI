@@ -123,7 +123,7 @@ JSON (`results`).
 - arXiv 2610.22211 was **not fetched** (curl to arxiv returned a 403 from the
   proxy in this container). The method is this repository's reading of the
   issue.
-- Offspring probabilities are nonstationary and unequal, so the Good–Turing
+- Offspring probabilities are non-stationary and unequal, so the Good–Turing
   estimate is a trigger heuristic, not an accurate estimate of unseen genomes.
 - Neuron uuids are part of the topology hash, so only clone families share a
   topology.

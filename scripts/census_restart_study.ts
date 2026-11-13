@@ -52,7 +52,7 @@ import {
 
 const ISSUE = 4157;
 const LIMITATION =
-  "offspring probabilities are nonstationary and unequal, so the Good–Turing unseen estimate is a trigger heuristic, not an accurate estimate of unseen genomes";
+  "offspring probabilities are non-stationary and unequal, so the Good–Turing unseen estimate is a trigger heuristic, not an accurate estimate of unseen genomes";
 
 interface Failure {
   readonly arm: string;
