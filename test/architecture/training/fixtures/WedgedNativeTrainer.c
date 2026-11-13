@@ -26,12 +26,23 @@ static char *read_file(const char *path) {
 }
 
 uint32_t neat_backprop_abi_version(void) { return 1; }
+#ifdef TRAINER_LEGACY
+const char *neat_backprop_version(void) { return "0.1.49"; }
+#else
 const char *neat_backprop_version(void) { return "0.1.50"; }
+#endif
+/*
+ * TRAINER_LEGACY mirrors the real 0.1.49 engine: no capabilities symbol (and
+ * no `capabilities` CLI subcommand), and a request carrying an unknown field is
+ * rejected rather than ignored.
+ */
+#ifndef TRAINER_LEGACY
 const char *neat_backprop_capabilities(void) {
   static char *capabilities;
   if (!capabilities) capabilities = read_file(getenv("NEAT_TEST_CAPABILITIES"));
   return capabilities;
 }
+#endif
 
 #ifndef TRAINER_CLI
 __attribute__((destructor)) static void unloaded(void) {
@@ -67,6 +78,22 @@ int neat_backprop_train(const unsigned char *request, size_t len, Buffer *out) {
   FILE *capture = fopen(getenv("NEAT_TEST_REQUEST"), "wb");
   if (!capture || fwrite(request, 1, len, capture) != len) abort();
   fclose(capture);
+#ifdef TRAINER_LEGACY
+  {
+    /* The request is not NUL-terminated: search a bounded copy. */
+    char *text = calloc(len + 1, 1);
+    if (!text) abort();
+    memcpy(text, request, len);
+    int unknown = strstr(text, "\"deadlineEpochMs\"") != NULL;
+    free(text);
+    if (unknown) {
+      out->data = (unsigned char *)strdup("unknown field `deadlineEpochMs`");
+      out->len = strlen((char *)out->data);
+      out->capacity = out->len + 1;
+      return 2;
+    }
+  }
+#endif
   if (getenv("NEAT_TEST_ERROR")) {
     out->data = (unsigned char *)strdup("native fixture rejected training");
     out->len = strlen((char *)out->data);
@@ -88,10 +115,12 @@ void neat_backprop_buffer_free(Buffer *out) {
 
 #ifdef TRAINER_CLI
 int main(int argc, char **argv) {
+#ifndef TRAINER_LEGACY
   if (argc == 2 && !strcmp(argv[1], "capabilities")) {
     puts(neat_backprop_capabilities());
     return 0;
   }
+#endif
   if (argc < 4 || strcmp(argv[1], "train")) return 2;
   char *creature = read_file(argv[2]);
   free(creature);

@@ -265,6 +265,15 @@ abandoned still-running — the process may stay alive until the detached work e
 > deadline overruns. Other synchronous native calls can still hold a worker
 > thread.
 >
+> A worker busy in synchronous JavaScript/WASM or native code is not reaped by
+> `Worker.terminate()`. Re-measured on 2026-11-13 with Deno 2.9.8 on Linux, a
+> main module that spawns a worker running `while (true) {}`, calls
+> `terminate()` and then falls off the end **never exits** (killed at a 20 s
+> timeout). This still applies to the TypeScript/WASM training loop and the
+> other synchronous calls above. A caller that must guarantee its own exit
+> should opt into `exitOnUnreclaimableWorkers` or call `Deno.exit()` after
+> `evolveDir` resolves, rather than rely on natural exit.
+>
 > Teardown reports unanswered tasks conservatively, even for asynchronous
 > training that can terminate. The optional `exitOnUnreclaimableWorkers` guard
 > remains available; see
@@ -461,8 +470,8 @@ does. "Deadline sent" means the `deadlineEpochMs` field or the
 ## 🧾 Which backend ran, and whether a deadline was sent (Issue #4146)
 
 Every training task writes one `[training-backend]` line at info level,
-**before** its blocking native call, so a task that later hangs already has it
-in the log:
+**before** its native call, so a task that later hangs already has it in the
+log:
 
 ```text
 [training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no> capability=<version|none>
@@ -493,8 +502,8 @@ level, after the backend line. The WASM loop writes neither.
 [training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no|unknown> msFromDeadline=<integer|none>
 ```
 
-- `native-returned` is written as soon as the blocking native call returns,
-  before the response is parsed or packaged.
+- `native-returned` is written as soon as the native call returns, before the
+  response is parsed or packaged.
 - `timedOut` is the response's outcome. On the `native-returned` line it is
   `unknown` when the response has not been read yet (CLI, where `result.json` is
   read after this line) or the engine did not report it (a legacy FFI library).

@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { fromFileUrl, join } from "@std/path";
+import { fromFileUrl } from "@std/path";
 import { nativeProcessFixture, REPO_ROOT } from "./_nativeProcessFixture.ts";
 
 for (const cli of [false, true]) {
@@ -60,12 +60,7 @@ Deno.test({
   fn: async () => {
     const dir = await Deno.makeTempDir({ prefix: "native-worker-legacy-" });
     try {
-      const fixture = await nativeProcessFixture(dir);
-      const capabilities = join(dir, "legacy-capabilities.json");
-      await Deno.writeTextFile(
-        capabilities,
-        JSON.stringify({ abiVersion: 1, version: "0.1.49", capabilities: {} }),
-      );
+      const fixture = await nativeProcessFixture(dir, false, true);
       const output = await new Deno.Command(Deno.execPath(), {
         args: [
           "run",
@@ -82,7 +77,6 @@ Deno.test({
           ...fixture.env,
           TMPDIR: dir,
           NEAT_TEST_NO_WAIT: "1",
-          NEAT_TEST_CAPABILITIES: capabilities,
           NEAT_TEST_RESPONSE: fromFileUrl(
             new URL(
               "test/fixtures/native-backprop/ffi-response-legacy.json",

@@ -15,7 +15,10 @@ it.
 
 A worker can be quarantined after missing its per-task deadline.
 `Worker.terminate()` cannot interrupt a synchronous native (FFI) call. Deno can
-keep the process alive for that worker after the caller's script ends.
+keep the process alive for that worker after the caller's script ends. A worker
+busy in synchronous JavaScript/WASM likewise outlives `terminate()`; see the
+warning in
+[Timeouts](../TIMEOUTS.md#-the-post-loop-teardown-is-bounded-too-grq-4472).
 
 `evolveDir` keeps native-enabled work in real worker isolates, including with
 `threads: 1`. It refuses an in-process fallback if worker initialisation fails,
@@ -48,13 +51,13 @@ remain synchronous. For backend and deadline diagnostics, look for
 `[training-backend]` and `[training-phase]` in the parent log; see
 [the native trainer and the per-task deadline](../TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
 
-- **Discovery analysis, until Issue #4126.** `analyze_parallel` was also a
-  synchronous native call, so a stuck discovery analysis pinned the process in
-  the same way. It is now declared `nonblocking: true`. The worker's thread is
-  no longer blocked, so a stuck discovery analysis no longer prevents the
-  process from exiting. The native analysis cannot be cancelled from JavaScript;
-  it ends at its Rust-side deadline or when `cancel_analysis_memory_pressure()`
-  is signalled under memory pressure.
+Discovery analysis was the other native call to pin a worker (until Issue
+#4126). `analyze_parallel` was also a synchronous native call, so a stuck
+discovery analysis pinned the process in the same way. It is now declared
+`nonblocking: true`. The worker's thread is no longer blocked, so a stuck
+discovery analysis no longer prevents the process from exiting. The native
+analysis cannot be cancelled from JavaScript; it ends at its Rust-side deadline
+or when `cancel_analysis_memory_pressure()` is signalled under memory pressure.
 
 ```mermaid
 sequenceDiagram

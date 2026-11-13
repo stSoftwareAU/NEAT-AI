@@ -3,8 +3,19 @@ import { fromFileUrl, join } from "@std/path";
 
 export const REPO_ROOT = new URL("../../../", import.meta.url);
 
-/** Build the ABI fixture; the process tests require a C compiler on macOS/Linux. */
-export async function nativeProcessFixture(dir: string, cli = false): Promise<{
+/**
+ * Build the ABI fixture; the process tests require a C compiler on macOS/Linux.
+ *
+ * With `legacy` the stand-in is built as the 0.1.49 engine: it exports no
+ * `neat_backprop_capabilities` symbol, has no `capabilities` subcommand, and
+ * rejects a request carrying `deadlineEpochMs`. `NEAT_TEST_CAPABILITIES` is
+ * then omitted from the returned environment.
+ */
+export async function nativeProcessFixture(
+  dir: string,
+  cli = false,
+  legacy = false,
+): Promise<{
   library: string;
   env: Record<string, string>;
   release: () => Promise<void>;
@@ -17,6 +28,7 @@ export async function nativeProcessFixture(dir: string, cli = false): Promise<{
   const binary = join(dir, "trainer");
   const compiled = await new Deno.Command("cc", {
     args: [
+      ...(legacy ? ["-DTRAINER_LEGACY"] : []),
       ...(cli
         ? ["-DTRAINER_CLI"]
         : [Deno.build.os === "darwin" ? "-dynamiclib" : "-shared"]),
@@ -50,12 +62,14 @@ export async function nativeProcessFixture(dir: string, cli = false): Promise<{
       NEAT_AI_BACKPROP_LIB_PATH: library,
       NEAT_AI_BACKPROP_REQUIRE_FFI: cli ? "0" : "1",
       NEAT_AI_BACKPROP_BINARY_PATH: binary,
-      NEAT_TEST_CAPABILITIES: fromFileUrl(
-        new URL(
-          "test/fixtures/native-backprop/capabilities-new.json",
-          REPO_ROOT,
+      ...(legacy ? {} : {
+        NEAT_TEST_CAPABILITIES: fromFileUrl(
+          new URL(
+            "test/fixtures/native-backprop/capabilities-new.json",
+            REPO_ROOT,
+          ),
         ),
-      ),
+      }),
       NEAT_TEST_RESPONSE: fromFileUrl(
         new URL(
           "test/fixtures/native-backprop/ffi-response-new-completed.json",
