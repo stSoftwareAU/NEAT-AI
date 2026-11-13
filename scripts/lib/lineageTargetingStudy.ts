@@ -164,6 +164,55 @@ export function stratumErrors(
   };
 }
 
+/**
+ * How many calibration records form the behavioural-diversity probe.
+ *
+ * Diversity is measured on a fixed prefix of the calibration split so every
+ * generation and every arm is compared on the same inputs. The probe's
+ * activations are measurement only: they are counted in `diagnosticRecords`,
+ * never charged to `recordsScored`, and never read by selection, mutation or
+ * targeting.
+ */
+export const DIVERSITY_PROBE_RECORDS = 64;
+
+/**
+ * Behavioural diversity of a population: the mean, over all unordered pairs of
+ * creatures, of the root-mean-square difference of their first output across
+ * the probe records.
+ *
+ * Offspring are mutation-only clones, so hidden-neuron UUIDs are shared by
+ * every descendant of a founder and UUID-based genetic distance collapses to
+ * zero within a few generations. Behaviour does not. Each creature's output
+ * vector is computed once. A pair with a non-finite output has an infinite RMS
+ * and is skipped; with no finite pair (or fewer than two creatures) the result
+ * is 0.
+ */
+export function behaviouralDiversity(
+  population: readonly Creature[],
+  probe: readonly StudyRecord[],
+): number {
+  if (population.length < 2 || probe.length === 0) return 0;
+  const outputs = population.map((creature) =>
+    probe.map((record) => creature.activate(record.input, false)[0])
+  );
+  let sum = 0;
+  let pairs = 0;
+  for (let i = 0; i < outputs.length; i++) {
+    for (let j = i + 1; j < outputs.length; j++) {
+      let squared = 0;
+      for (let k = 0; k < probe.length; k++) {
+        const delta = outputs[i][k] - outputs[j][k];
+        squared += delta * delta;
+      }
+      const rms = Math.sqrt(squared / probe.length);
+      if (!Number.isFinite(rms)) continue;
+      sum += rms;
+      pairs++;
+    }
+  }
+  return pairs === 0 ? 0 : sum / pairs;
+}
+
 /** The most gene keys {@link affectedGenes} lists, to keep reports small. */
 export const AFFECTED_GENES_CAP = 16;
 
@@ -487,6 +536,8 @@ export interface GenerationTrace {
   bestHoldoutMse: number;
   meanGeneticDistance: number;
   speciesCount: number;
+  /** Mean pairwise output RMS difference of the population just evaluated. */
+  behaviouralDiversity: number;
   /** Indicative only: wall-clock is not comparable across machines. */
   wallMs: number;
 }
@@ -504,6 +555,8 @@ export interface ArmResult {
   screenRecords: number;
   /** Reporting-only holdout records; not charged to the budget. */
   holdoutRecords: number;
+  /** Diversity-probe activations; measurement only, not charged to the budget. */
+  diagnosticRecords: number;
   target: number;
   toTarget: {
     recordsScored: number;
@@ -518,6 +571,9 @@ export interface ArmResult {
   targetedOffspring: number;
   finalMeanGeneticDistance: number;
   finalSpeciesCount: number;
+  /** Mean of the per-generation behavioural diversity over the run. */
+  meanBehaviouralDiversity: number;
+  finalBehaviouralDiversity: number;
   generations: GenerationTrace[];
   edges: LineageEdge[];
 }
@@ -579,6 +635,8 @@ function runSeededArm(
   let evalRecords = 0;
   let evaluations = 0;
   let holdoutRecords = 0;
+  let diagnosticRecords = 0;
+  const probe = corpus.calibration.slice(0, DIVERSITY_PROBE_RECORDS);
   let failures = 0;
   let repeatedFailures = 0;
   let noChange = 0;
@@ -650,6 +708,9 @@ function runSeededArm(
     }
     finalSpecies = genus.speciesMap.size;
     finalDistance = meanGeneticDistance(population);
+    // Measurement only: not charged to the budget, never read by a decision.
+    const diversity = behaviouralDiversity(population, probe);
+    diagnosticRecords += population.length * probe.length;
     const recordsScored = evalRecords + ctx.screenRecords;
     const wallMs = performance.now() - startedMs;
     if (generation === 1) {
@@ -663,6 +724,7 @@ function runSeededArm(
       bestHoldoutMse: holdout.overall,
       meanGeneticDistance: finalDistance,
       speciesCount: finalSpecies,
+      behaviouralDiversity: diversity,
       wallMs,
     });
     if (toTarget === null && holdout.overall <= target) {
@@ -702,6 +764,7 @@ function runSeededArm(
     recordsScored: evalRecords + ctx.screenRecords,
     screenRecords: ctx.screenRecords,
     holdoutRecords,
+    diagnosticRecords,
     target,
     toTarget,
     failures,
@@ -711,6 +774,13 @@ function runSeededArm(
     targetedOffspring,
     finalMeanGeneticDistance: finalDistance,
     finalSpeciesCount: finalSpecies,
+    meanBehaviouralDiversity: generations.length === 0 ? 0 : generations.reduce(
+      (s, g) => s + g.behaviouralDiversity,
+      0,
+    ) / generations.length,
+    finalBehaviouralDiversity: generations.length === 0
+      ? 0
+      : generations[generations.length - 1].behaviouralDiversity,
     generations,
     edges,
   };
@@ -739,6 +809,10 @@ export interface PairedComparison {
     controlReached: number;
     pairedMedianDiff: number | null;
   };
+  /**
+   * Median over seeds of arm / control `meanBehaviouralDiversity`; `NaN` when
+   * no seed has a usable (non-zero, finite) control value.
+   */
   diversityRatio: number;
 }
 
@@ -790,9 +864,9 @@ export function pairedComparison(
   });
   const ratios: number[] = [];
   arm.forEach((r, i) => {
-    const denominator = control[i].finalMeanGeneticDistance;
+    const denominator = control[i].meanBehaviouralDiversity;
     if (denominator !== 0 && Number.isFinite(denominator)) {
-      ratios.push(r.finalMeanGeneticDistance / denominator);
+      ratios.push(r.meanBehaviouralDiversity / denominator);
     }
   });
 
@@ -813,7 +887,14 @@ export function pairedComparison(
   };
 }
 
-/** The criteria fixed before any run, so a result cannot move them. */
+/**
+ * The criteria fixed before any run, so a result cannot move them.
+ *
+ * The diversity criterion is behavioural diversity
+ * ({@link behaviouralDiversity}) averaged over the run, as a ratio of arm to
+ * control. UUID-based genetic distance is reported but not used, because it
+ * collapses to zero for mutation-only clones.
+ */
 export const SUCCESS_CRITERIA = Object.freeze({
   maxCiUpper: 0,
   minWinFraction: 0.7,

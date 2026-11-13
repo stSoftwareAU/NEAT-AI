@@ -21,6 +21,7 @@ import {
   type ArmName,
   type ArmResult,
   ARMS,
+  behaviouralDiversity,
   breedPair,
   buildStratifiedCorpus,
   createBreedContext,
@@ -179,6 +180,7 @@ function guided(result: ArmResult) {
     recordsScored: result.recordsScored,
     trace: result.generations.map((g) => [g.bestTrainMse, g.recordsScored]),
     edges: result.edges.map((e) => [e.operator, e.trainDelta, e.targetStratum]),
+    diversity: result.generations.map((g) => g.behaviouralDiversity),
   };
 }
 
@@ -224,6 +226,7 @@ Deno.test("lineage study - budgets and arm accounting", async () => {
         assert(r.generations[r.generations.length - 2].recordsScored < limit);
       }
       assertEquals(r.recordsScored, last.recordsScored);
+      assert(r.diagnosticRecords > 0);
       assertEquals(
         r.recordsScored,
         r.evaluations * 2 * SMALL.recordsPerSplit + r.screenRecords,
@@ -266,11 +269,11 @@ Deno.test("lineage study - a run is deterministic", async () => {
 });
 
 /** A minimal result for the analysis tests. */
-function fake(seed: number, holdout: number, distance: number): ArmResult {
+function fake(seed: number, holdout: number, diversity: number): ArmResult {
   return {
     seed,
     finalHoldoutMse: holdout,
-    finalMeanGeneticDistance: distance,
+    meanBehaviouralDiversity: diversity,
     toTarget: null,
   } as unknown as ArmResult;
 }
@@ -301,4 +304,18 @@ Deno.test("lineage study - pairedComparison and verdict", () => {
   assertThrows(() =>
     pairedComparison(control, seeds.map((s) => fake(s + 1, 0.9, 0.5)))
   );
+});
+
+Deno.test("lineage study - behaviouralDiversity measures output differences", () => {
+  const probe = buildStratifiedCorpus(SMALL).calibration;
+  const c = new Creature(2, 1, { layers: [{ count: 2 }] });
+  const clone = Creature.fromJSON(c.exportJSON());
+  assertEquals(behaviouralDiversity([c, clone], probe), 0);
+  assertEquals(behaviouralDiversity([c], probe), 0);
+  assertEquals(behaviouralDiversity([], probe), 0);
+
+  const shifted = Creature.fromJSON(c.exportJSON());
+  const output = shifted.neurons.find((n) => n.type === "output")!;
+  output.bias += 1;
+  assert(behaviouralDiversity([c, shifted], probe) > 0);
 });

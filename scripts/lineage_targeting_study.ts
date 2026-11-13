@@ -146,6 +146,9 @@ if (import.meta.main) {
       arm,
       meanFinalHoldoutMse: mean(holdouts),
       medianFinalHoldoutMse: median(holdouts),
+      meanBehaviouralDiversity: mean(
+        rows.map((r) => r.meanBehaviouralDiversity),
+      ),
       failures: rows.reduce((s, r) => s + r.failures, 0),
       repeatedFailures: rows.reduce((s, r) => s + r.repeatedFailures, 0),
       seedsReachingTarget: rows.filter((r) => r.toTarget !== null).length,
@@ -199,7 +202,15 @@ if (import.meta.main) {
           "recordsScored charges train + calibration records for every exact " +
           "evaluation plus every calibration record scored while screening " +
           "targeted candidates; holdout records are reported separately and " +
-          "never charged; wallMs is indicative only",
+          "never charged; the behavioural-diversity probe activations are " +
+          "counted as diagnosticRecords and also never charged; wallMs is " +
+          "indicative only",
+        diversityPolicy:
+          "behavioural diversity: mean pairwise RMS difference of the first " +
+          "output over the first 64 calibration records, averaged over every " +
+          "generation; the ratio is the median over seeds of arm / control; " +
+          "measurement only, never read by selection, mutation or targeting; " +
+          "genetic distance and species count are reported but not used",
       },
       summary,
       comparisons,
