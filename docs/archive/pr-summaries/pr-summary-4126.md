@@ -212,10 +212,13 @@ This repository has no `CODING-STANDARDS.md`. The reviewer was given
       `EvolveDirNativeProcessExit.ts`, `NativeBackpropTrainNonBlocking.ts`,
       `TrainDirAsync.ts`: 16 passed, 0 failed. An earlier run of the seven issue
       files with `test/multithreading/WorkerHandler.ts`: 28 passed, 0 failed.
-- [x] Full `./quality.sh` (`DENO_JOBS=2`, `QUALITY_TRACE_LEAKS=0`,
-      `NEAT_AI_RUST_SCORER_BINARY_PATH` set to a scorer built from
-      NEAT-AI-scorer `742c5df`) at `b5ea1d21`: **10347 passed (5 steps), 0
-      failed, 50 ignored**. Afterwards the working tree was clean.
+- [x] Full `./quality.sh` with `--rust-scorer-bin` pointing at a scorer built
+      from NEAT-AI-scorer `742c5df`, run at `e88431db`: **10347 passed (5
+      steps), 0 failed, 50 ignored**. Afterwards the working tree was clean.
+- [x] Base check repeated at the head of this run: with the new test files
+      copied onto a detached `origin/Develop` (`e275a827`) worktree, the first
+      `EvolveDirNativeProcessExit.ts` case failed (`killed` was `true` after the
+      30 s watchdog); at the head all five cases pass.
 - Existing tests edited: none. Every test file in the diff is new, so no
   assertion was removed.
 - Documentation updated: `docs/config/WORKERS.md`,
