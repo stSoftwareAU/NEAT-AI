@@ -137,4 +137,4 @@ JSON (`results`).
 deno task census-restart-study --code-version=$(git rev-parse HEAD) --json=docs/evidence/census-restart-4157.json
 ```
 
-The JSON was produced at code commit `08c5747f` (the manifest's `codeVersion`).
+The JSON was produced at code commit `d77000d2` (the manifest's `codeVersion`).

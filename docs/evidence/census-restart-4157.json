@@ -1,7 +1,7 @@
 {
   "manifest": {
     "issue": 4157,
-    "codeVersion": "08c5747f4a4a59d84ecc47bb3dcd1dad940144e3",
+    "codeVersion": "d77000d241943b0a4966e5e4c421259e54a21d2e",
     "neatAiVersion": "7.1.17",
     "neatCoreRev": "1d44889e405e4e0cfb553321b44cc39e7d771f5f",
     "deno": "2.9.8",
@@ -166,7 +166,7 @@
       "id": "arXiv 2610.22211",
       "note": "not fetched; the method is this repository's reading of the issue"
     },
-    "limitation": "offspring probabilities are nonstationary and unequal, so the Good–Turing unseen estimate is a trigger heuristic, not an accurate estimate of unseen genomes"
+    "limitation": "offspring probabilities are non-stationary and unequal, so the Good–Turing unseen estimate is a trigger heuristic, not an accurate estimate of unseen genomes"
   },
   "coverage": [
     {
@@ -300,7 +300,7 @@
       "meanUnseenEstimate": 0.6891133557800223,
       "meanCollisionRate": 0.20931537598204267,
       "unfilledSlots": 0,
-      "wallMs": 350.07679199999984,
+      "wallMs": 358.80304100000103,
       "trace": [
         {
           "generation": 1,
@@ -630,7 +630,7 @@
       "meanUnseenEstimate": 0.6416947250280584,
       "meanCollisionRate": 0.2345679012345679,
       "unfilledSlots": 0,
-      "wallMs": 385.07912600000054
+      "wallMs": 380.5944589999999
     },
     {
       "arm": "none",
@@ -650,7 +650,7 @@
       "meanUnseenEstimate": 0.6638608305274972,
       "meanCollisionRate": 0.22643097643097643,
       "unfilledSlots": 0,
-      "wallMs": 419.65029200000026
+      "wallMs": 388.22470799999974
     },
     {
       "arm": "none",
@@ -670,7 +670,7 @@
       "meanUnseenEstimate": 0.6442199775533107,
       "meanCollisionRate": 0.23176206509539846,
       "unfilledSlots": 0,
-      "wallMs": 359.5523750000011
+      "wallMs": 370.4847080000018
     },
     {
       "arm": "none",
@@ -690,7 +690,7 @@
       "meanUnseenEstimate": 0.48933782267115594,
       "meanCollisionRate": 0.38580246913580246,
       "unfilledSlots": 0,
-      "wallMs": 357.65183400000024
+      "wallMs": 377.2479169999988
     },
     {
       "arm": "none",
@@ -710,7 +710,7 @@
       "meanUnseenEstimate": 0.5993265993265994,
       "meanCollisionRate": 0.27188552188552184,
       "unfilledSlots": 0,
-      "wallMs": 384.8501670000005
+      "wallMs": 376.28691699999945
     },
     {
       "arm": "none",
@@ -730,7 +730,7 @@
       "meanUnseenEstimate": 0.6531986531986531,
       "meanCollisionRate": 0.23400673400673397,
       "unfilledSlots": 0,
-      "wallMs": 357.69012499999917
+      "wallMs": 358.6722090000003
     },
     {
       "arm": "none",
@@ -750,7 +750,7 @@
       "meanUnseenEstimate": 0.7138047138047137,
       "meanCollisionRate": 0.1815375982042649,
       "unfilledSlots": 0,
-      "wallMs": 352.7830840000006
+      "wallMs": 354.2342919999992
     },
     {
       "arm": "none",
@@ -770,7 +770,7 @@
       "meanUnseenEstimate": 0.4506792356840558,
       "meanCollisionRate": 0.41283629602108296,
       "unfilledSlots": 80,
-      "wallMs": 382.8118749999994
+      "wallMs": 379.16362500000105
     },
     {
       "arm": "none",
@@ -790,7 +790,7 @@
       "meanUnseenEstimate": 0.5117845117845117,
       "meanCollisionRate": 0.3552188552188551,
       "unfilledSlots": 0,
-      "wallMs": 400.2464170000003
+      "wallMs": 392.8744999999999
     },
     {
       "arm": "none",
@@ -810,7 +810,7 @@
       "meanUnseenEstimate": 0.5723905723905724,
       "meanCollisionRate": 0.29096520763187433,
       "unfilledSlots": 0,
-      "wallMs": 372.3185000000012
+      "wallMs": 367.011625000001
     },
     {
       "arm": "none",
@@ -830,7 +830,7 @@
       "meanUnseenEstimate": 0.5765993265993267,
       "meanCollisionRate": 0.2932098765432098,
       "unfilledSlots": 0,
-      "wallMs": 358.5885420000013
+      "wallMs": 359.48554200000217
     },
     {
       "arm": "none",
@@ -850,7 +850,7 @@
       "meanUnseenEstimate": 0.5286195286195287,
       "meanCollisionRate": 0.3411896745230078,
       "unfilledSlots": 0,
-      "wallMs": 419.7910840000004
+      "wallMs": 406.3633749999972
     },
     {
       "arm": "none",
@@ -870,7 +870,7 @@
       "meanUnseenEstimate": 0.7233445566778902,
       "meanCollisionRate": 0.1663860830527497,
       "unfilledSlots": 0,
-      "wallMs": 379.2867499999993
+      "wallMs": 376.2363750000004
     },
     {
       "arm": "none",
@@ -890,7 +890,7 @@
       "meanUnseenEstimate": 0.5215803872053871,
       "meanCollisionRate": 0.35983094837261503,
       "unfilledSlots": 6,
-      "wallMs": 402.713416999999
+      "wallMs": 395.4337090000008
     },
     {
       "arm": "none",
@@ -910,7 +910,7 @@
       "meanUnseenEstimate": 0.41124429244759114,
       "meanCollisionRate": 0.43481651713457203,
       "unfilledSlots": 18,
-      "wallMs": 403.06275000000096
+      "wallMs": 386.73362500000076
     },
     {
       "arm": "none",
@@ -930,7 +930,7 @@
       "meanUnseenEstimate": 0.4423344017094016,
       "meanCollisionRate": 0.43174938487438475,
       "unfilledSlots": 14,
-      "wallMs": 396.29408299999704
+      "wallMs": 399.0958329999994
     },
     {
       "arm": "none",
@@ -950,7 +950,7 @@
       "meanUnseenEstimate": 0.6071829405162738,
       "meanCollisionRate": 0.27188552188552195,
       "unfilledSlots": 0,
-      "wallMs": 409.13774999999805
+      "wallMs": 422.22195799999827
     },
     {
       "arm": "none",
@@ -970,7 +970,7 @@
       "meanUnseenEstimate": 0.6459034792368125,
       "meanCollisionRate": 0.22530864197530856,
       "unfilledSlots": 0,
-      "wallMs": 447.2558749999989
+      "wallMs": 417.35816700000214
     },
     {
       "arm": "none",
@@ -990,7 +990,7 @@
       "meanUnseenEstimate": 0.46445071047771647,
       "meanCollisionRate": 0.3894616702851218,
       "unfilledSlots": 46,
-      "wallMs": 404.80075000000215
+      "wallMs": 386.5197509999998
     },
     {
       "arm": "none",
@@ -1010,7 +1010,7 @@
       "meanUnseenEstimate": 0.6664261664261666,
       "meanCollisionRate": 0.21849446849446855,
       "unfilledSlots": 3,
-      "wallMs": 445.1205000000009
+      "wallMs": 416.1398749999971
     },
     {
       "arm": "none",
@@ -1030,7 +1030,7 @@
       "meanUnseenEstimate": 0.5424463211348458,
       "meanCollisionRate": 0.31093738279530636,
       "unfilledSlots": 11,
-      "wallMs": 399.19879199999923
+      "wallMs": 375.9098759999979
     },
     {
       "arm": "none",
@@ -1050,7 +1050,7 @@
       "meanUnseenEstimate": 0.5630751964085298,
       "meanCollisionRate": 0.30707070707070705,
       "unfilledSlots": 6,
-      "wallMs": 467.8015419999974
+      "wallMs": 389.0808750000033
     },
     {
       "arm": "none",
@@ -1070,7 +1070,7 @@
       "meanUnseenEstimate": 0.5920314253647588,
       "meanCollisionRate": 0.2676767676767677,
       "unfilledSlots": 0,
-      "wallMs": 390.12358400000085
+      "wallMs": 372.39170899999954
     },
     {
       "arm": "none",
@@ -1090,7 +1090,7 @@
       "meanUnseenEstimate": 0.6722783389450057,
       "meanCollisionRate": 0.2109988776655443,
       "unfilledSlots": 0,
-      "wallMs": 453.54020899999887
+      "wallMs": 410.20570900000166
     },
     {
       "arm": "none",
@@ -1110,7 +1110,7 @@
       "meanUnseenEstimate": 0.6768655213099656,
       "meanCollisionRate": 0.21093207204318315,
       "unfilledSlots": 4,
-      "wallMs": 427.7932089999995
+      "wallMs": 382.82929199999853
     },
     {
       "arm": "none",
@@ -1130,7 +1130,7 @@
       "meanUnseenEstimate": 0.6234241676468566,
       "meanCollisionRate": 0.27962705284133854,
       "unfilledSlots": 21,
-      "wallMs": 444.85862500000076
+      "wallMs": 435.9023330000018
     },
     {
       "arm": "none",
@@ -1150,7 +1150,7 @@
       "meanUnseenEstimate": 0.5031252697919365,
       "meanCollisionRate": 0.33837520504187163,
       "unfilledSlots": 1,
-      "wallMs": 429.6691260000007
+      "wallMs": 405.8017499999987
     },
     {
       "arm": "none",
@@ -1170,7 +1170,7 @@
       "meanUnseenEstimate": 0.6054994388327722,
       "meanCollisionRate": 0.276374859708193,
       "unfilledSlots": 0,
-      "wallMs": 446.695208000001
+      "wallMs": 399.81416700000045
     },
     {
       "arm": "none",
@@ -1190,7 +1190,7 @@
       "meanUnseenEstimate": 0.5681818181818182,
       "meanCollisionRate": 0.31705948372615034,
       "unfilledSlots": 0,
-      "wallMs": 529.0465000000004
+      "wallMs": 437.68220799999835
     },
     {
       "arm": "stagnation",
@@ -1210,7 +1210,7 @@
       "meanUnseenEstimate": 0.6891133557800223,
       "meanCollisionRate": 0.20931537598204267,
       "unfilledSlots": 0,
-      "wallMs": 384.03512500000215,
+      "wallMs": 376.49125099999947,
       "trace": [
         {
           "generation": 1,
@@ -1540,7 +1540,7 @@
       "meanUnseenEstimate": 0.7500000000000001,
       "meanCollisionRate": 0.14870931537598206,
       "unfilledSlots": 0,
-      "wallMs": 420.6635000000024
+      "wallMs": 402.4524999999994
     },
     {
       "arm": "stagnation",
@@ -1560,7 +1560,7 @@
       "meanUnseenEstimate": 0.6795735129068462,
       "meanCollisionRate": 0.21576879910213245,
       "unfilledSlots": 0,
-      "wallMs": 423.9314579999991
+      "wallMs": 433.3049589999973
     },
     {
       "arm": "stagnation",
@@ -1580,7 +1580,7 @@
       "meanUnseenEstimate": 0.6442199775533107,
       "meanCollisionRate": 0.23176206509539846,
       "unfilledSlots": 0,
-      "wallMs": 429.98841699999684
+      "wallMs": 411.6636669999971
     },
     {
       "arm": "stagnation",
@@ -1600,7 +1600,7 @@
       "meanUnseenEstimate": 0.6222943722943722,
       "meanCollisionRate": 0.2608225108225109,
       "unfilledSlots": 0,
-      "wallMs": 392.13679200000115
+      "wallMs": 411.106375000003
     },
     {
       "arm": "stagnation",
@@ -1620,7 +1620,7 @@
       "meanUnseenEstimate": 0.6312229437229437,
       "meanCollisionRate": 0.2518939393939394,
       "unfilledSlots": 0,
-      "wallMs": 398.456041999998
+      "wallMs": 426.0846670000028
     },
     {
       "arm": "stagnation",
@@ -1640,7 +1640,7 @@
       "meanUnseenEstimate": 0.6531986531986531,
       "meanCollisionRate": 0.23400673400673397,
       "unfilledSlots": 0,
-      "wallMs": 416.2229589999988
+      "wallMs": 405.26541700000234
     },
     {
       "arm": "stagnation",
@@ -1660,7 +1660,7 @@
       "meanUnseenEstimate": 0.6964285714285714,
       "meanCollisionRate": 0.19399350649350652,
       "unfilledSlots": 0,
-      "wallMs": 396.44983299999876
+      "wallMs": 464.72862499999974
     },
     {
       "arm": "stagnation",
@@ -1680,7 +1680,7 @@
       "meanUnseenEstimate": 0.49726096948319176,
       "meanCollisionRate": 0.3672438672438671,
       "unfilledSlots": 3,
-      "wallMs": 389.8732080000009
+      "wallMs": 365.21800000000076
     },
     {
       "arm": "stagnation",
@@ -1700,7 +1700,7 @@
       "meanUnseenEstimate": 0.5589225589225588,
       "meanCollisionRate": 0.3167789001122334,
       "unfilledSlots": 0,
-      "wallMs": 401.46416699999827
+      "wallMs": 368.5458749999998
     },
     {
       "arm": "stagnation",
@@ -1720,7 +1720,7 @@
       "meanUnseenEstimate": 0.5723905723905724,
       "meanCollisionRate": 0.29096520763187433,
       "unfilledSlots": 0,
-      "wallMs": 427.39037499999904
+      "wallMs": 381.3530840000021
     },
     {
       "arm": "stagnation",
@@ -1740,7 +1740,7 @@
       "meanUnseenEstimate": 0.6296296296296297,
       "meanCollisionRate": 0.2502805836139169,
       "unfilledSlots": 0,
-      "wallMs": 384.97812500000146
+      "wallMs": 367.5419580000016
     },
     {
       "arm": "stagnation",
@@ -1760,7 +1760,7 @@
       "meanUnseenEstimate": 0.6674783549783552,
       "meanCollisionRate": 0.2183441558441559,
       "unfilledSlots": 0,
-      "wallMs": 367.76170900000216
+      "wallMs": 372.3787919999995
     },
     {
       "arm": "stagnation",
@@ -1780,7 +1780,7 @@
       "meanUnseenEstimate": 0.7233445566778902,
       "meanCollisionRate": 0.1663860830527497,
       "unfilledSlots": 0,
-      "wallMs": 375.6133340000015
+      "wallMs": 344.8544170000023
     },
     {
       "arm": "stagnation",
@@ -1800,7 +1800,7 @@
       "meanUnseenEstimate": 0.5928731762065096,
       "meanCollisionRate": 0.2825476992143659,
       "unfilledSlots": 0,
-      "wallMs": 416.2565419999992
+      "wallMs": 400.95766699999876
     },
     {
       "arm": "stagnation",
@@ -1820,7 +1820,7 @@
       "meanUnseenEstimate": 0.41124429244759114,
       "meanCollisionRate": 0.43481651713457203,
       "unfilledSlots": 18,
-      "wallMs": 414.67520800000057
+      "wallMs": 387.4860009999975
     },
     {
       "arm": "stagnation",
@@ -1840,7 +1840,7 @@
       "meanUnseenEstimate": 0.6252705627705625,
       "meanCollisionRate": 0.26569264069264065,
       "unfilledSlots": 0,
-      "wallMs": 410.10349999999744
+      "wallMs": 366.9542090000032
     },
     {
       "arm": "stagnation",
@@ -1860,7 +1860,7 @@
       "meanUnseenEstimate": 0.611952861952862,
       "meanCollisionRate": 0.2774971941638608,
       "unfilledSlots": 0,
-      "wallMs": 404.9346250000017
+      "wallMs": 370.67475099999865
     },
     {
       "arm": "stagnation",
@@ -1880,7 +1880,7 @@
       "meanUnseenEstimate": 0.6661054994388328,
       "meanCollisionRate": 0.21015712682379345,
       "unfilledSlots": 0,
-      "wallMs": 397.9992499999971
+      "wallMs": 375.5346669999999
     },
     {
       "arm": "stagnation",
@@ -1900,7 +1900,7 @@
       "meanUnseenEstimate": 0.5366790929442251,
       "meanCollisionRate": 0.3166823822801509,
       "unfilledSlots": 21,
-      "wallMs": 408.48441699999967
+      "wallMs": 386.74704199999906
     },
     {
       "arm": "stagnation",
@@ -1920,7 +1920,7 @@
       "meanUnseenEstimate": 0.6664261664261666,
       "meanCollisionRate": 0.21849446849446855,
       "unfilledSlots": 3,
-      "wallMs": 411.09012500000244
+      "wallMs": 407.6990420000002
     },
     {
       "arm": "stagnation",
@@ -1940,7 +1940,7 @@
       "meanUnseenEstimate": 0.5424463211348458,
       "meanCollisionRate": 0.31093738279530636,
       "unfilledSlots": 11,
-      "wallMs": 392.6934579999943
+      "wallMs": 374.8417909999989
     },
     {
       "arm": "stagnation",
@@ -1960,7 +1960,7 @@
       "meanUnseenEstimate": 0.6880411255411257,
       "meanCollisionRate": 0.20292207792207795,
       "unfilledSlots": 0,
-      "wallMs": 408.8509159999958
+      "wallMs": 406.448042
     },
     {
       "arm": "stagnation",
@@ -1980,7 +1980,7 @@
       "meanUnseenEstimate": 0.5920314253647588,
       "meanCollisionRate": 0.2676767676767677,
       "unfilledSlots": 0,
-      "wallMs": 374.3814590000038
+      "wallMs": 378.70429200000217
     },
     {
       "arm": "stagnation",
@@ -2000,7 +2000,7 @@
       "meanUnseenEstimate": 0.6728896103896104,
       "meanCollisionRate": 0.20995670995670987,
       "unfilledSlots": 0,
-      "wallMs": 402.4019580000022
+      "wallMs": 400.9343749999971
     },
     {
       "arm": "stagnation",
@@ -2020,7 +2020,7 @@
       "meanUnseenEstimate": 0.6939935064935067,
       "meanCollisionRate": 0.19534632034632035,
       "unfilledSlots": 0,
-      "wallMs": 385.35787600000185
+      "wallMs": 390.47412500000064
     },
     {
       "arm": "stagnation",
@@ -2040,7 +2040,7 @@
       "meanUnseenEstimate": 0.6607744107744108,
       "meanCollisionRate": 0.23681257014590354,
       "unfilledSlots": 0,
-      "wallMs": 402.7162920000046
+      "wallMs": 391.0099590000027
     },
     {
       "arm": "stagnation",
@@ -2060,7 +2060,7 @@
       "meanUnseenEstimate": 0.5031252697919365,
       "meanCollisionRate": 0.33837520504187163,
       "unfilledSlots": 1,
-      "wallMs": 372.7646670000031
+      "wallMs": 368.21245899999485
     },
     {
       "arm": "stagnation",
@@ -2080,7 +2080,7 @@
       "meanUnseenEstimate": 0.6854657687991021,
       "meanCollisionRate": 0.21576879910213245,
       "unfilledSlots": 0,
-      "wallMs": 394.20620800000324
+      "wallMs": 393.0225829999981
     },
     {
       "arm": "stagnation",
@@ -2100,7 +2100,7 @@
       "meanUnseenEstimate": 0.6169688336355003,
       "meanCollisionRate": 0.2722912889579556,
       "unfilledSlots": 1,
-      "wallMs": 411.914042000004
+      "wallMs": 430.91304200000013
     },
     {
       "arm": "census",
@@ -2120,7 +2120,7 @@
       "meanUnseenEstimate": 0.7083333333333333,
       "meanCollisionRate": 0.19182900432900438,
       "unfilledSlots": 0,
-      "wallMs": 412.07616699999926,
+      "wallMs": 373.7239169999957,
       "trace": [
         {
           "generation": 1,
@@ -2461,7 +2461,7 @@
       "meanUnseenEstimate": 0.6753647586980923,
       "meanCollisionRate": 0.21268237934904596,
       "unfilledSlots": 0,
-      "wallMs": 379.5283750000017
+      "wallMs": 372.1257089999999
     },
     {
       "arm": "census",
@@ -2481,7 +2481,7 @@
       "meanUnseenEstimate": 0.725108225108225,
       "meanCollisionRate": 0.1807359307359307,
       "unfilledSlots": 0,
-      "wallMs": 411.515625
+      "wallMs": 413.62712500000634
     },
     {
       "arm": "census",
@@ -2501,7 +2501,7 @@
       "meanUnseenEstimate": 0.654040404040404,
       "meanCollisionRate": 0.22643097643097645,
       "unfilledSlots": 0,
-      "wallMs": 420.1584590000057
+      "wallMs": 384.1900830000013
     },
     {
       "arm": "census",
@@ -2521,7 +2521,7 @@
       "meanUnseenEstimate": 0.6428571428571429,
       "meanCollisionRate": 0.25108225108225113,
       "unfilledSlots": 0,
-      "wallMs": 381.1821659999987
+      "wallMs": 360.73745800000324
     },
     {
       "arm": "census",
@@ -2541,7 +2541,7 @@
       "meanUnseenEstimate": 0.6543209876543211,
       "meanCollisionRate": 0.2244668911335578,
       "unfilledSlots": 0,
-      "wallMs": 421.9929170000032
+      "wallMs": 403.307166999999
     },
     {
       "arm": "census",
@@ -2561,7 +2561,7 @@
       "meanUnseenEstimate": 0.6966991341991343,
       "meanCollisionRate": 0.21185064935064932,
       "unfilledSlots": 0,
-      "wallMs": 404.6311249999999
+      "wallMs": 411.07162500000413
     },
     {
       "arm": "census",
@@ -2581,7 +2581,7 @@
       "meanUnseenEstimate": 0.6198593073593074,
       "meanCollisionRate": 0.2708333333333333,
       "unfilledSlots": 0,
-      "wallMs": 409.9596670000028
+      "wallMs": 404.14424999999756
     },
     {
       "arm": "census",
@@ -2601,7 +2601,7 @@
       "meanUnseenEstimate": 0.6048644338118023,
       "meanCollisionRate": 0.2803442776219545,
       "unfilledSlots": 9,
-      "wallMs": 401.85883399999875
+      "wallMs": 381.6140830000004
     },
     {
       "arm": "census",
@@ -2621,7 +2621,7 @@
       "meanUnseenEstimate": 0.6277056277056278,
       "meanCollisionRate": 0.2575757575757576,
       "unfilledSlots": 0,
-      "wallMs": 428.19050000000425
+      "wallMs": 390.7297089999993
     },
     {
       "arm": "census",
@@ -2641,7 +2641,7 @@
       "meanUnseenEstimate": 0.6653138528138528,
       "meanCollisionRate": 0.22132034632034628,
       "unfilledSlots": 0,
-      "wallMs": 400.0542510000014
+      "wallMs": 384.91320899999846
     },
     {
       "arm": "census",
@@ -2661,7 +2661,7 @@
       "meanUnseenEstimate": 0.6296296296296297,
       "meanCollisionRate": 0.2502805836139169,
       "unfilledSlots": 0,
-      "wallMs": 412.4411670000045
+      "wallMs": 395.9320829999997
     },
     {
       "arm": "census",
@@ -2681,7 +2681,7 @@
       "meanUnseenEstimate": 0.6160714285714285,
       "meanCollisionRate": 0.26866883116883106,
       "unfilledSlots": 0,
-      "wallMs": 424.0831249999974
+      "wallMs": 398.32262599999376
     },
     {
       "arm": "census",
@@ -2701,7 +2701,7 @@
       "meanUnseenEstimate": 0.7233445566778902,
       "meanCollisionRate": 0.1663860830527497,
       "unfilledSlots": 0,
-      "wallMs": 416.5326669999995
+      "wallMs": 411.6095419999983
     },
     {
       "arm": "census",
@@ -2721,7 +2721,7 @@
       "meanUnseenEstimate": 0.6835016835016836,
       "meanCollisionRate": 0.20370370370370366,
       "unfilledSlots": 0,
-      "wallMs": 454.124625000004
+      "wallMs": 435.0114160000012
     },
     {
       "arm": "census",
@@ -2741,7 +2741,7 @@
       "meanUnseenEstimate": 0.5804371984604544,
       "meanCollisionRate": 0.2850256332814472,
       "unfilledSlots": 1,
-      "wallMs": 411.9184580000001
+      "wallMs": 412.3670839999977
     },
     {
       "arm": "census",
@@ -2761,7 +2761,7 @@
       "meanUnseenEstimate": 0.6293290043290042,
       "meanCollisionRate": 0.26596320346320346,
       "unfilledSlots": 0,
-      "wallMs": 420.5504589999982
+      "wallMs": 413.72558299999946
     },
     {
       "arm": "census",
@@ -2781,7 +2781,7 @@
       "meanUnseenEstimate": 0.6239177489177488,
       "meanCollisionRate": 0.2616341991341991,
       "unfilledSlots": 0,
-      "wallMs": 442.77516599999944
+      "wallMs": 421.11695899999904
     },
     {
       "arm": "census",
@@ -2801,7 +2801,7 @@
       "meanUnseenEstimate": 0.6661054994388328,
       "meanCollisionRate": 0.21015712682379345,
       "unfilledSlots": 0,
-      "wallMs": 443.0260000000053
+      "wallMs": 430.92454200000066
     },
     {
       "arm": "census",
@@ -2821,7 +2821,7 @@
       "meanUnseenEstimate": 0.6085837285794085,
       "meanCollisionRate": 0.2661546962382216,
       "unfilledSlots": 5,
-      "wallMs": 385.6245829999971
+      "wallMs": 398.46720800000185
     },
     {
       "arm": "census",
@@ -2841,7 +2841,7 @@
       "meanUnseenEstimate": 0.6646181199752628,
       "meanCollisionRate": 0.21824108431251293,
       "unfilledSlots": 3,
-      "wallMs": 398.4795830000003
+      "wallMs": 390.40491699999984
     },
     {
       "arm": "census",
@@ -2861,7 +2861,7 @@
       "meanUnseenEstimate": 0.6377164502164501,
       "meanCollisionRate": 0.2386363636363636,
       "unfilledSlots": 0,
-      "wallMs": 417.4500840000037
+      "wallMs": 399.6451670000024
     },
     {
       "arm": "census",
@@ -2881,7 +2881,7 @@
       "meanUnseenEstimate": 0.6325757575757575,
       "meanCollisionRate": 0.24675324675324678,
       "unfilledSlots": 0,
-      "wallMs": 434.91100000000006
+      "wallMs": 401.942292000007
     },
     {
       "arm": "census",
@@ -2901,7 +2901,7 @@
       "meanUnseenEstimate": 0.6610549943883277,
       "meanCollisionRate": 0.21773288439955107,
       "unfilledSlots": 0,
-      "wallMs": 445.52124999999796
+      "wallMs": 392.69687500000146
     },
     {
       "arm": "census",
@@ -2921,7 +2921,7 @@
       "meanUnseenEstimate": 0.6722783389450057,
       "meanCollisionRate": 0.2109988776655443,
       "unfilledSlots": 0,
-      "wallMs": 425.4340000000011
+      "wallMs": 430.22087499999907
     },
     {
       "arm": "census",
@@ -2941,7 +2941,7 @@
       "meanUnseenEstimate": 0.6910040576707241,
       "meanCollisionRate": 0.2009496676163343,
       "unfilledSlots": 1,
-      "wallMs": 413.6118750000023
+      "wallMs": 398.1224169999987
     },
     {
       "arm": "census",
@@ -2961,7 +2961,7 @@
       "meanUnseenEstimate": 0.6789455400566514,
       "meanCollisionRate": 0.22635080968414295,
       "unfilledSlots": 3,
-      "wallMs": 435.5386670000007
+      "wallMs": 430.8832089999996
     },
     {
       "arm": "census",
@@ -2981,7 +2981,7 @@
       "meanUnseenEstimate": 0.712682379349046,
       "meanCollisionRate": 0.17480359147025815,
       "unfilledSlots": 0,
-      "wallMs": 475.5132090000043
+      "wallMs": 420.0304999999935
     },
     {
       "arm": "census",
@@ -3001,7 +3001,7 @@
       "meanUnseenEstimate": 0.655162738496072,
       "meanCollisionRate": 0.2331649831649831,
       "unfilledSlots": 0,
-      "wallMs": 427.51387600000453
+      "wallMs": 405.0728339999987
     },
     {
       "arm": "census",
@@ -3021,7 +3021,7 @@
       "meanUnseenEstimate": 0.6766774891774892,
       "meanCollisionRate": 0.20643939393939395,
       "unfilledSlots": 0,
-      "wallMs": 461.32816699999967
+      "wallMs": 424.2417920000007
     }
   ]
 }

@@ -60,7 +60,7 @@ and nothing imports the harness. Closes #4157.
 
 This is a script/CLI change; no UI files are touched. The full record is in
 `docs/evidence/census-restart-4157.md`. The machine-readable artefact is
-`docs/evidence/census-restart-4157.json`: the manifest (code commit 08c5747f,
+`docs/evidence/census-restart-4157.json`: the manifest (code commit d77000d2,
 NEAT-AI 7.1.17, NEAT-AI-core rev, Deno 2.9.8, corpus id and seed, seeds,
 settings, criteria, the collision-sensitivity table, the chosen setting and the
 calibration cost), per-run results with per-generation traces, coverage (30/30
@@ -137,9 +137,11 @@ Criteria heading.
 - The full
   `./quality.sh --rust-scorer-bin=<rust_scorer built from
   NEAT-AI-scorer Develop>`
-  ran on head ac6b06da, the same tree as this commit apart from this file. It
-  exited 0 with `ok | 10341 passed (5 steps) | 0 failed | 50 ignored (9m2s)`,
-  including all 15 new tests and the 5 `PreSelectionAB.ts` tests.
+  ran on head ac6b06da. Later commits change only the spelling of one manifest
+  string in `scripts/census_restart_study.ts`, the regenerated JSON (identical
+  results) and docs. It exited 0 with
+  `ok | 10341 passed (5 steps) | 0 failed | 50 ignored (9m2s)`, including all 15
+  new tests and the 5 `PreSelectionAB.ts` tests.
 - cspell was not run locally, because it runs only in the `spellcheck.yaml`
   workflow. `reseed`, `reseeded`, `reseeding`, `reseeds` and `Turing` were added
   to `docs/cspell.json`.
