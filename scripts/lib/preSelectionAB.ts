@@ -196,18 +196,20 @@ export function buildCorpus(settings: ABSettings): ABRecord[] {
  * @param creature - The creature to score.
  * @param corpus - The corpus.
  * @param stride - `1` scores every record; `n` scores every nth.
+ * @param feedbackLoop - `true` takes the recurrent path, which carries state across records in order.
  * @returns `-MSE`, so higher is better, and the records it cost.
  */
 export function scoreCreature(
   creature: Creature,
   corpus: readonly ABRecord[],
   stride = 1,
+  feedbackLoop = false,
 ): { score: number; records: number } {
   let sum = 0;
   let count = 0;
   for (let r = 0; r < corpus.length; r += stride) {
     const record = corpus[r];
-    const output = creature.activate(record.input, false);
+    const output = creature.activate(record.input, feedbackLoop);
     const delta = output[0] - record.target;
     sum += delta * delta;
     count++;

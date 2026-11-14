@@ -19,6 +19,17 @@
  * records**, which is what a real corpus would charge for. The held-out score
  * never influences selection and is not charged.
  *
+ * ## Self-loops
+ *
+ * The grid is forward-only, the production default. Self-loops are tested
+ * separately, and only on the already-supported recurrent execution path
+ * (`forwardOnly: false`, `feedbackLoop: true`, scored with
+ * `activate(input, true)` over the records in order). Two recurrent arms are
+ * paired by seed: the control topology with and without one self-loop per
+ * hidden neuron. `Offspring.breed` cannot carry a self-loop, so both recurrent
+ * arms search by mutation alone. This comparison is exploratory, runs on the
+ * validation seeds only and never feeds the cell choice.
+ *
  * The method is this repository's reading of the issue; the paper it cites
  * (arXiv 2610.33498) was not read.
  *
@@ -121,7 +132,8 @@ export function validateSettings(s: StudySettings): void {
 /** One arm: the control, or one cell of the in-degree by fan-out grid. */
 export type StudyArm =
   | { arm: string; kind: "control" }
-  | { arm: string; kind: "prior"; inDegree: number; fanOut: number };
+  | { arm: string; kind: "prior"; inDegree: number; fanOut: number }
+  | { arm: string; kind: "recurrent"; selfLoops: boolean };
 
 /** The control first, then the grid with in-degree outer and fan-out inner. */
 export const ARMS: readonly StudyArm[] = (() => {
@@ -138,6 +150,20 @@ export const ARMS: readonly StudyArm[] = (() => {
   }
   return arms;
 })();
+
+/** The recurrent arm without self-loops. */
+export const RECURRENT_CONTROL_ARM = "recurrent-control";
+/** The recurrent arm with one initial self-loop per hidden neuron. */
+export const SELF_LOOP_ARM = "recurrent-selfloop";
+
+/**
+ * Both arms run on the already-supported recurrent execution path; they differ
+ * only in the initial self-loops.
+ */
+export const RECURRENT_ARMS: readonly StudyArm[] = [
+  { arm: RECURRENT_CONTROL_ARM, kind: "recurrent", selfLoops: false },
+  { arm: SELF_LOOP_ARM, kind: "recurrent", selfLoops: true },
+];
 
 /** Train then holdout records from one seed. Input `d` is a distractor. */
 export function buildStudyCorpus(
@@ -182,6 +208,44 @@ export function buildControlCreature(rng: RandomNumberGenerator): Creature {
   delete creature.uuid;
   CreatureUtil.makeUUID(creature);
   return creature;
+}
+
+/**
+ * The control topology on the recurrent path, optionally with one self-loop
+ * per hidden neuron.
+ *
+ * Self-loop weights come from `selfLoopRng`, a separate stream, so the forward
+ * weights at one seed are identical with and without the loops.
+ */
+export function buildRecurrentCreature(
+  rng: RandomNumberGenerator,
+  selfLoopRng: RandomNumberGenerator | null,
+): Creature {
+  const exported = buildControlCreature(rng).exportJSON();
+  const synapses = [...exported.synapses];
+  if (selfLoopRng !== null) {
+    for (const neuron of exported.neurons) {
+      if (neuron.type !== "hidden") continue;
+      synapses.push({
+        fromUUID: neuron.uuid,
+        toUUID: neuron.uuid,
+        weight: (selfLoopRng.random() * 2 - 1) * 0.5,
+      });
+    }
+  }
+  const creature = Creature.fromJSON({
+    ...exported,
+    synapses,
+    forwardOnly: false,
+  });
+  delete creature.uuid;
+  CreatureUtil.makeUUID(creature);
+  return creature;
+}
+
+/** Synapses whose source and target are the same neuron. */
+export function countSelfLoops(creature: Creature): number {
+  return creature.synapses.filter((s) => s.from === s.to).length;
 }
 
 /** Refuse a grid cell that no forward-only layer can realise. */
@@ -388,6 +452,7 @@ export interface ArmRun {
   stalled: boolean;
   initial: ConnectivityStats;
   final: ConnectivityStats;
+  selfLoops: { initial: number; final: number };
 }
 
 /** A v4-looking uuid string drawn from a seeded stream. */
@@ -401,6 +466,38 @@ function seededUuid(rng: RandomNumberGenerator): string {
   };
   const variant = (8 + Math.floor(rng.random() * 4)).toString(16);
   return `${hex(8)}-${hex(4)}-4${hex(3)}-${variant}${hex(3)}-${hex(12)}`;
+}
+
+/**
+ * Offspring by mutation alone, from the same rank-biased parent draw as
+ * {@link breedOffspring}.
+ *
+ * Crossover cannot carry a self-loop (`Offspring.sortNeurons` rejects a parent
+ * with one), so the recurrent arms search by mutation alone — both of them, so
+ * the search is identical.
+ */
+export function mutateOffspring(
+  population: readonly Creature[],
+  count: number,
+  mutator: Mutator,
+  rng: RandomNumberGenerator,
+): Creature[] {
+  const offspring: Creature[] = [];
+  for (let i = 0; i < count; i++) {
+    const parent = population[
+      Math.floor(rng.random() * rng.random() * population.length)
+    ];
+    const child = Creature.fromJSON(parent.exportJSON());
+    child.forwardOnly = false;
+    delete child.score;
+    offspring.push(child);
+  }
+  mutator.mutate(offspring);
+  for (const child of offspring) {
+    delete child.score;
+    if (child.uuid === undefined) CreatureUtil.makeUUID(child);
+  }
+  return offspring;
 }
 
 /** Run one arm at one seed, with the global generator and uuids seeded. */
@@ -435,24 +532,35 @@ function runSeeded(
   corpus: { train: readonly ABRecord[]; holdout: readonly ABRecord[] },
 ): ArmRun {
   const rng = createSeededRng(seed ^ 0x5a5a);
+  const recurrent = arm.kind === "recurrent";
   const config = createNeatConfig({
     populationSize: settings.populationSize,
     elitism: 2,
     mutationRate: settings.mutationRate,
     seed,
+    ...(recurrent ? { feedbackLoop: true, disableRandomSamples: true } : {}),
   });
   const mutator = new Mutator(config);
   const trainLen = corpus.train.length;
 
+  const selfLoopRng = createSeededRng(seed ^ 0x51f1);
   let population: Creature[] = [];
   for (let i = 0; i < settings.populationSize; i++) {
     population.push(
       arm.kind === "control"
         ? buildControlCreature(rng)
+        : arm.kind === "recurrent"
+        ? buildRecurrentCreature(rng, arm.selfLoops ? selfLoopRng : null)
         : buildPriorCreature(arm.inDegree, arm.fanOut, rng, `p${i}`),
     );
   }
   const initial = connectivityStats(population[0]);
+  const initialSelfLoops = countSelfLoops(population[0]);
+  const score = (creature: Creature, records: readonly ABRecord[]) => {
+    if (!recurrent) return scoreCreature(creature, records).score;
+    creature.clearState();
+    return scoreCreature(creature, records, 1, true).score;
+  };
 
   let recordsScored = 0;
   let recordsToThreshold: number | null = null;
@@ -464,7 +572,7 @@ function runSeeded(
         halted = true;
         return;
       }
-      creature.score = scoreCreature(creature, corpus.train).score;
+      creature.score = score(creature, corpus.train);
       recordsScored += trainLen;
     }
   };
@@ -492,13 +600,15 @@ function runSeeded(
     checkThreshold();
     if (halted) break;
     generations++;
-    const offspring = breedOffspring(
-      population,
-      settings.populationSize,
-      mutator,
-      config,
-      rng,
-    );
+    const offspring = recurrent
+      ? mutateOffspring(population, settings.populationSize, mutator, rng)
+      : breedOffspring(
+        population,
+        settings.populationSize,
+        mutator,
+        config,
+        rng,
+      );
     stallCount = offspring.length === 0 ? stallCount + 1 : 0;
     if (stallCount >= settings.stallGenerations) {
       stalled = true;
@@ -516,7 +626,7 @@ function runSeeded(
 
   const best = population[0];
   const trainMse = -(best.score ?? -Infinity);
-  const holdoutMse = -scoreCreature(best, corpus.holdout).score;
+  const holdoutMse = -score(best, corpus.holdout);
   return {
     arm: arm.arm,
     seed,
@@ -528,6 +638,7 @@ function runSeeded(
     stalled,
     initial,
     final: connectivityStats(best),
+    selfLoops: { initial: initialSelfLoops, final: countSelfLoops(best) },
   };
 }
 
@@ -673,18 +784,18 @@ export interface StudyOptions {
 interface Failure {
   arm: string;
   seed: number;
-  phase: "calibration" | "validation";
+  phase: "calibration" | "validation" | "recurrent";
   message: string;
 }
 
 const CRITERIA =
-  "benefit iff the paired-bootstrap 95% CI of (arm - control) holdout MSE lies below 0, the median holdout MSE is lower, and the upper-quartile (lower-quartile performance) holdout MSE is lower; harm iff the CI lies above 0; otherwise no-benefit. Confirmatory test: the one cell chosen on calibration seeds. All other cells are exploratory.";
+  "benefit iff the paired-bootstrap 95% CI of (arm - control) holdout MSE lies below 0, the median holdout MSE is lower, and the upper-quartile (lower-quartile performance) holdout MSE is lower; harm iff the CI lies above 0; otherwise no-benefit. Confirmatory test: the one cell chosen on calibration seeds. All other cells are exploratory. The self-loop comparison (recurrent-selfloop against recurrent-control, recurrent path) uses the same verdict rule and is exploratory.";
 
 function seedsFrom(base: number, count: number): number[] {
   return Array.from({ length: count }, (_, i) => base + i);
 }
 
-/** Run the calibration then the validation phase and summarise. */
+/** Run the calibration, validation and recurrent phases and summarise. */
 export function runStudy(options: StudyOptions = {}) {
   const settings: StudySettings = {
     ...DEFAULT_SETTINGS,
@@ -713,12 +824,13 @@ export function runStudy(options: StudyOptions = {}) {
   const failures: Failure[] = [];
 
   const phase = (
-    name: "calibration" | "validation",
+    name: "calibration" | "validation" | "recurrent",
+    arms: readonly StudyArm[],
     seeds: number[],
     s: StudySettings,
   ): ArmRun[] => {
     const runs: ArmRun[] = [];
-    for (const arm of ARMS) {
+    for (const arm of arms) {
       for (const seed of seeds) {
         try {
           runs.push(runArm(arm, seed, s, corpus));
@@ -737,6 +849,7 @@ export function runStudy(options: StudyOptions = {}) {
 
   const calibrationRuns = phase(
     "calibration",
+    ARMS,
     calibrationSeeds,
     settings,
   );
@@ -748,17 +861,22 @@ export function runStudy(options: StudyOptions = {}) {
     (sum, r) => sum + r.recordsScored,
     0,
   );
-  const validationRuns = phase("validation", validationSeeds, {
+  const validationRuns = phase("validation", ARMS, validationSeeds, {
+    ...settings,
+    threshold,
+  });
+  const recurrentRuns = phase("recurrent", RECURRENT_ARMS, validationSeeds, {
     ...settings,
     threshold,
   });
 
-  const runsOf = (arm: string) => validationRuns.filter((r) => r.arm === arm);
+  const runsOf = (arm: string) =>
+    [...validationRuns, ...recurrentRuns].filter((r) => r.arm === arm);
   const control = runsOf("control");
-  const compare = (arm: string) => {
+  const compare = (arm: string, baseline: readonly ArmRun[] = control) => {
     const runs = runsOf(arm);
     const seeds = new Set(runs.map((r) => r.seed));
-    const paired = control.filter((r) => seeds.has(r.seed));
+    const paired = baseline.filter((r) => seeds.has(r.seed));
     const cSeeds = new Set(paired.map((r) => r.seed));
     if (paired.length === 0) return null;
     return compareToControl(paired, runs.filter((r) => cSeeds.has(r.seed)));
@@ -766,7 +884,7 @@ export function runStudy(options: StudyOptions = {}) {
   const priorArms = ARMS.filter((a) => a.kind === "prior").map((a) => a.arm);
   const mean = (v: number[]) =>
     v.length === 0 ? null : v.reduce((a, b) => a + b, 0) / v.length;
-  const perArm = ARMS.map(({ arm }) => {
+  const perArm = [...ARMS, ...RECURRENT_ARMS].map(({ arm }) => {
     const runs = runsOf(arm);
     const reached = runs.filter((r) => r.recordsToThreshold !== null);
     return {
@@ -784,11 +902,14 @@ export function runStudy(options: StudyOptions = {}) {
       stalled: runs.filter((r) => r.stalled).length,
       meanInitialInDegree: mean(runs.map((r) => r.initial.meanHiddenInDegree)),
       meanInitialFanOut: mean(runs.map((r) => r.initial.meanInputFanOut)),
+      meanInitialSelfLoops: mean(runs.map((r) => r.selfLoops.initial)),
+      meanFinalSelfLoops: mean(runs.map((r) => r.selfLoops.final)),
     };
   });
 
   const expectedRuns = ARMS.length *
-    (calibrationSeeds.length + validationSeeds.length);
+      (calibrationSeeds.length + validationSeeds.length) +
+    RECURRENT_ARMS.length * validationSeeds.length;
   return {
     manifest: {
       issue: 4160,
@@ -806,9 +927,13 @@ export function runStudy(options: StudyOptions = {}) {
       bootstrap: { resamples: BOOTSTRAP_RESAMPLES, seed: BOOTSTRAP_SEED },
       criteria: CRITERIA,
       selfLoops: {
-        status: "unavailable",
+        status: "swept",
+        arms: [RECURRENT_CONTROL_ARM, SELF_LOOP_ARM],
+        baseline: RECURRENT_CONTROL_ARM,
+        path:
+          "recurrent execution: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with activate(input, true) over the records in order from a cleared state; mutation-only search (Offspring.breed cannot carry a self-loop) with the default FFW mutation set in both arms",
         reason:
-          "this harness evaluates through the forward-only path (forwardOnly: true, the production default); self-loops were not swept",
+          "the grid stays on the forward-only path (the production default); self-loops are tested only on the already-supported recurrent execution path, as a paired comparison of the control topology with and without one self-loop per hidden neuron; exploratory, validation seeds only",
       },
       paper:
         "arXiv 2610.33498 not read; the method is this repository's reading of the issue",
@@ -820,12 +945,27 @@ export function runStudy(options: StudyOptions = {}) {
       records: calibrationRecords,
     },
     validation: { runs: validationRuns },
+    selfLoop: {
+      arm: SELF_LOOP_ARM,
+      baseline: RECURRENT_CONTROL_ARM,
+      runs: recurrentRuns,
+      comparison: compare(
+        SELF_LOOP_ARM,
+        recurrentRuns.filter((r) => r.arm === RECURRENT_CONTROL_ARM),
+      ),
+      meanFinalSelfLoops: mean(
+        recurrentRuns.filter((r) => r.arm === SELF_LOOP_ARM).map((r) =>
+          r.selfLoops.final
+        ),
+      ),
+    },
     confirmatory: { arm: chosenCell, comparison: compare(chosenCell) },
     exploratory: priorArms.map((arm) => ({ arm, comparison: compare(arm) })),
     perArm,
     coverage: {
       expectedRuns,
-      completedRuns: calibrationRuns.length + validationRuns.length,
+      completedRuns: calibrationRuns.length + validationRuns.length +
+        recurrentRuns.length,
       failures,
     },
   };
