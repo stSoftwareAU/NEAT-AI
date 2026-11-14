@@ -349,8 +349,6 @@ Deno.test(
 Deno.test({
   name:
     "evolveDir teardown: a worker result merged before breeding wedges is discarded once and preserves the committed population (Issue #4107)",
-  sanitizeOps: false,
-  sanitizeResources: false,
   fn: async () => {
     const dataDir = createTestDataDir();
     const creatureStore = await Deno.makeTempDir({
