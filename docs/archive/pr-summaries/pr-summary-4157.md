@@ -111,7 +111,7 @@ Criteria heading.
 
 ## Test Plan
 
-- Added `test/scripts/CensusRestartStudy.ts`, with 15 tests:
+- Added `test/scripts/CensusRestartStudy.ts`, with 21 tests:
   - `censusKey` merges weight differences below half a step and nothing else: a
     different topology or a finer step separates them;
   - `censusKey` leaves the creature unchanged;
@@ -122,10 +122,24 @@ Criteria heading.
   - `runArm` is deterministic per seed and restores the caller's generator;
   - no arm exceeds the budget;
   - the none arm never restarts but still measures the stagnation signal;
-  - the stagnation arm restarts only after the plateau signal and respects the
-    cooldown;
+  - the stagnation arm restarts only after the plateau signal;
+  - the stagnation arm holds each restart back for the cooldown: with a
+    6-generation cooldown, longer than the 3-generation plateau refill, every
+    gap is at least 6, while the same seed at a 1-generation cooldown restarts
+    sooner, so the test goes red if the cooldown check is removed;
   - the census trigger restarts at a threshold near 1 and never at a tiny one,
     which gives a positive and a negative control;
+  - the census arm holds each restart back for the cooldown, with the same
+    long-versus-short contrast on one seed;
+  - `behaviouralDiversity` is the mean pairwise RMS output difference, with
+    hand-computed values (identical creatures give 0, constants 0 and 3 give 3,
+    three constants give 2, a half-probe difference gives √2);
+  - `behaviouralDiversity` leaves out creatures whose outputs are not finite;
+  - `recordsToHoldoutTarget` is the charge at the first champion that meets the
+    target, `null` for an unreachable target or none, and read off the trace for
+    a target between the first and best champion;
+  - `sdRatio` returns the known SD ratio (2, 1 and 0.5) on small paired samples
+    and rejects a length mismatch;
   - the holdout never guides a run;
   - `pairedComparison` and `verdict` follow the predeclared criteria;
   - `validateSettings` names the offending field;
@@ -137,11 +151,16 @@ Criteria heading.
 - The full
   `./quality.sh --rust-scorer-bin=<rust_scorer built from
   NEAT-AI-scorer Develop>`
-  ran on head ac6b06da. Later commits change only the spelling of one manifest
-  string in `scripts/census_restart_study.ts`, the regenerated JSON (identical
-  results) and docs. It exited 0 with
-  `ok | 10341 passed (5 steps) | 0 failed | 50 ignored (9m2s)`, including all 15
-  new tests and the 5 `PreSelectionAB.ts` tests.
+  ran on head ac6b06da and exited 0 with
+  `ok | 10341 passed (5 steps) | 0 failed | 50 ignored (9m2s)`. Later commits
+  change only the spelling of one manifest string in
+  `scripts/census_restart_study.ts`, the regenerated JSON (identical results),
+  docs, and the review follow-up that adds six tests to
+  `test/scripts/CensusRestartStudy.ts`. The follow-up was checked with
+  `deno fmt --check`, `deno lint`, `deno check` and
+  `deno test -A test/scripts/CensusRestartStudy.ts` (21 passed, 0 failed).
+  Removing the `cooledDown` check from `scripts/lib/censusRestartStudy.ts` makes
+  the two cooldown tests fail, and the file was restored afterwards.
 - cspell was not run locally, because it runs only in the `spellcheck.yaml`
   workflow. `reseed`, `reseeded`, `reseeding`, `reseeds` and `Turing` were added
   to `docs/cspell.json`.

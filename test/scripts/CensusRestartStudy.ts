@@ -24,6 +24,7 @@ import {
 } from "@utils/RandomNumberGenerator.ts";
 import {
   type ArmResult,
+  behaviouralDiversity,
   buildSplits,
   type CalibrationRow,
   censusKey,
@@ -33,6 +34,7 @@ import {
   pairedComparison,
   partialReseed,
   runArm,
+  sdRatio,
   STUDY_ARMS,
   type StudySettings,
   SUCCESS_CRITERIA,
@@ -282,15 +284,6 @@ Deno.test("the stagnation arm restarts only after the plateau signal, respecting
       result.restartDelayRecords,
       result.firstRestartRecords! - result.firstStagnationSignalRecords!,
     );
-    const restartGenerations = result.trace.filter((e) => e.restarted).map((
-      e,
-    ) => e.generation);
-    for (let i = 1; i < restartGenerations.length; i++) {
-      assert(
-        restartGenerations[i] - restartGenerations[i - 1] >=
-          SMALL.restartCooldownGenerations,
-      );
-    }
   });
 });
 
@@ -305,15 +298,6 @@ Deno.test("the census trigger restarts at a threshold near 1 and never at a tiny
     };
     const eager = await runArm(arm("census"), loose, 5, splits);
     assert(eager.restarts > 0, "positive control: expected a census restart");
-    const generations = eager.trace.filter((e) => e.restarted).map((e) =>
-      e.generation
-    );
-    for (let i = 1; i < generations.length; i++) {
-      assert(
-        generations[i] - generations[i - 1] >=
-          SMALL.restartCooldownGenerations,
-      );
-    }
     assertEquals(
       eager.trace.filter((e) => e.restarted).length,
       eager.restarts,
@@ -328,6 +312,178 @@ Deno.test("the census trigger restarts at a threshold near 1 and never at a tiny
     assertEquals(never.restarts, 0, "negative control");
     assertEquals(never.firstRestartRecords, null);
   });
+});
+
+/** Generations at which a run restarted, in order. */
+function restartGenerations(result: ArmResult): number[] {
+  return result.trace.filter((e) => e.restarted).map((e) => e.generation);
+}
+
+function gaps(generations: readonly number[]): number[] {
+  return generations.slice(1).map((g, i) => g - generations[i]);
+}
+
+// The window refill (plateauWindow 3, censusWindowGenerations 2) already forces
+// a gap of 3 generations, so a cooldown of 3 cannot be told from no cooldown.
+// A cooldown of 6 is strictly longer and is the only thing that can hold a
+// restart back for 6; the same seed with a short cooldown restarts sooner.
+const LONG_COOLDOWN = 6;
+
+Deno.test("the stagnation arm holds each restart back for the cooldown", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    const quick = await runArm(
+      arm("stagnation"),
+      { ...SMALL, restartCooldownGenerations: 1 },
+      6,
+      splits,
+    );
+    const slow = await runArm(
+      arm("stagnation"),
+      { ...SMALL, restartCooldownGenerations: LONG_COOLDOWN },
+      6,
+      splits,
+    );
+    const quickGaps = gaps(restartGenerations(quick));
+    const slowGaps = gaps(restartGenerations(slow));
+    assert(slowGaps.length >= 1, "expected at least two restarts");
+    assert(slowGaps.every((g) => g >= LONG_COOLDOWN), slowGaps.join(","));
+    assert(quickGaps.length >= 1);
+    assert(
+      Math.min(...quickGaps) < LONG_COOLDOWN,
+      "contrast: a short cooldown restarts sooner on the same seed",
+    );
+  });
+});
+
+Deno.test("the census arm holds each restart back for the cooldown", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    const eager = {
+      ...SMALL,
+      censusQuantisation: 100,
+      censusUnseenThreshold: 0.999,
+    };
+    const quick = await runArm(
+      arm("census"),
+      { ...eager, restartCooldownGenerations: 1 },
+      6,
+      splits,
+    );
+    const slow = await runArm(
+      arm("census"),
+      { ...eager, restartCooldownGenerations: LONG_COOLDOWN },
+      6,
+      splits,
+    );
+    const quickGaps = gaps(restartGenerations(quick));
+    const slowGaps = gaps(restartGenerations(slow));
+    assert(slowGaps.length >= 1, "expected at least two restarts");
+    assert(slowGaps.every((g) => g >= LONG_COOLDOWN), slowGaps.join(","));
+    assert(quickGaps.length >= 1);
+    assert(
+      Math.min(...quickGaps) < LONG_COOLDOWN,
+      "contrast: a short cooldown restarts sooner on the same seed",
+    );
+  });
+});
+
+/** A stand-in creature whose single output is `outputs(input)`. */
+function stub(outputs: (input: ArrayLike<number>) => number): Creature {
+  return {
+    activate: (input: ArrayLike<number>) => [outputs(input)],
+  } as unknown as Creature;
+}
+
+const PROBE = [[0, 0], [1, 0], [0, 1], [1, 1]].map((input) => ({
+  input: Float32Array.from(input),
+  target: 0,
+}));
+
+Deno.test("behaviouralDiversity is the mean pairwise RMS output difference", () => {
+  const constant = (v: number) => stub(() => v);
+  // Identical creatures do not differ.
+  assertEquals(behaviouralDiversity([constant(2), constant(2)], PROBE), 0);
+  // Constant outputs 0 and 3 differ by exactly 3 everywhere.
+  assertAlmostEquals(
+    behaviouralDiversity([constant(0), constant(3)], PROBE),
+    3,
+  );
+  // Pairs (0,1)=1, (0,3)=3, (1,3)=2: mean 2.
+  assertAlmostEquals(
+    behaviouralDiversity([constant(0), constant(1), constant(3)], PROBE),
+    2,
+  );
+  // Output 0 vs 2 on half the probe and 0 elsewhere: RMS = sqrt(4 / 2).
+  assertAlmostEquals(
+    behaviouralDiversity([
+      constant(0),
+      stub((input) => input[0] === 1 ? 2 : 0),
+    ], PROBE),
+    Math.sqrt(2),
+  );
+  // Fewer than two usable creatures, or no probe, measure nothing.
+  assertEquals(behaviouralDiversity([constant(1)], PROBE), 0);
+  assertEquals(behaviouralDiversity([constant(0), constant(3)], []), 0);
+});
+
+Deno.test("behaviouralDiversity leaves out creatures whose outputs are not finite", () => {
+  const constant = (v: number) => stub(() => v);
+  assertAlmostEquals(
+    behaviouralDiversity(
+      [constant(0), constant(Number.NaN), constant(3), constant(Infinity)],
+      PROBE,
+    ),
+    3,
+  );
+  // One finite creature left over is not a pair.
+  assertEquals(
+    behaviouralDiversity([constant(0), constant(Number.NaN)], PROBE),
+    0,
+  );
+});
+
+Deno.test("recordsToHoldoutTarget is the charge at the first champion that meets it", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    // Every holdout MSE is non-negative, so a huge target is met at once.
+    const met = await runArm(arm("none"), SMALL, 5, splits, Infinity);
+    assertEquals(met.recordsToHoldoutTarget, met.trace[0].recordsCharged);
+    assertEquals(met.recordsToHoldoutTarget, SMALL.trainRecords * 8);
+    // A negative MSE is impossible, so the target is never reached.
+    const unreachable = await runArm(arm("none"), SMALL, 5, splits, -1);
+    assertEquals(unreachable.recordsToHoldoutTarget, null);
+    // With no target nothing is recorded.
+    const none = await runArm(arm("none"), SMALL, 5, splits);
+    assertEquals(none.recordsToHoldoutTarget, null);
+    // A target between the first and the final champion is read off the trace.
+    const trace = met.trace;
+    const first = trace[0].holdoutMse;
+    const best = Math.min(...trace.map((e) => e.holdoutMse));
+    if (best < first) {
+      const target = (first + best) / 2;
+      const middle = await runArm(arm("none"), SMALL, 5, splits, target);
+      const hit = trace.find((e) => e.holdoutMse <= target)!;
+      assertEquals(middle.recordsToHoldoutTarget, hit.recordsCharged);
+    }
+  });
+});
+
+Deno.test("sdRatio is the arm's sample SD over the control's", () => {
+  // SD of [0,2,4,6,8] is sqrt(10); SD of [0,1,2,3,4] is sqrt(2.5): ratio 2.
+  const control = [0, 1, 2, 3, 4];
+  const arm2 = control.map((v) => 2 * v);
+  const result = sdRatio(arm2, control, 500, 1);
+  assertAlmostEquals(result.ratio, 2);
+  // Doubling every paired value doubles every resample's SD ratio too.
+  assertAlmostEquals(result.ci95[0], 2);
+  assertAlmostEquals(result.ci95[1], 2);
+  assertAlmostEquals(sdRatio(control, control, 100, 1).ratio, 1);
+  assertAlmostEquals(
+    sdRatio(control.map((v) => v / 2), control, 100, 1).ratio,
+    0.5,
+  );
+  assertThrows(() => sdRatio([1, 2], [1], 10, 1), Error, "length");
 });
 
 Deno.test("the holdout never guides a run", async () => {
