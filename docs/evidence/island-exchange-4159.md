@@ -110,15 +110,15 @@ pairwise distance between the six island champions is below 0.05.
 
 ```mermaid
 flowchart TD
-    A["Score offspring on train"] --> B{"Every 4th generation?"}
-    B -- "no" --> E["Breed: crossover, mutant fill"]
-    B -- "yes" --> C["Exchange: none, ring or broadcast"]
-    C --> E
-    E --> F{"After generation 24?"}
-    F -- "no" --> A
+    A["Score offspring on train"] --> F{"Generation 24?"}
     F -- "yes" --> G["Island champions"]
     G --> H["Pick on calibration"]
     H --> I["Holdout MSE reported"]
+    F -- "no" --> B{"Every 4th generation?"}
+    B -- "yes" --> C["Exchange: none, ring or broadcast"]
+    B -- "no" --> E["Breed: crossover, mutant fill"]
+    C --> E
+    E --> A
 ```
 
 ## Result

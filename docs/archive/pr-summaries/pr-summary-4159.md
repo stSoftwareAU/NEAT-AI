@@ -99,18 +99,19 @@ were run from a clean `scripts/` and `src/`, so that commit reproduces the
 artefact apart from the wall-clock fields. The command refuses a dirty
 `scripts/` or `src/` unless `--allow-dirty` is passed, and records `dirty` and
 `sourceSha256` either way. 20 seeds (4159–4178), 6 islands × 10 creatures, 24
-generations, exchange every 4 generations, coverage 60/60 runs, 0 failures.
+generations, exchange every 4 generations (five rounds, at generations 4 to 20),
+coverage 60/60 runs, 0 failures.
 
 ```mermaid
 flowchart TD
-    A["Score new offspring on train"] --> B{"Every 4th generation?"}
-    B -- "yes" --> C["Exchange: none, ring or broadcast"]
-    B -- "no" --> D["Breed: crossover, mutant fill"]
-    C --> D
-    D --> E{"Generation 24?"}
-    E -- "no" --> A
-    E -- "yes" --> F["Pick an island champion on calibration"]
+    A["Score offspring on train"] --> B{"Generation 24?"}
+    B -- "yes" --> F["Pick an island champion on calibration"]
     F --> G["Report holdout MSE"]
+    B -- "no" --> C{"Every 4th generation?"}
+    C -- "yes" --> D["Exchange: none, ring or broadcast"]
+    C -- "no" --> E["Breed: crossover, mutant fill"]
+    D --> E
+    E --> A
 ```
 
 | Arm         | Held-out MSE | Inter-island distance | Collapse rate | Transfers | Bytes  | Records |
