@@ -407,11 +407,11 @@ Deno.test("lineage study - history selects the lowest delta for the relevant str
         "MOD_BIAS",
       );
       const ordinary = breed("ordinary", history);
-      const unsteered = breed("ordinary", new OperatorHistory());
-      assertEquals(ordinary.edge.operator, unsteered.edge.operator);
+      const withoutHistory = breed("ordinary", new OperatorHistory());
+      assertEquals(ordinary.edge.operator, withoutHistory.edge.operator);
       assertEquals(
         stratumErrors(ordinary.child, corpus.calibration),
-        stratumErrors(unsteered.child, corpus.calibration),
+        stratumErrors(withoutHistory.child, corpus.calibration),
       );
     } finally {
       setRandomNumberGenerator(saved);
