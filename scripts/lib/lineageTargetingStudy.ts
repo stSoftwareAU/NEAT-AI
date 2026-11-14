@@ -716,8 +716,8 @@ function runSeededArm(
   let toTarget: ArmResult["toTarget"] = null;
   let finalTrainMse: number;
   let finalHoldoutMse: number;
-  let finalDistance = 0;
-  let finalSpecies = 0;
+  let finalDistance: number;
+  let finalSpecies: number;
 
   for (let generation = 1;; generation++) {
     // 1. Exact evaluation: train + calibration. Holdout is not in here.
