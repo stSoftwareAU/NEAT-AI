@@ -308,6 +308,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4160:** opt-in `deno task connectivity-prior-study` compares sparse,
+  input-reachable initial topologies against the current fully connected one.
+  Result: no cell beat the control and the calibration-chosen cell was harmful,
+  so no prior was added; see
+  [the evidence page](docs/evidence/connectivity-prior-4160.md).
+
 - **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
   quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in
   native code). The teardown now warns

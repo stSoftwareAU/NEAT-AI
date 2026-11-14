@@ -468,7 +468,7 @@ function runSeeded(
       recordsScored += trainLen;
     }
   };
-  const bySCore = (a: Creature, b: Creature) =>
+  const byScore = (a: Creature, b: Creature) =>
     (b.score ?? -Infinity) - (a.score ?? -Infinity);
   const checkThreshold = () => {
     if (
@@ -485,7 +485,7 @@ function runSeeded(
   while (generations < settings.maxGenerations) {
     scorePass(population);
     population = population.filter((c) => c.score !== undefined);
-    population.sort(bySCore);
+    population.sort(byScore);
     if (population.length === 0) {
       throw new Error("budget too small to score a single creature");
     }
@@ -506,7 +506,7 @@ function runSeeded(
     }
     scorePass(offspring);
     const scored = offspring.filter((c) => c.score !== undefined);
-    population = [...population, ...scored].sort(bySCore).slice(
+    population = [...population, ...scored].sort(byScore).slice(
       0,
       settings.populationSize,
     );
