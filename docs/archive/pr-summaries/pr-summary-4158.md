@@ -159,10 +159,11 @@ Criteria heading.
   - `validateSettings` accepts the defaults and names the offending field;
   - `chooseRefineRounds` picks the lowest median training MSE, with ties going
     to the first setting.
-- `scripts/lib/preSelectionAB.ts`: `seedPopulation` is now exported with a
-  narrowed parameter, and the crossover loop is split out as `breedChildren`,
-  with the same generator draw order. No existing test was edited, and the 5
-  `test/scripts/PreSelectionAB.ts` tests pass.
+- `scripts/lib/preSelectionAB.ts`: `seedPopulation` and `breedOffspring` are
+  exported on the base already; the crossover loop is split out of
+  `breedOffspring` as the exported `breedChildren`, with the same generator draw
+  order. No existing test was edited, and the 5 `test/scripts/PreSelectionAB.ts`
+  tests pass.
 - `./quality.sh --rust-scorer-bin=<rust_scorer built from NEAT-AI-scorer>` ran
   on head 3f019550 and exited 0 with
   `ok | 10341 passed (5 steps) | 0 failed | 50 ignored (10m27s)`. That run

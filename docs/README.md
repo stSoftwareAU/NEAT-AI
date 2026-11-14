@@ -140,6 +140,9 @@ Tuning guides and benchmark research.
   protected pen for short refinement rounds lowered their retention and did not
   improve held-out error. Opt-in study harness only; nothing under `src/`
   changed.
+- **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
+  — initial connectivity and input fan-out as priors (Issue #4160): a negative
+  result; no sparse start beat the current initialisation.
 - **[evidence/lineage-targeting-4155.md](evidence/lineage-targeting-4155.md)** —
   the 30-seed study of lineage-informed and stratum-targeted offspring against
   ordinary mutation at an equal record budget (Issue #4155): no benefit, and
