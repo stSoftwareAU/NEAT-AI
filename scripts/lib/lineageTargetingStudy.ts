@@ -714,8 +714,8 @@ function runSeededArm(
   let targetedOffspring = 0;
   let target = Number.NaN;
   let toTarget: ArmResult["toTarget"] = null;
-  let finalTrainMse = Number.NaN;
-  let finalHoldoutMse = Number.NaN;
+  let finalTrainMse: number;
+  let finalHoldoutMse: number;
   let finalDistance = 0;
   let finalSpecies = 0;
 
