@@ -3,14 +3,14 @@
 ## Summary
 
 Adds an opt-in research harness, `deno task connectivity-prior-study`. It
-factorially sweeps hidden mean in-degree {1.5, 2, 3} × input fan-out {1, 2, 3}
-against the current fully connected initialisation, at an equal budget of
-charged train records, with separate calibration and validation seeds and paired
-bootstrap statistics. The result is a **negative finding**: the cell chosen on
-calibration seeds (`d3-f1`) is `harm` against the control, and none of the nine
-cells shows a benefit. No optional prior is added, and nothing under `src/`
-changed. Self-loops in a recurrent execution path were not swept, so this PR is
-Part of #4160.
+sweeps, as a full factorial grid, hidden mean in-degree {1.5, 2, 3} × input
+fan-out {1, 2, 3} against the current fully connected initialisation, at an
+equal budget of charged train records, with separate calibration and validation
+seeds and paired bootstrap statistics. The result is a **negative finding**: the
+cell chosen on calibration seeds (`d3-f1`) is `harm` against the control, and
+none of the nine cells shows a benefit. No optional prior is added, and nothing
+under `src/` changed. Self-loops in a recurrent execution path were not swept,
+so this PR is Part of #4160.
 
 ## Spec
 
