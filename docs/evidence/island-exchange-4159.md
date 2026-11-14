@@ -27,14 +27,15 @@ motivation only.
   (`ebb9cf08cbea8456877560496d6a5cbe285e923ad82c8ff940ede9b002e5e3a5`). The 20
   seeds were run from that commit with `scripts/` and `src/` clean, so checking
   it out and running the command above reproduces the artefact apart from the
-  wall-clock fields (`improvementPerEvaluationHour`, `transportMs`); this was
-  checked by diffing against the previous artefact, which had been run with
-  `--allow-dirty` on the same harness (identical `sourceSha256`). The artefact
-  is a later commit than the one it names, because it is committed after the
-  run; only `scripts/` and `src/` are checked for being clean. `sourceSha256` is
-  the SHA-256 of `scripts/island_exchange_study.ts`,
-  `scripts/lib/islandExchangeStudy.ts` and `scripts/lib/preSelectionAB.ts` (each
-  as `path`, newline, content, newline, in that order).
+  wall-clock fields (`evaluationMs`, `improvementPerEvaluationHour`,
+  `transportMs`); this was checked by diffing against the previous artefact,
+  which had been run with `--allow-dirty` on the same harness (identical
+  `sourceSha256`). The artefact is a later commit than the one it names, because
+  it is committed after the run; only `scripts/` and `src/` are checked for
+  being clean. `sourceSha256` is the SHA-256 of
+  `scripts/island_exchange_study.ts`, `scripts/lib/islandExchangeStudy.ts` and
+  `scripts/lib/preSelectionAB.ts` (each as `path`, newline, content, newline, in
+  that order).
 - A synthetic two-input regression from `preSelectionAB.buildCorpus`, seeded per
   study seed. No private data.
 
