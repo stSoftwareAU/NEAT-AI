@@ -119,7 +119,7 @@ Criteria heading.
 
 ## Test Plan
 
-- Added `test/scripts/ProtectedRefinementStudy.ts`, with 22 tests:
+- Added `test/scripts/ProtectedRefinementStudy.ts`, with 23 tests:
   - `classifyMutation` flags a new hidden neuron, a changed squash and an added
     or removed synapse, and does not flag a change to weights and biases alone;
   - `refineRound` keeps the structure, never worsens the sub-sample score,
@@ -176,3 +176,15 @@ Criteria heading.
   compute. The page lists them by arm.
 - The fixed pen capacity of 4 and the sub-sample stride of 10 were not
   calibrated; only R was.
+
+## Calibration-depth regression coverage
+
+A deterministic test supplies a default refinement depth outside the calibration
+grid and compares every validation result with a direct run at the chosen depth,
+excluding wall-clock measurements. This verifies the actual validation outcomes,
+not just the manifest.
+
+The test failed when validation was temporarily changed to use the supplied
+default depth; the source was restored. All 67 focused, adjacent, UUID/version
+invariant and public/private documentation checks pass. Formatting and lint
+pass. The full native quality gate was not rerun for this test-only follow-up.

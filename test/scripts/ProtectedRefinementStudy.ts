@@ -509,3 +509,21 @@ Deno.test("runStudy lists a run that throws and pairs only the seeds both arms c
     for (const c of report.comparisons) assertEquals(c.n, 1, c.label);
   });
 });
+
+Deno.test("runStudy validation uses the calibrated refinement depth", async () => {
+  await withRngTestLock(async () => {
+    // One is outside the calibration grid, so using the supplied default
+    // instead of the chosen depth cannot accidentally exercise the same run.
+    const settings = { ...SMALL, refineRounds: 1 };
+    const report = await runStudy({ ...STUDY, settings });
+    assert(report.chosenRefineRounds !== null);
+    assertNotEquals(report.chosenRefineRounds, settings.refineRounds);
+    const chosen = { ...settings, refineRounds: report.chosenRefineRounds };
+    const corpus = buildStudyCorpus(chosen);
+    for (const actual of report.results) {
+      // deno-lint-ignore no-await-in-loop
+      const expected = await runArm(actual.arm, actual.seed, chosen, corpus);
+      assertEquals(withoutWall(actual), withoutWall(expected));
+    }
+  });
+});
