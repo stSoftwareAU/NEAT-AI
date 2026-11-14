@@ -392,10 +392,16 @@ Deno.test("lineage study - history selects the lowest delta for the relevant str
         calibration: stratumErrors(parent, corpus.calibration),
       };
       const history = new OperatorHistory();
-      // Weight changes win overall; bias changes win in every individual
-      // stratum, including this parent's worst one.
-      history.record(edge("MOD_WEIGHT", [1, 1, 1, 1], -2));
-      history.record(edge("MOD_BIAS", [-2, -2, -2, -2], 1));
+      // The deltas differ by stratum. Weight changes win overall and in every
+      // stratum except the parent's worst one; bias changes win only there. A
+      // lookup that reads any other stratum therefore picks the wrong operator.
+      const perStratum = errors.calibration.perStratum;
+      const worst = perStratum.indexOf(Math.max(...perStratum));
+      assert(worst > 0, "the fixture needs a worst stratum other than 0");
+      const perStratumDelta = (atWorst: number, elsewhere: number) =>
+        perStratum.map((_, s) => s === worst ? atWorst : elsewhere);
+      history.record(edge("MOD_WEIGHT", perStratumDelta(1, -1), -2));
+      history.record(edge("MOD_BIAS", perStratumDelta(-2, 1), 1));
       const breed = (arm: ArmName, prior: OperatorHistory) => {
         const ctx = createBreedContext(settings, corpus.calibration, prior);
         setRandomNumberGenerator(createSeededRng(11));

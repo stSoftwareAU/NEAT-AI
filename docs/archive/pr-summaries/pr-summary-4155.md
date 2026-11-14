@@ -141,15 +141,17 @@ as a closure block.
   parameter narrowed. No assertion was removed from any existing test.
 - On the final head,
   `deno test --allow-all test/scripts/LineageTargetingStudy.ts test/scripts/PreSelectionAB.ts`
-  passed: 19 passed, 0 failed. `deno fmt --check`, `deno lint` and `deno check`
+  passed: 21 passed, 0 failed. `deno fmt --check`, `deno lint` and `deno check`
   passed on the changed files, and cspell passed on the changed docs and
   scripts.
 - The full `./quality.sh --rust-scorer-bin=<built rust_scorer>` ran in the
   foreground on head `534b8fa3` and exited 0: 10,340 passed, 0 failed, 50
-  ignored. Later commit `b4411dc1` removed two unused initialisers; the review
-  follow-up adds two behaviour tests without changing the study implementation.
-  The Discovery library is absent on this host, so the gate skipped its
-  verification and discovery tests ran in their skip mode.
+  ignored. Later commits removed unused and useless initialisers from
+  `scripts/lib/lineageTargetingStudy.ts` (`b4411dc1` and `dd57381b`, dead code
+  only); the review follow-ups change only
+  `test/scripts/LineageTargetingStudy.ts`. The Discovery library is absent on
+  this host, so the gate skipped its verification and discovery tests ran in
+  their skip mode.
 
 ## Not done / risks
 
@@ -171,3 +173,11 @@ versus stratum-specific deltas, with an ordinary-arm control), and best-of-R
 screening against the first candidate with exact record charging. Both pass.
 Each relevant regression was observed failing: reversed history selection,
 ignored stratum, worst-candidate screening, and first-candidate-only screening.
+
+The history test's fixture is now stratum-specific: the operator that wins
+overall and in every stratum except the parent's worst one differs from the
+operator that wins in the worst stratum, so a lookup that reads any other
+stratum picks the wrong operator. The test asserts the parent's worst stratum is
+not stratum 0, so a lookup fixed at stratum 0 fails too. Observed failing with
+the history lookup fixed at stratum 0 (15 passed, 1 failed); the test passes
+with the real implementation (16 passed, 0 failed in that file).
