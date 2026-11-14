@@ -308,6 +308,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4155:** an opt-in `deno task lineage-targeting-study` harness that
+  compares ordinary mutation with lineage-informed and stratum-targeted
+  offspring at an equal record budget. The 30-seed result is no benefit: every
+  confidence interval spans zero and behavioural diversity falls. Nothing in
+  `src/` calls it. See
+  [docs/evidence/lineage-targeting-4155.md](docs/evidence/lineage-targeting-4155.md).
+
 - **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
   quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in
   native code). The teardown now warns
