@@ -83,9 +83,9 @@ Means over 20 seeds.
 
 | Arm         | Held-out MSE | Improvement vs start | Per million records | Per evaluation-hour (indicative) | Final inter-island distance | Within-island distance | Collapse rate | Transfers | Bytes  | Mutation fills |
 | ----------- | ------------ | -------------------- | ------------------- | -------------------------------- | --------------------------- | ---------------------- | ------------- | --------- | ------ | -------------- |
-| `none`      | 1.678e-2     | 6.877e-2             | 0.196               | 1356                             | 0.950                       | 0.007                  | 0.00          | 0         | 0      | 424.5          |
-| `ring`      | 1.205e-2     | 7.350e-2             | 0.210               | 1397                             | 0.443                       | 0.081                  | 0.10          | 25        | 29,491 | 230.5          |
-| `broadcast` | 1.115e-2     | 7.440e-2             | 0.213               | 1426                             | 0.002                       | 0.004                  | 1.00          | 25        | 32,201 | 271.8          |
+| `none`      | 1.678e-2     | 6.877e-2             | 0.196               | 1317                             | 0.950                       | 0.007                  | 0.00          | 0         | 0      | 424.5          |
+| `ring`      | 1.205e-2     | 7.350e-2             | 0.210               | 1384                             | 0.443                       | 0.081                  | 0.10          | 25        | 29,491 | 230.5          |
+| `broadcast` | 1.115e-2     | 7.440e-2             | 0.213               | 1431                             | 0.002                       | 0.004                  | 1.00          | 25        | 32,201 | 271.8          |
 
 Paired comparisons, arm − broadcast (negative means the arm is better), with a
 2,000-resample percentile bootstrap:
@@ -96,9 +96,10 @@ Paired comparisons, arm − broadcast (negative means the arm is better), with a
   wins 3/20, collapse 0.00 vs 1.00.
 
 Coverage is 60/60 runs, 0 failures. Transport time (JSON export/import
-round-trip) was about 4 ms per run for ring and broadcast, indicative only on a
-shared parallel host. The evaluation-hour figures use wall-clock on a shared
-host and are indicative; the records-based column is the deterministic one.
+round-trip) was about 3.3 ms per run for ring and 2.7 ms for broadcast,
+indicative only on a shared parallel host. The evaluation-hour figures use
+wall-clock on a shared host and are indicative; the records-based column is the
+deterministic one.
 
 ## Reading
 

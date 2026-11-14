@@ -221,10 +221,11 @@ Deno.test("island study — arms spend the same records; holdout never influence
     assert(ring.transfers > 0 && ring.bytes > 0);
     assert(broadcast.transfers > 0 && broadcast.bytes > 0);
 
-    // Holdout isolation. Two runs of one arm are not bit-identical (neuron
-    // uuids come from crypto.randomUUID), so isolation is shown by observing
-    // WHEN the holdout is first read: only after the last clock tick, i.e.
-    // after every training, exchange and calibration decision has been made.
+    // Holdout isolation. Rather than comparing two runs, isolation is shown
+    // by observing WHEN the holdout is first read: only after the last clock
+    // tick, i.e. after every training, exchange and calibration decision has
+    // been made. (Same-seed runs do reproduce exactly; see the reproduction
+    // test below.)
     let ticks = 0;
     const tickClock = () => ++ticks;
     let ticksAtFirstHoldoutRead = -1;
