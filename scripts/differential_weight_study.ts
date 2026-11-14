@@ -52,6 +52,37 @@ import {
 const ISSUE = 4156;
 const PAPER = "https://arxiv.org/abs/2610.26202";
 
+/**
+ * Preparation that preceded the reported run. Each is a search cost: the
+ * pilot set the contraction thresholds, and the full runs found harness
+ * defects. The seeds of the first two were not recorded when they were made,
+ * so the table says what is known and gives the most each could have charged.
+ */
+const PREPARATION_RUNS = [
+  {
+    what: "3-seed pilot that set contractionHighDiversityThreshold to 0",
+    seeds: "not recorded",
+    arms: "not recorded",
+    recordsCharged:
+      "not recorded; at most 3 seeds x 8 arms x 240,000 = 5,760,000",
+  },
+  {
+    what:
+      "first full run, discarded after it showed ordinary breeding left slots empty (the top-up retry was added)",
+    seeds: "not recorded; the CLI default then was 4156-4185",
+    arms: "8 arms",
+    recordsCharged:
+      "not recorded; at most 30 seeds x 8 arms x 240,000 = 57,600,000",
+  },
+  {
+    what:
+      "second full run on 4156-4185 after the top-up, discarded because time-to-target ignored creatures that can ship but are not the population's best (review of PR 4165)",
+    seeds: "4156-4185 (30)",
+    arms: "8 arms",
+    recordsCharged: "at most 30 seeds x 8 arms x 240,000 = 57,600,000",
+  },
+];
+
 /** A run plus the wall-clock it took (measured here only). */
 interface TimedResult {
   readonly result: ArmResult;
@@ -359,10 +390,19 @@ if (import.meta.main) {
         "contraction uses the existing adaptive shrink rule, never growing, only after the delay; the production highDiversityThreshold is 0.8 but a 3-seed pilot showed 1.3-2.3 species per 24 creatures so the shrink branch never fired; the study sets contractionHighDiversityThreshold to 0, so the rule contracts on every post-delay plateau, bounded below by minPopulationFraction 0.5; the rule's low-diversity grow branch is disabled (lowDiversityThreshold 0) because it is checked first and would pre-empt the shrink",
       budgetPolicy:
         "records charged held equal; holdout and diversity probe uncharged; wall-clock measured and reported, not capped",
+      preparation: {
+        note:
+          "records charged by every run that shaped the design or the harness, counted as search cost alongside calibration; bounds are 240,000 records per run, which is the most one run can charge",
+        calibrationRecordsCharged,
+        runs: PREPARATION_RUNS,
+        validationSeedsUntouched:
+          "the validation seeds in this manifest were used by no earlier run; the earlier full runs used the CLI default of the day, 4156-4185, so that range was set aside rather than reported",
+      },
       paper: {
         url: PAPER,
+        methodRead: false,
         note:
-          "not fetched: proxy refused; the method follows this repository's reading of the issue",
+          "not fetched: proxy refused; the method follows this repository's reading of the issue and has not been checked against the paper, so the paper's method is untested",
       },
     };
     await Deno.writeTextFile(

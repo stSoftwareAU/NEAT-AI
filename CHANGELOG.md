@@ -30,7 +30,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   population contraction as a 2×2 at equal charged records, crossed with whether
   refined descendants re-enter the population. The result on a synthetic
   objective is negative: no arm meets the benefit criterion and none is harm.
-  Nothing under `src/` imports the harness. See
+  The paper the issue cites was not read, so the method is this repository's
+  reading of the issue and is untested against the paper's; the issue stays
+  open. Nothing under `src/` imports the harness. See
   [`docs/evidence/differential-weight-4156.md`](docs/evidence/differential-weight-4156.md).
 
 ### Fixed

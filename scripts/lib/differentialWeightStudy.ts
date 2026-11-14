@@ -70,8 +70,14 @@ import { median } from "./rankFidelity.ts";
 // Predeclared constants
 // ---------------------------------------------------------------------------
 
-/** First validation seed. The validation seeds are `base .. base + count - 1`. */
-export const VALIDATION_BASE_SEED = 4156;
+/**
+ * First validation seed. The validation seeds are `base .. base + count - 1`.
+ *
+ * The range 4156-4185 was the CLI default while the harness was being built,
+ * so the pilot and the discarded full runs may have drawn on it. The reported
+ * validation therefore uses a fresh range no earlier run used.
+ */
+export const VALIDATION_BASE_SEED = 14156;
 /** How many validation seeds the study runs. */
 export const VALIDATION_SEED_COUNT = 30;
 /** First calibration seed — a range disjoint from the validation seeds. */
@@ -591,7 +597,13 @@ export interface ArmResult {
   /** Training-split scorings charged, population and refinement together. */
   readonly evaluations: number;
   readonly generations: number;
-  /** Records charged when best training MSE first reached the target. */
+  /**
+   * Records charged when any scored creature first reached the target training
+   * MSE: a population member or a refined descendant, whether it re-enters or
+   * is kept aside. It is read the moment the creature is scored, so it agrees
+   * with `finalTrainMse` (a run that ships a creature at or below the target
+   * always reports a time).
+   */
   readonly timeToTargetRecords: number | null;
   readonly contractionEvents: number;
   readonly firstContractionRecords: number | null;
@@ -607,7 +619,11 @@ export interface ArmResult {
    * non-zero value means the population ran below its target size.
    */
   readonly unfilledSlots: number;
+  /** DE slots requested: `round(deFraction * slots)` summed over generations. */
+  readonly deSlotsRequested: number;
+  /** DE slots filled by a DE child. */
   readonly deOffspring: number;
+  /** DE slots that fell back to ordinary breeding (no species of four). */
   readonly deFallbacks: number;
   readonly refinementsAccepted: number;
   readonly refinedReentered: number;
@@ -684,6 +700,7 @@ function runSeededArm(
   let contractionEvents = 0;
   let firstContractionRecords: number | null = null;
   let deOffspring = 0;
+  let deSlotsRequested = 0;
   let slotsRequested = 0;
   let unfilledSlots = 0;
   let deFallbacks = 0;
@@ -694,6 +711,14 @@ function runSeededArm(
     const scored = scoreCreature(candidate, train);
     recordsCharged += scored.records;
     evaluations++;
+    // Every scored creature can ship, so the target is read here, at the
+    // records charged when it was scored, not from the population alone.
+    if (
+      target !== undefined && timeToTargetRecords === null &&
+      -scored.score <= target
+    ) {
+      timeToTargetRecords = recordsCharged;
+    }
     return scored.score;
   };
 
@@ -723,12 +748,6 @@ function runSeededArm(
     const bestScore = population[0].score ?? -Infinity;
     history.push(bestScore);
     const bestTrainMse = -bestScore;
-    if (
-      target !== undefined && timeToTargetRecords === null &&
-      bestTrainMse <= target
-    ) {
-      timeToTargetRecords = recordsCharged;
-    }
 
     // 3. Speciate with the production Genus; measure behaviour on the probe.
     const scored = population.filter((creature) =>
@@ -805,6 +824,7 @@ function runSeededArm(
       size - elites.length - (reentered === undefined ? 0 : 1),
     );
     const nDE = arm.de ? Math.round(settings.deFraction * slots) : 0;
+    deSlotsRequested += nDE;
     const deChildren: Creature[] = [];
     let ordinary = slots - nDE;
     for (let i = 0; i < nDE; i++) {
@@ -884,6 +904,7 @@ function runSeededArm(
     finalPopulationSize: size,
     slotsRequested,
     unfilledSlots,
+    deSlotsRequested,
     deOffspring,
     deFallbacks,
     refinementsAccepted,
@@ -896,8 +917,12 @@ function runSeededArm(
   };
 }
 
-/** A DE child of `parent` from three distinct species-mates, or `undefined`. */
-function buildDeChild(
+/**
+ * A DE child of `parent` from three distinct donors drawn only from `parent`'s
+ * own Genus species, or `undefined` when the species has fewer than three other
+ * scored members (the caller then falls back to ordinary breeding).
+ */
+export function buildDeChild(
   parent: Creature,
   genus: Genus,
   settings: StudySettings,
