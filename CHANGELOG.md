@@ -23,6 +23,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #4158:** opt-in `deno task protected-refinement-study` measures
+  whether short protected refinement helps major topology mutations survive
+  selection. It found no benefit: protection lowered retention of major
+  descendants (0.258 against 0.354) and refinement spent on ordinary descendants
+  beat it (harm verdict). Nothing under `src/` changed. See
+  [`docs/evidence/protected-refinement-4158.md`](docs/evidence/protected-refinement-4158.md).
+
 ### Fixed
 
 - **Issue #4146:** a hung native training task now says which backend ran and
