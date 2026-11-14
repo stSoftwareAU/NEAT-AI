@@ -407,8 +407,8 @@ function buildScreen(
 }
 
 /** `populationSize` structurally distinct creatures from one seed. */
-function seedPopulation(
-  settings: ABSettings,
+export function seedPopulation(
+  settings: Pick<ABSettings, "populationSize">,
   rng: RandomNumberGenerator,
 ): Creature[] {
   const population: Creature[] = [];
@@ -430,11 +430,13 @@ function seedPopulation(
   return population;
 }
 
-/** Breed `count` offspring from a score-sorted population, then mutate them. */
-function breedOffspring(
+/**
+ * Breed `count` children from a score-sorted population by crossover alone —
+ * no mutation, so a caller can look at the child before the operators touch it.
+ */
+export function breedChildren(
   population: readonly Creature[],
   count: number,
-  mutator: Mutator,
   config: ReturnType<typeof createNeatConfig>,
   rng: RandomNumberGenerator,
 ): Creature[] {
@@ -457,6 +459,18 @@ function breedOffspring(
     delete child.score;
     offspring.push(child);
   }
+  return offspring;
+}
+
+/** Breed `count` offspring from a score-sorted population, then mutate them. */
+function breedOffspring(
+  population: readonly Creature[],
+  count: number,
+  mutator: Mutator,
+  config: ReturnType<typeof createNeatConfig>,
+  rng: RandomNumberGenerator,
+): Creature[] {
+  const offspring = breedChildren(population, count, config, rng);
   mutator.mutate(offspring);
   for (const child of offspring) {
     delete child.score;
