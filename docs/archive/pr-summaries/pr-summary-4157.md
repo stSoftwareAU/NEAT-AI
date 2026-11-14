@@ -82,8 +82,12 @@ better:
 - Each arm reached the held-out target on 15 of 30 seeds.
 - Mean collision rate was 0.29 for none, 0.25 for stagnation and 0.23 for
   census.
-- The census diversity ratio reflects freshly reseeded random creatures with a
-  wide output spread. It is not evidence of useful diversity.
+- The census diversity ratios (×9.74 against none, ×8.30 against stagnation) are
+  driven by one run: census seed 4171 (one restart, mean diversity 38.7). The
+  other 29 census runs range from 0.084 to 0.548 (mean 0.192), against a none
+  mean of 0.152. A robust figure is the median per-seed diversity: census 0.177,
+  stagnation 0.154, none 0.135 (about ×1.3 for census against none). It is not
+  evidence of useful diversity.
 
 ```mermaid
 flowchart LR

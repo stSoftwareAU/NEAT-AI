@@ -64,9 +64,10 @@ flowchart TD
 
 ## Calibration and collision sensitivity
 
-Median over 5 calibration seeds of the census arm. Collision rate is the share
-of creatures whose key matched another's. Holdout target (median calibration
-`none` holdout MSE): **0.01478**.
+Median over 5 calibration seeds of the census arm. Collision rate is the
+offspring in the window minus the distinct (species, key) identities, divided by
+the offspring in the window, averaged over generations 2 onwards and then over
+runs. Holdout target (median calibration `none` holdout MSE): **0.01478**.
 
 | q    | W | Median train MSE | Median restarts | Median first restart (records) | Collision rate | Unseen estimate |
 | ---- | - | ---------------- | --------------- | ------------------------------ | -------------- | --------------- |
@@ -110,9 +111,14 @@ JSON (`results`).
 - The trigger is **sensitive to quantisation**. With q at 0.05 or finer the
   census never fired on the calibration seeds (collision rate 0.07–0.12), so
   there was nothing to compare.
-- The census arm's diversity ratio (x9.7 against none) comes from freshly
-  reseeded random creatures with a large output spread. It is not evidence of
-  useful diversity: the mean is dominated by the reseed generations.
+- The census arm's diversity ratio (x9.74 against none, x8.30 against
+  stagnation) is driven by **one run**: census seed 4171, which restarted once
+  and has a mean behavioural diversity of 38.7. The other 29 census runs range
+  from 0.084 to 0.548 (mean 0.192), against a none-arm mean of 0.152. The
+  stagnation arm applies the identical reseed (32 restarts) and shows x1.17, so
+  reseeding alone does not explain the ratio of means. A robust figure is the
+  median per-seed diversity: census 0.177, stagnation 0.154, none 0.135 (about
+  x1.3 for census against none). It is not evidence of useful diversity.
 - Wins count only strict improvements, and a seed with no restart is identical
   to `none` (diff 0). That is why win counts are low even where the mean moves.
 
