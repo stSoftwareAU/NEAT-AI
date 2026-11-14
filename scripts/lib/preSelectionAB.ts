@@ -407,8 +407,8 @@ function buildScreen(
 }
 
 /** `populationSize` structurally distinct creatures from one seed. */
-function seedPopulation(
-  settings: ABSettings,
+export function seedPopulation(
+  settings: Pick<ABSettings, "populationSize">,
   rng: RandomNumberGenerator,
 ): Creature[] {
   const population: Creature[] = [];
@@ -431,7 +431,7 @@ function seedPopulation(
 }
 
 /** Breed `count` offspring from a score-sorted population, then mutate them. */
-function breedOffspring(
+export function breedOffspring(
   population: readonly Creature[],
   count: number,
   mutator: Mutator,
