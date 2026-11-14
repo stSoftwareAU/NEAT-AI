@@ -93,15 +93,13 @@ under `src/` changes and no default changes. Closes #4159.
 Backend and CLI research harness only; no UI. Full write-up:
 `docs/evidence/island-exchange-4159.md`. Artefact:
 `docs/evidence/island-exchange-4159.json`. NEAT-AI 7.1.18. The artefact records
-`commit` `d474ffe0`, `dirty: true` and `sourceSha256`
-`ebb9cf08cbea8456877560496d6a5cbe285e923ad82c8ff940ede9b002e5e3a5`, because the
-run was made on the head plus this change before it was committed; the hash
-(SHA-256 over the three harness files, see the evidence page) identifies the
-code that a checkout of the pull request head must reproduce. The command now
-refuses a dirty `scripts/` or `src/` unless `--allow-dirty` is passed, and
-records `dirty` and `sourceSha256` either way. 20 seeds (4159–4178), 6 islands ×
-10 creatures, 24 generations, exchange every 4 generations, coverage 60/60 runs,
-0 failures.
+`commit` `7eabf57c` with `dirty: false` and `sourceSha256`
+`ebb9cf08cbea8456877560496d6a5cbe285e923ad82c8ff940ede9b002e5e3a5`: the 20 seeds
+were run from a clean `scripts/` and `src/`, so that commit reproduces the
+artefact apart from the wall-clock fields. The command refuses a dirty
+`scripts/` or `src/` unless `--allow-dirty` is passed, and records `dirty` and
+`sourceSha256` either way. 20 seeds (4159–4178), 6 islands × 10 creatures, 24
+generations, exchange every 4 generations, coverage 60/60 runs, 0 failures.
 
 ```mermaid
 flowchart TD

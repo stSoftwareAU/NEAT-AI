@@ -21,18 +21,20 @@ motivation only.
 
 ## Versions
 
-- NEAT-AI 7.1.18. The artefact records three identities for the code that ran:
-  `commit` (`d474ffe0e9a851a1529782c38b31c2542d8ed908`, the head this change was
-  made on), `dirty` (`true`) and `sourceSha256`
-  (`ebb9cf08cbea8456877560496d6a5cbe285e923ad82c8ff940ede9b002e5e3a5`). The run
-  was made with `--allow-dirty` because the harness change that adds the
-  re-score counter below was not yet committed, so `commit` alone does not name
-  it. The committed change is identified by `sourceSha256`: the SHA-256 of
-  `scripts/island_exchange_study.ts`, `scripts/lib/islandExchangeStudy.ts` and
-  `scripts/lib/preSelectionAB.ts` (each as `path`, newline, content, newline, in
-  that order), which a checkout of the pull request head must reproduce. A clean
-  run from that head records `dirty: false` and its own `commit`, with the same
-  results apart from `commit`, `dirty` and the wall-clock fields.
+- NEAT-AI 7.1.18. The artefact records `commit`
+  (`7eabf57c3db36176fe15d7e8c41950bb652dc3ac`), `dirty` (`false`) and
+  `sourceSha256`
+  (`ebb9cf08cbea8456877560496d6a5cbe285e923ad82c8ff940ede9b002e5e3a5`). The 20
+  seeds were run from that commit with `scripts/` and `src/` clean, so checking
+  it out and running the command above reproduces the artefact apart from the
+  wall-clock fields (`improvementPerEvaluationHour`, `transportMs`); this was
+  checked by diffing against the previous artefact, which had been run with
+  `--allow-dirty` on the same harness (identical `sourceSha256`). The artefact
+  is a later commit than the one it names, because it is committed after the
+  run; only `scripts/` and `src/` are checked for being clean. `sourceSha256` is
+  the SHA-256 of `scripts/island_exchange_study.ts`,
+  `scripts/lib/islandExchangeStudy.ts` and `scripts/lib/preSelectionAB.ts` (each
+  as `path`, newline, content, newline, in that order).
 - A synthetic two-input regression from `preSelectionAB.buildCorpus`, seeded per
   study seed. No private data.
 
@@ -124,9 +126,9 @@ Means over 20 seeds.
 
 | Arm         | Held-out MSE | Improvement vs start | Per million records | Per evaluation-hour (indicative) | Final inter-island distance | Within-island distance | Collapse rate | Transfers | Bytes  | Mutant fills |
 | ----------- | ------------ | -------------------- | ------------------- | -------------------------------- | --------------------------- | ---------------------- | ------------- | --------- | ------ | ------------ |
-| `none`      | 1.198e-2     | 7.357e-2             | 0.210               | 855                              | 0.907                       | 0.009                  | 0.00          | 0         | 0      | 301.9        |
-| `ring`      | 1.104e-2     | 7.451e-2             | 0.213               | 841                              | 0.418                       | 0.031                  | 0.10          | 25        | 28,537 | 193.3        |
-| `broadcast` | 1.301e-2     | 7.254e-2             | 0.207               | 838                              | 0.004                       | 0.002                  | 0.95          | 24.75     | 32,120 | 207.3        |
+| `none`      | 1.198e-2     | 7.357e-2             | 0.210               | 1,579                            | 0.907                       | 0.009                  | 0.00          | 0         | 0      | 301.9        |
+| `ring`      | 1.104e-2     | 7.451e-2             | 0.213               | 1,569                            | 0.418                       | 0.031                  | 0.10          | 25        | 28,537 | 193.3        |
+| `broadcast` | 1.301e-2     | 7.254e-2             | 0.207               | 1,606                            | 0.004                       | 0.002                  | 0.95          | 24.75     | 32,120 | 207.3        |
 
 Paired comparisons, arm − broadcast (negative means the arm is better), with a
 2,000-resample percentile bootstrap:
@@ -139,7 +141,7 @@ Paired comparisons, arm − broadcast (negative means the arm is better), with a
   1.33e-3], wins 9/20, collapse 0.00 vs 0.95.
 
 Coverage is 60/60 runs, 0 failures. Transport time (JSON export/import
-round-trip) was about 11.0 ms per run for ring and 8.3 ms for broadcast,
+round-trip) was about 4.2 ms per run for ring and 3.6 ms for broadcast,
 indicative only on a shared parallel host. The evaluation-hour figures use
 wall-clock on a shared host and are indicative; the records-based column is the
 deterministic one.
