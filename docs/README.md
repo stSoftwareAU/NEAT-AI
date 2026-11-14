@@ -139,6 +139,9 @@ Tuning guides and benchmark research.
   offspring-census restart study (Issue #4157): census-triggered against
   plateau-triggered restarts on a synthetic objective. Negative result; run it
   with `deno task census-restart-study`.
+- **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
+  — initial connectivity and input fan-out as priors (Issue #4160): a negative
+  result; no sparse start beat the current initialisation.
 - **[evidence/lineage-targeting-4155.md](evidence/lineage-targeting-4155.md)** —
   the 30-seed study of lineage-informed and stratum-targeted offspring against
   ordinary mutation at an equal record budget (Issue #4155): no benefit, and
