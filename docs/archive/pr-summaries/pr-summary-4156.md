@@ -86,7 +86,12 @@ paper's method.
   default, which was 4156–4185, so those seeds were not untouched. The reported
   validation was therefore re-run on a fresh range, **14156–14185**, that no
   earlier run used. The manifest (`preparation`) and the evidence page record
-  all of this.
+  all of this. The claim is enforced, not asserted: the CLI refuses a validation
+  range that overlaps 4156–4185 (`USED_SEED_RANGES`), exactly as it refuses one
+  that overlaps the calibration range, and the manifest's
+  `preparation.validationSeedsUntouched` is computed from the seeds actually
+  run. The pilot's seeds were never recorded, so they cannot be listed and are
+  covered only by the bound above.
 
 ## Evidence
 
@@ -156,13 +161,12 @@ The reported run used `--code-version` of `eccc6792` plus the uncommitted
 working-tree changes that answer the review; the manifest's `codeVersion` says
 so.
 
-No independent reviewers were dispatched. The issue has no Acceptance Criteria
-heading, so the prompt requires none.
+No independent reviewers were dispatched.
 
 ## Test Plan
 
-- Added `test/scripts/DifferentialWeightStudy.ts`, with 19 tests (12 from the
-  first push, 7 added for the review):
+- Added `test/scripts/DifferentialWeightStudy.ts`, with 21 tests (12 from the
+  first push, 7 added for the first review, 2 for the second):
   - `deWeightOffspring` with CR=1 sets every homologous gene to a + F(b − c) and
     leaves the parents unchanged;
   - with CR=0 it changes exactly one gene;
@@ -201,6 +205,10 @@ heading, so the prompt requires none.
     request, and `deOffspring > 0`; the non-DE control requests none;
   - **new:** with a population of 3 (no species can hold four) every DE slot
     falls back and is counted, and `deOffspring` is 0;
+  - **new:** the default validation seeds overlap no used range, and
+    `usedSeedOverlap` reports exactly the seeds inside 4156–4185 (the old CLI
+    default in full, and only the edge seeds of a straddling range), so the CLI
+    can refuse an overlapping range;
   - **new:** `buildDeChild` (now exported) takes donors only from the parent's
     own species: with a second species of huge weights in the population the
     child's genes stay within the five same-species values, and a species of
@@ -219,6 +227,41 @@ heading, so the prompt requires none.
 - cspell with `docs/cspell.json` reported 0 issues on the changed scripts, test
   and docs at the first push. Five words were added to the dictionary:
   `reenter`, `reenters`, `reentered`, `carryover` and `scorings`.
+
+## Acceptance Criteria
+
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **missing** — Read and pin the full method before reproducing it — reason:
+  arXiv 2610.26202 could not be fetched (`CONNECT tunnel failed, response 403`),
+  so the paper's method is unread. The DE variant, F, CR and the contraction
+  schedule are this repository's reading of the issue; the manifest records
+  `paper.methodRead: false`. No NEAT-AI change can satisfy this without the
+  method being supplied, so the issue must stay open for the owner.
+- **met** — Controlled experiment: DE only, delayed contraction only, both, and
+  current behaviour, crossed with whether local-refinement descendants re-enter
+  — evidence: `STUDY_ARMS` in `scripts/lib/differentialWeightStudy.ts` (eight
+  arms); `docs/evidence/differential-weight-4156.md` contrasts table.
+- **met** — Opt-in only; no change under `src/`, no default change — evidence:
+  nothing under `src/` is touched and nothing imports the harness.
+- **met** — Predeclare controls, seeds, sample size, compute limits and
+  success/failure criteria; separate calibration from untouched validation and
+  count preparation cost — evidence: manifest `criteria`, `settings`,
+  `calibrationSeeds`, `validationSeeds` and `preparation`; overlap with the
+  calibration range and with the earlier-run range 4156–4185 is refused;
+  `test/scripts/DifferentialWeightStudy.ts::a validation range inside or touching a used range is reported`.
+- **met** — Deterministic positive/negative correctness tests — evidence:
+  `test/scripts/DifferentialWeightStudy.ts` (21 tests).
+- **partial** — Hold evaluation and wall-clock budgets equal — reason: the
+  charged-record budget is equal and wall-clock is measured and reported, but
+  not capped, because a cap on a shared container would make runs
+  non-deterministic.
+- **met** — Reproducible command/manifest and machine-readable results with
+  paired distributions, uncertainty, failures and coverage — evidence:
+  `docs/evidence/differential-weight-4156.json` (30/30 seeds per arm, no
+  failures).
+- **met** — Record negative findings; do not claim success — evidence: the
+  evidence page records `no-benefit` for every contrast.
 
 ## Not done / risks
 

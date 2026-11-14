@@ -39,7 +39,11 @@ import {
   STUDY_ARMS,
   type StudySettings,
   SUCCESS_CRITERIA,
+  USED_SEED_RANGES,
+  usedSeedOverlap,
   validateSettings,
+  VALIDATION_BASE_SEED,
+  VALIDATION_SEED_COUNT,
   verdict,
 } from "../../scripts/lib/differentialWeightStudy.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
@@ -710,4 +714,25 @@ Deno.test("buildDeChild draws its donors only from the parent's own species", ()
     buildDeChild(members[0], small, settings, createSeededRng(7)),
     undefined,
   );
+});
+
+Deno.test("the default validation seeds overlap no range an earlier run used", () => {
+  const seeds = Array.from(
+    { length: VALIDATION_SEED_COUNT },
+    (_, i) => VALIDATION_BASE_SEED + i,
+  );
+  assertEquals(usedSeedOverlap(seeds), []);
+});
+
+Deno.test("a validation range inside or touching a used range is reported", () => {
+  const [first, last] = USED_SEED_RANGES[0];
+  // The old CLI default, in full.
+  const old = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+  assertEquals(usedSeedOverlap(old), old);
+  // A range that straddles the edge reports only the seeds inside it.
+  assertEquals(usedSeedOverlap([first - 1, first, last, last + 1]), [
+    first,
+    last,
+  ]);
+  assertEquals(usedSeedOverlap([]), []);
 });

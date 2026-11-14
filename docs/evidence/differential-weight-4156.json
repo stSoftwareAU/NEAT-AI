@@ -180,7 +180,14 @@
           "recordsCharged": "at most 30 seeds x 8 arms x 240,000 = 57,600,000"
         }
       ],
-      "validationSeedsUntouched": "the validation seeds in this manifest were used by no earlier run; the earlier full runs used the CLI default of the day, 4156-4185, so that range was set aside rather than reported"
+      "validationSeedsUntouched": true,
+      "earlierRunSeedRanges": [
+        {
+          "first": 4156,
+          "last": 4185
+        }
+      ],
+      "earlierRunSeedNote": "the earlier full runs used the CLI default of the day, 4156-4185, so that range is refused as a validation range; the pilot's seeds were not recorded"
     },
     "paper": {
       "url": "https://arxiv.org/abs/2610.26202",

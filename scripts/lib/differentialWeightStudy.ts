@@ -80,6 +80,21 @@ import { median } from "./rankFidelity.ts";
 export const VALIDATION_BASE_SEED = 14156;
 /** How many validation seeds the study runs. */
 export const VALIDATION_SEED_COUNT = 30;
+/**
+ * Seed ranges (inclusive) that earlier runs are known to have used while the
+ * harness was being built, and so are no longer untouched. The pilot's seeds
+ * were never recorded, so it cannot be listed here; its bound is in the
+ * manifest's `preparation.runs`.
+ */
+export const USED_SEED_RANGES: readonly (readonly [number, number])[] = [
+  [4156, 4185],
+];
+/** The seeds in `seeds` that fall inside a range an earlier run used. */
+export function usedSeedOverlap(seeds: readonly number[]): number[] {
+  return seeds.filter((seed) =>
+    USED_SEED_RANGES.some(([first, last]) => seed >= first && seed <= last)
+  );
+}
 /** First calibration seed — a range disjoint from the validation seeds. */
 export const CALIBRATION_BASE_SEED = 94156;
 /** How many calibration seeds set the time-to-target threshold. */

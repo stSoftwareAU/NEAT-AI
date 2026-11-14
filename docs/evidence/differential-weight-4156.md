@@ -82,11 +82,12 @@ flowchart TD
 ## Predeclared
 
 - **Seeds.** Validation seeds are 14156–14185 (30), a range no earlier run used
-  (see [Preparation and search cost](#preparation-and-search-cost)). Calibration
-  seeds are 94156–94160 (5), a disjoint range, used only to set the
-  time-to-target threshold: the median final train MSE of `control@reenter`,
-  which came out at **0.01406**. Calibration cost 1,200,000 records and is
-  reported separately from the arms.
+  (see [Preparation and search cost](#preparation-and-search-cost)); the CLI
+  refuses any validation range that overlaps 4156–4185, the range the earlier
+  runs used. Calibration seeds are 94156–94160 (5), a disjoint range, used only
+  to set the time-to-target threshold: the median final train MSE of
+  `control@reenter`, which came out at **0.01406**. Calibration cost 1,200,000
+  records and is reported separately from the arms.
 - **Budget.** 240,000 charged train records per run, population 24, elitism 2,
   400 train and 400 holdout records. The diversity probe uses 64 train records
   and is uncharged.

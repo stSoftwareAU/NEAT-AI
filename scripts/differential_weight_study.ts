@@ -43,6 +43,8 @@ import {
   type StudyArm,
   type StudySettings,
   SUCCESS_CRITERIA,
+  USED_SEED_RANGES,
+  usedSeedOverlap,
   validateSettings,
   VALIDATION_BASE_SEED,
   VALIDATION_SEED_COUNT,
@@ -161,6 +163,16 @@ if (import.meta.main) {
   if (overlap.length > 0) {
     throw new Error(
       `validation seeds overlap the calibration range: ${overlap.join(", ")}`,
+    );
+  }
+
+  const usedOverlap = usedSeedOverlap(validationSeeds);
+  if (usedOverlap.length > 0) {
+    throw new Error(
+      `validation seeds overlap a range an earlier run used ` +
+        `(${USED_SEED_RANGES.map(([a, b]) => `${a}-${b}`).join(", ")}): ${
+          usedOverlap.join(", ")
+        }`,
     );
   }
 
@@ -395,8 +407,15 @@ if (import.meta.main) {
           "records charged by every run that shaped the design or the harness, counted as search cost alongside calibration; bounds are 240,000 records per run, which is the most one run can charge",
         calibrationRecordsCharged,
         runs: PREPARATION_RUNS,
-        validationSeedsUntouched:
-          "the validation seeds in this manifest were used by no earlier run; the earlier full runs used the CLI default of the day, 4156-4185, so that range was set aside rather than reported",
+        // Derived from the seeds actually run, not asserted: an overlapping
+        // range is refused above, so this is true whenever a manifest exists.
+        validationSeedsUntouched: usedSeedOverlap(validationSeeds).length === 0,
+        earlierRunSeedRanges: USED_SEED_RANGES.map(([first, last]) => ({
+          first,
+          last,
+        })),
+        earlierRunSeedNote:
+          "the earlier full runs used the CLI default of the day, 4156-4185, so that range is refused as a validation range; the pilot's seeds were not recorded",
       },
       paper: {
         url: PAPER,
