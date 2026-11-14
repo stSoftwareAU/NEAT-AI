@@ -1,0 +1,5188 @@
+{
+  "manifest": {
+    "issue": 4160,
+    "codeVersion": "b345b837",
+    "neatAiVersion": "7.1.17",
+    "denoVersion": "2.9.8",
+    "corpusSeed": 4160,
+    "inputs": 4,
+    "hidden": 8,
+    "settings": {
+      "populationSize": 20,
+      "budgetRecords": 60000,
+      "trainRecords": 300,
+      "holdoutRecords": 300,
+      "mutationRate": 0.5,
+      "maxGenerations": 1000,
+      "stallGenerations": 50
+    },
+    "inDegrees": [
+      1.5,
+      2,
+      3
+    ],
+    "fanOuts": [
+      1,
+      2,
+      3
+    ],
+    "calibrationSeeds": [
+      94160,
+      94161,
+      94162,
+      94163
+    ],
+    "validationSeeds": [
+      4160,
+      4161,
+      4162,
+      4163,
+      4164,
+      4165,
+      4166,
+      4167,
+      4168,
+      4169,
+      4170,
+      4171,
+      4172,
+      4173,
+      4174,
+      4175,
+      4176,
+      4177,
+      4178,
+      4179
+    ],
+    "bootstrap": {
+      "resamples": 10000,
+      "seed": 4160
+    },
+    "criteria": "benefit iff the paired-bootstrap 95% CI of (arm - control) holdout MSE lies below 0, the median holdout MSE is lower, and the upper-quartile (lower-quartile performance) holdout MSE is lower; harm iff the CI lies above 0; otherwise no-benefit. Confirmatory test: the one cell chosen on calibration seeds. All other cells are exploratory.",
+    "selfLoops": {
+      "status": "unavailable",
+      "reason": "this harness evaluates through the forward-only path (forwardOnly: true, the production default); self-loops were not swept"
+    },
+    "paper": "arXiv 2610.33498 not read; the method is this repository's reading of the issue"
+  },
+  "calibration": {
+    "runs": [
+      {
+        "arm": "control",
+        "seed": 94160,
+        "trainMse": 0.07193303420813388,
+        "holdoutMse": 0.08920395543799785,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.125,
+          "meanInputFanOut": 7.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 94161,
+        "trainMse": 0.05519066972061857,
+        "holdoutMse": 0.06320741811437237,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 7,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 94162,
+        "trainMse": 0.10650568107718572,
+        "holdoutMse": 0.12339385217547703,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 7,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 94163,
+        "trainMse": 0.029634490943071277,
+        "holdoutMse": 0.03013322651280148,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 16,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.7777777777777777,
+          "meanInputFanOut": 8.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 94160,
+        "trainMse": 0.026987362708481122,
+        "holdoutMse": 0.026236083026595136,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 10,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6923076923076923,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 94161,
+        "trainMse": 0.10184352845424818,
+        "holdoutMse": 0.11274444832170291,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3333333333333333,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 94162,
+        "trainMse": 0.048366442198695986,
+        "holdoutMse": 0.05374244110645057,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 94163,
+        "trainMse": 0.03977953969510224,
+        "holdoutMse": 0.04443698692806862,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 94160,
+        "trainMse": 0.06287785450195148,
+        "holdoutMse": 0.06999779654670558,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3636363636363635,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 94161,
+        "trainMse": 0.020511482509239887,
+        "holdoutMse": 0.02064815465834409,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.625,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 94162,
+        "trainMse": 0.05513474818800349,
+        "holdoutMse": 0.05942754274347171,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3125,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 94163,
+        "trainMse": 0.05582478661838741,
+        "holdoutMse": 0.06202286407982307,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.7777777777777777,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 94160,
+        "trainMse": 0.01901749453631956,
+        "holdoutMse": 0.021685277467366575,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 5.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 94161,
+        "trainMse": 0.021651604930534408,
+        "holdoutMse": 0.022142955253503994,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.875,
+          "meanInputFanOut": 5.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 94162,
+        "trainMse": 0.07602593632484732,
+        "holdoutMse": 0.09230105813435034,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.375,
+          "meanInputFanOut": 6.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 94163,
+        "trainMse": 0.06098326194044811,
+        "holdoutMse": 0.07279068471125517,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 94160,
+        "trainMse": 0.036691555324162725,
+        "holdoutMse": 0.041578610066180084,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 94161,
+        "trainMse": 0.022906016863851474,
+        "holdoutMse": 0.024272222174229807,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.8571428571428572,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 94162,
+        "trainMse": 0.024827696621294554,
+        "holdoutMse": 0.025110233112759173,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 94163,
+        "trainMse": 0.03842235533823778,
+        "holdoutMse": 0.04163656744237179,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 94160,
+        "trainMse": 0.04499427729338238,
+        "holdoutMse": 0.05013670679533941,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.8571428571428572,
+          "meanInputFanOut": 2,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 94161,
+        "trainMse": 0.05539999710636995,
+        "holdoutMse": 0.057611639057022025,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.111111111111111,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 94162,
+        "trainMse": 0.08289067598596259,
+        "holdoutMse": 0.08691517089365114,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 10,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.4,
+          "meanInputFanOut": 3.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 94163,
+        "trainMse": 0.07940792526523896,
+        "holdoutMse": 0.08692904956865792,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 10,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.4285714285714284,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 94160,
+        "trainMse": 0.0575472510402114,
+        "holdoutMse": 0.0671884650063861,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.375,
+          "meanInputFanOut": 3.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 94161,
+        "trainMse": 0.07838869355852572,
+        "holdoutMse": 0.08343062612516274,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 16,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.7857142857142858,
+          "meanInputFanOut": 4.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 94162,
+        "trainMse": 0.06019323034449395,
+        "holdoutMse": 0.06535524327955002,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 10,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 94163,
+        "trainMse": 0.021441861616309014,
+        "holdoutMse": 0.02231478779699936,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.0833333333333335,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 94160,
+        "trainMse": 0.021701804067071808,
+        "holdoutMse": 0.021784303661021787,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 94161,
+        "trainMse": 0.021754514043322883,
+        "holdoutMse": 0.020164590386020566,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.7,
+          "meanInputFanOut": 1.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 94162,
+        "trainMse": 0.022523665780201714,
+        "holdoutMse": 0.02349976771078237,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 94163,
+        "trainMse": 0.02275383874608314,
+        "holdoutMse": 0.02417595611499682,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 94160,
+        "trainMse": 0.03405342206258764,
+        "holdoutMse": 0.034007001762114124,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.25,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 94161,
+        "trainMse": 0.04585291272865055,
+        "holdoutMse": 0.045581637500559345,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.25,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 94162,
+        "trainMse": 0.07946523934054284,
+        "holdoutMse": 0.09326878768009186,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.625,
+          "meanInputFanOut": 3.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 94163,
+        "trainMse": 0.03051554534920229,
+        "holdoutMse": 0.03032394918336906,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 94160,
+        "trainMse": 0.03411484742152108,
+        "holdoutMse": 0.033963776381693934,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 94161,
+        "trainMse": 0.04292348000676896,
+        "holdoutMse": 0.04810852953052075,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.857142857142857,
+          "meanInputFanOut": 5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 94162,
+        "trainMse": 0.03389524038094555,
+        "holdoutMse": 0.03798196150941035,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.75,
+          "meanInputFanOut": 6.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 94163,
+        "trainMse": 0.06541809864397781,
+        "holdoutMse": 0.06884383769993943,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.25,
+          "meanInputFanOut": 5.5,
+          "reachable": true
+        }
+      }
+    ],
+    "chosenCell": "d3-f1",
+    "threshold": 0.06356185196437622,
+    "records": 2400000
+  },
+  "validation": {
+    "runs": [
+      {
+        "arm": "control",
+        "seed": 4160,
+        "trainMse": 0.02744691091249477,
+        "holdoutMse": 0.030301631156463966,
+        "recordsScored": 60000,
+        "recordsToThreshold": 20100,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.875,
+          "meanInputFanOut": 7.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4161,
+        "trainMse": 0.04515307334823472,
+        "holdoutMse": 0.05108063613766598,
+        "recordsScored": 60000,
+        "recordsToThreshold": 36900,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.9,
+          "meanInputFanOut": 9.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4162,
+        "trainMse": 0.031390845148027494,
+        "holdoutMse": 0.034222049487217306,
+        "recordsScored": 60000,
+        "recordsToThreshold": 26400,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4163,
+        "trainMse": 0.030719228967002857,
+        "holdoutMse": 0.035542416723385234,
+        "recordsScored": 60000,
+        "recordsToThreshold": 20100,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4164,
+        "trainMse": 0.0313934035676273,
+        "holdoutMse": 0.032932337522865125,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16200,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.875,
+          "meanInputFanOut": 7.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4165,
+        "trainMse": 0.03822657974229229,
+        "holdoutMse": 0.04557555730210278,
+        "recordsScored": 60000,
+        "recordsToThreshold": 29700,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.6666666666666665,
+          "meanInputFanOut": 7.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4166,
+        "trainMse": 0.03324351253198016,
+        "holdoutMse": 0.03798799774979397,
+        "recordsScored": 60000,
+        "recordsToThreshold": 28200,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.875,
+          "meanInputFanOut": 7.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4167,
+        "trainMse": 0.03614280496181341,
+        "holdoutMse": 0.041637811622398956,
+        "recordsScored": 60000,
+        "recordsToThreshold": 36600,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4168,
+        "trainMse": 0.03054375392714561,
+        "holdoutMse": 0.03163639938755902,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21600,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4169,
+        "trainMse": 0.026480633278761965,
+        "holdoutMse": 0.027826359535380565,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11100,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.125,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4170,
+        "trainMse": 0.02170921109561766,
+        "holdoutMse": 0.022995435409568013,
+        "recordsScored": 60000,
+        "recordsToThreshold": 19200,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4171,
+        "trainMse": 0.074975872740032,
+        "holdoutMse": 0.08951351453451674,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.875,
+          "meanInputFanOut": 7.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4172,
+        "trainMse": 0.04257526623979053,
+        "holdoutMse": 0.055945231729004424,
+        "recordsScored": 60000,
+        "recordsToThreshold": 15900,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4173,
+        "trainMse": 0.042063233766858436,
+        "holdoutMse": 0.04315067762688747,
+        "recordsScored": 60000,
+        "recordsToThreshold": 17400,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4174,
+        "trainMse": 0.026462969986126402,
+        "holdoutMse": 0.030163813726320998,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27900,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 7,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4175,
+        "trainMse": 0.036352638687718965,
+        "holdoutMse": 0.03673134374450986,
+        "recordsScored": 60000,
+        "recordsToThreshold": 17100,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.125,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4176,
+        "trainMse": 0.039057133575734246,
+        "holdoutMse": 0.03784209632728112,
+        "recordsScored": 60000,
+        "recordsToThreshold": 42600,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 7,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4177,
+        "trainMse": 0.055402510657793606,
+        "holdoutMse": 0.06001316446807008,
+        "recordsScored": 60000,
+        "recordsToThreshold": 54900,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 7,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4178,
+        "trainMse": 0.04643761585544257,
+        "holdoutMse": 0.05172874804038926,
+        "recordsScored": 60000,
+        "recordsToThreshold": 53700,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 7,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "control",
+        "seed": 4179,
+        "trainMse": 0.020533021543639642,
+        "holdoutMse": 0.021327095584120256,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21600,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.888888888888889,
+          "meanInputFanOut": 8.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4160,
+        "trainMse": 0.04115359333687516,
+        "holdoutMse": 0.04454609306083399,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16200,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4161,
+        "trainMse": 0.03701468362018454,
+        "holdoutMse": 0.040017714111648506,
+        "recordsScored": 60000,
+        "recordsToThreshold": 26100,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4162,
+        "trainMse": 0.07806283439239167,
+        "holdoutMse": 0.0930819621314604,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4163,
+        "trainMse": 0.07349684048445795,
+        "holdoutMse": 0.07981739197587297,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.25,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4164,
+        "trainMse": 0.04294100717248423,
+        "holdoutMse": 0.04114874654271634,
+        "recordsScored": 60000,
+        "recordsToThreshold": 35100,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5555555555555556,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4165,
+        "trainMse": 0.10486371361475691,
+        "holdoutMse": 0.1206827368567359,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3846153846153846,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4166,
+        "trainMse": 0.06402358805271914,
+        "holdoutMse": 0.07073065741696968,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.4166666666666667,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4167,
+        "trainMse": 0.12050464184531182,
+        "holdoutMse": 0.1272068085091004,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3333333333333333,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4168,
+        "trainMse": 0.09004639029964957,
+        "holdoutMse": 0.08862884095229998,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3333333333333333,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4169,
+        "trainMse": 0.046582381860418076,
+        "holdoutMse": 0.05607737755109536,
+        "recordsScored": 60000,
+        "recordsToThreshold": 42600,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3157894736842106,
+          "meanInputFanOut": 1.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4170,
+        "trainMse": 0.047045839366455275,
+        "holdoutMse": 0.05498090448704133,
+        "recordsScored": 60000,
+        "recordsToThreshold": 44400,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.625,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4171,
+        "trainMse": 0.026887973580023587,
+        "holdoutMse": 0.029544307033020908,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16200,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.4285714285714286,
+          "meanInputFanOut": 0.75,
+          "reachable": false
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4172,
+        "trainMse": 0.0645255162722919,
+        "holdoutMse": 0.07603081726597628,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4173,
+        "trainMse": 0.0985620781716407,
+        "holdoutMse": 0.11829281019198651,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4174,
+        "trainMse": 0.03522428866539019,
+        "holdoutMse": 0.038481082607702624,
+        "recordsScored": 60000,
+        "recordsToThreshold": 32100,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4175,
+        "trainMse": 0.0911920576333668,
+        "holdoutMse": 0.10535045635286225,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6363636363636365,
+          "meanInputFanOut": 1.25,
+          "reachable": false
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4176,
+        "trainMse": 0.035127424876694915,
+        "holdoutMse": 0.03962978889569772,
+        "recordsScored": 60000,
+        "recordsToThreshold": 41400,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.588235294117647,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4177,
+        "trainMse": 0.052532096783686186,
+        "holdoutMse": 0.05704671040004776,
+        "recordsScored": 60000,
+        "recordsToThreshold": 57000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4178,
+        "trainMse": 0.059506669762988386,
+        "holdoutMse": 0.06743344801518746,
+        "recordsScored": 60000,
+        "recordsToThreshold": 58200,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5454545454545454,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f1",
+        "seed": 4179,
+        "trainMse": 0.10527047977364004,
+        "holdoutMse": 0.13135309809499618,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.625,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4160,
+        "trainMse": 0.030723666166096127,
+        "holdoutMse": 0.029350572274669393,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16200,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5454545454545454,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4161,
+        "trainMse": 0.03321359312858213,
+        "holdoutMse": 0.03653157921321508,
+        "recordsScored": 60000,
+        "recordsToThreshold": 22500,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4162,
+        "trainMse": 0.10754783656804745,
+        "holdoutMse": 0.11014095489266033,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4163,
+        "trainMse": 0.028331732203374472,
+        "holdoutMse": 0.030969394842028174,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11100,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.3333333333333333,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4164,
+        "trainMse": 0.04639722279479061,
+        "holdoutMse": 0.049782769676799885,
+        "recordsScored": 60000,
+        "recordsToThreshold": 53400,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4165,
+        "trainMse": 0.05255206257299756,
+        "holdoutMse": 0.05427211949363164,
+        "recordsScored": 60000,
+        "recordsToThreshold": 54600,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.7272727272727273,
+          "meanInputFanOut": 3.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4166,
+        "trainMse": 0.02646891355763066,
+        "holdoutMse": 0.027959221257155338,
+        "recordsScored": 60000,
+        "recordsToThreshold": 12000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.625,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4167,
+        "trainMse": 0.07465842102892908,
+        "holdoutMse": 0.08279139392361015,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4168,
+        "trainMse": 0.0350807898179073,
+        "holdoutMse": 0.03871824987912844,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21900,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4169,
+        "trainMse": 0.06363750179377102,
+        "holdoutMse": 0.07417873723318964,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4170,
+        "trainMse": 0.044360895769855885,
+        "holdoutMse": 0.04433835209066446,
+        "recordsScored": 60000,
+        "recordsToThreshold": 45000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.625,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4171,
+        "trainMse": 0.11267206518482692,
+        "holdoutMse": 0.1266865392073047,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 32,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6153846153846154,
+          "meanInputFanOut": 3.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4172,
+        "trainMse": 0.020519784114360794,
+        "holdoutMse": 0.019332644189052308,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11700,
+        "generations": 16,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.625,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4173,
+        "trainMse": 0.07248826768775304,
+        "holdoutMse": 0.07730609905419447,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.875,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4174,
+        "trainMse": 0.02484927006917532,
+        "holdoutMse": 0.02377111234412874,
+        "recordsScored": 60000,
+        "recordsToThreshold": 23700,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.625,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4175,
+        "trainMse": 0.0303545994976602,
+        "holdoutMse": 0.03242596067975011,
+        "recordsScored": 60000,
+        "recordsToThreshold": 17400,
+        "generations": 16,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.7777777777777777,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4176,
+        "trainMse": 0.02596430378632243,
+        "holdoutMse": 0.02732579335475767,
+        "recordsScored": 60000,
+        "recordsToThreshold": 6000,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.75,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4177,
+        "trainMse": 0.023082886686774162,
+        "holdoutMse": 0.024380276531700936,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21000,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.4545454545454546,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4178,
+        "trainMse": 0.025683675668632524,
+        "holdoutMse": 0.02559056612767724,
+        "recordsScored": 60000,
+        "recordsToThreshold": 12000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.75,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f2",
+        "seed": 4179,
+        "trainMse": 0.08353648124697122,
+        "holdoutMse": 0.10177280927713311,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.4545454545454546,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4160,
+        "trainMse": 0.022128654948848456,
+        "holdoutMse": 0.021410507433152058,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11400,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.75,
+          "meanInputFanOut": 3.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4161,
+        "trainMse": 0.029576540636827898,
+        "holdoutMse": 0.03062003402259955,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27000,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 6.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4162,
+        "trainMse": 0.029986056421706882,
+        "holdoutMse": 0.03252123312833643,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16200,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.4285714285714284,
+          "meanInputFanOut": 4.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4163,
+        "trainMse": 0.029838926179445988,
+        "holdoutMse": 0.031906269126211195,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16800,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.25,
+          "meanInputFanOut": 6.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4164,
+        "trainMse": 0.03630650820035471,
+        "holdoutMse": 0.038947524014397494,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21900,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 6,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4165,
+        "trainMse": 0.04722031934005921,
+        "holdoutMse": 0.05085638433195383,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21900,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.375,
+          "meanInputFanOut": 4.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4166,
+        "trainMse": 0.028080335134850875,
+        "holdoutMse": 0.030019562850578538,
+        "recordsScored": 60000,
+        "recordsToThreshold": 22500,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4167,
+        "trainMse": 0.053359613902209634,
+        "holdoutMse": 0.06246034913860851,
+        "recordsScored": 60000,
+        "recordsToThreshold": 46200,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4168,
+        "trainMse": 0.029535238419409394,
+        "holdoutMse": 0.03491538784810288,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21600,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 6,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4169,
+        "trainMse": 0.03334485517789846,
+        "holdoutMse": 0.03442994005758565,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27900,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4170,
+        "trainMse": 0.07253273504578274,
+        "holdoutMse": 0.0751300650750839,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4171,
+        "trainMse": 0.08485893652131304,
+        "holdoutMse": 0.0920685385303719,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.75,
+          "meanInputFanOut": 5.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4172,
+        "trainMse": 0.10693425326298346,
+        "holdoutMse": 0.11984043673224243,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.75,
+          "meanInputFanOut": 5.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4173,
+        "trainMse": 0.03599069866924245,
+        "holdoutMse": 0.04029245975019316,
+        "recordsScored": 60000,
+        "recordsToThreshold": 32700,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.875,
+          "meanInputFanOut": 5.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4174,
+        "trainMse": 0.07998181093176826,
+        "holdoutMse": 0.08614041213073316,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.375,
+          "meanInputFanOut": 6.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4175,
+        "trainMse": 0.02188963285306609,
+        "holdoutMse": 0.023945594065444258,
+        "recordsScored": 60000,
+        "recordsToThreshold": 24000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4176,
+        "trainMse": 0.04243937488170107,
+        "holdoutMse": 0.043592115661805646,
+        "recordsScored": 60000,
+        "recordsToThreshold": 58200,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 6.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4177,
+        "trainMse": 0.03929780320948106,
+        "holdoutMse": 0.03890178201760164,
+        "recordsScored": 60000,
+        "recordsToThreshold": 47400,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.875,
+          "meanInputFanOut": 5.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4178,
+        "trainMse": 0.029795029822232866,
+        "holdoutMse": 0.029115488649952753,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16800,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6666666666666667,
+          "meanInputFanOut": 3.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d1.5-f3",
+        "seed": 4179,
+        "trainMse": 0.0317872258966302,
+        "holdoutMse": 0.033471282423237575,
+        "recordsScored": 60000,
+        "recordsToThreshold": 33900,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 1.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.4285714285714284,
+          "meanInputFanOut": 4.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4160,
+        "trainMse": 0.1153889207035737,
+        "holdoutMse": 0.1336594243032931,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6666666666666667,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4161,
+        "trainMse": 0.022743182969215705,
+        "holdoutMse": 0.02227709742273976,
+        "recordsScored": 60000,
+        "recordsToThreshold": 6000,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.8571428571428572,
+          "meanInputFanOut": 0.75,
+          "reachable": false
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4162,
+        "trainMse": 0.07627985180226705,
+        "holdoutMse": 0.08339634705307987,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6923076923076923,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4163,
+        "trainMse": 0.025759232776797328,
+        "holdoutMse": 0.025793466080061753,
+        "recordsScored": 60000,
+        "recordsToThreshold": 25500,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.111111111111111,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4164,
+        "trainMse": 0.13200032375412651,
+        "holdoutMse": 0.15576841713483186,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.9166666666666667,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4165,
+        "trainMse": 0.03843144317775123,
+        "holdoutMse": 0.04364712816529414,
+        "recordsScored": 60000,
+        "recordsToThreshold": 33000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.8461538461538463,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4166,
+        "trainMse": 0.05730092427865486,
+        "holdoutMse": 0.06484432121238724,
+        "recordsScored": 60000,
+        "recordsToThreshold": 60000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.142857142857143,
+          "meanInputFanOut": 0.75,
+          "reachable": false
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4167,
+        "trainMse": 0.02722182313842295,
+        "holdoutMse": 0.02579116133209798,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11100,
+        "generations": 22,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4168,
+        "trainMse": 0.03913345239493387,
+        "holdoutMse": 0.04200112854130403,
+        "recordsScored": 60000,
+        "recordsToThreshold": 43800,
+        "generations": 16,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.75,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4169,
+        "trainMse": 0.024046580253618693,
+        "holdoutMse": 0.024825800363412597,
+        "recordsScored": 60000,
+        "recordsToThreshold": 17400,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4170,
+        "trainMse": 0.07555410007964414,
+        "holdoutMse": 0.08197576948178387,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 16,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4171,
+        "trainMse": 0.10862846688988673,
+        "holdoutMse": 0.120395222690497,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4172,
+        "trainMse": 0.08842351778237832,
+        "holdoutMse": 0.09918779827524819,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 26,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4173,
+        "trainMse": 0.02818039064370347,
+        "holdoutMse": 0.029806838998768168,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21900,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4174,
+        "trainMse": 0.02581106589419182,
+        "holdoutMse": 0.027866232827253465,
+        "recordsScored": 60000,
+        "recordsToThreshold": 17400,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4175,
+        "trainMse": 0.072785337595394,
+        "holdoutMse": 0.0807796220922867,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.7692307692307692,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4176,
+        "trainMse": 0.08807302667210684,
+        "holdoutMse": 0.09884637004132989,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 20,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.125,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4177,
+        "trainMse": 0.05139570803078394,
+        "holdoutMse": 0.056943892903200274,
+        "recordsScored": 60000,
+        "recordsToThreshold": 48300,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4178,
+        "trainMse": 0.146100952069163,
+        "holdoutMse": 0.17309147694952637,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 0.75,
+          "reachable": false
+        }
+      },
+      {
+        "arm": "d2-f1",
+        "seed": 4179,
+        "trainMse": 0.044800874186059714,
+        "holdoutMse": 0.04485880889549689,
+        "recordsScored": 60000,
+        "recordsToThreshold": 46500,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4160,
+        "trainMse": 0.0445641584442982,
+        "holdoutMse": 0.05045255178035475,
+        "recordsScored": 60000,
+        "recordsToThreshold": 32400,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4161,
+        "trainMse": 0.0492975749054478,
+        "holdoutMse": 0.050907250417006084,
+        "recordsScored": 60000,
+        "recordsToThreshold": 33900,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4162,
+        "trainMse": 0.044759892041026796,
+        "holdoutMse": 0.04586417603477555,
+        "recordsScored": 60000,
+        "recordsToThreshold": 33600,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4163,
+        "trainMse": 0.049084475790450444,
+        "holdoutMse": 0.05040964872326497,
+        "recordsScored": 60000,
+        "recordsToThreshold": 31800,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4164,
+        "trainMse": 0.03822719790522019,
+        "holdoutMse": 0.04258701693693929,
+        "recordsScored": 60000,
+        "recordsToThreshold": 36300,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4165,
+        "trainMse": 0.028878602345659584,
+        "holdoutMse": 0.028984562775148295,
+        "recordsScored": 60000,
+        "recordsToThreshold": 22200,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4166,
+        "trainMse": 0.03435316640630215,
+        "holdoutMse": 0.032602093913675745,
+        "recordsScored": 60000,
+        "recordsToThreshold": 26400,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.736842105263158,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4167,
+        "trainMse": 0.04845125879895165,
+        "holdoutMse": 0.051326725410506376,
+        "recordsScored": 60000,
+        "recordsToThreshold": 42600,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.125,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4168,
+        "trainMse": 0.024549564078018307,
+        "holdoutMse": 0.02612966444717817,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21000,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4169,
+        "trainMse": 0.040720239890523244,
+        "holdoutMse": 0.04413655135568759,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21300,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4170,
+        "trainMse": 0.06323820852914949,
+        "holdoutMse": 0.06761297662800125,
+        "recordsScored": 60000,
+        "recordsToThreshold": 58500,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.0833333333333335,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4171,
+        "trainMse": 0.03665903628688343,
+        "holdoutMse": 0.038975657983586265,
+        "recordsScored": 60000,
+        "recordsToThreshold": 49200,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4172,
+        "trainMse": 0.15219896744680914,
+        "holdoutMse": 0.1645718807001787,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.125,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4173,
+        "trainMse": 0.04027633422061768,
+        "holdoutMse": 0.041953642167296745,
+        "recordsScored": 60000,
+        "recordsToThreshold": 33000,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.125,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4174,
+        "trainMse": 0.04407625244676247,
+        "holdoutMse": 0.046139460620491464,
+        "recordsScored": 60000,
+        "recordsToThreshold": 38400,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6666666666666665,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4175,
+        "trainMse": 0.03942988655766388,
+        "holdoutMse": 0.04502987415448193,
+        "recordsScored": 60000,
+        "recordsToThreshold": 18000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4176,
+        "trainMse": 0.023610816100848118,
+        "holdoutMse": 0.023731196111979255,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27900,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4177,
+        "trainMse": 0.05599044084341039,
+        "holdoutMse": 0.06392107243568794,
+        "recordsScored": 60000,
+        "recordsToThreshold": 50700,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4178,
+        "trainMse": 0.07449684902711645,
+        "holdoutMse": 0.07885959013258947,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f2",
+        "seed": 4179,
+        "trainMse": 0.11272854856930375,
+        "holdoutMse": 0.12462501172200194,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.625,
+          "meanInputFanOut": 3.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4160,
+        "trainMse": 0.037237101281772926,
+        "holdoutMse": 0.043786920993607675,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21300,
+        "generations": 18,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.272727272727273,
+          "meanInputFanOut": 4.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4161,
+        "trainMse": 0.029282314893463307,
+        "holdoutMse": 0.03032749625672977,
+        "recordsScored": 60000,
+        "recordsToThreshold": 25200,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.909090909090909,
+          "meanInputFanOut": 6.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4162,
+        "trainMse": 0.021957167339794147,
+        "holdoutMse": 0.027768201198907713,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27600,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.75,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4163,
+        "trainMse": 0.032304117274402834,
+        "holdoutMse": 0.0330336971670193,
+        "recordsScored": 60000,
+        "recordsToThreshold": 38700,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.5,
+          "meanInputFanOut": 8,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4164,
+        "trainMse": 0.04507213624224072,
+        "holdoutMse": 0.04541305491648266,
+        "recordsScored": 60000,
+        "recordsToThreshold": 28800,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 3.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4165,
+        "trainMse": 0.033444181107719136,
+        "holdoutMse": 0.0362196938481791,
+        "recordsScored": 60000,
+        "recordsToThreshold": 22200,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.875,
+          "meanInputFanOut": 4.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4166,
+        "trainMse": 0.05236606808102399,
+        "holdoutMse": 0.05934059296680573,
+        "recordsScored": 60000,
+        "recordsToThreshold": 49800,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 1.6470588235294117,
+          "meanInputFanOut": 4.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4167,
+        "trainMse": 0.04112333603479823,
+        "holdoutMse": 0.04618288661126163,
+        "recordsScored": 60000,
+        "recordsToThreshold": 41100,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6923076923076925,
+          "meanInputFanOut": 6.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4168,
+        "trainMse": 0.025566430755399716,
+        "holdoutMse": 0.025595123458092034,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16500,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.7,
+          "meanInputFanOut": 5.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4169,
+        "trainMse": 0.04923079904806263,
+        "holdoutMse": 0.0577949828846684,
+        "recordsScored": 60000,
+        "recordsToThreshold": 29100,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 3.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4170,
+        "trainMse": 0.08185275467010071,
+        "holdoutMse": 0.09513748676628053,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6363636363636362,
+          "meanInputFanOut": 6,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4171,
+        "trainMse": 0.047566228789390395,
+        "holdoutMse": 0.058089797544061475,
+        "recordsScored": 60000,
+        "recordsToThreshold": 53100,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.7777777777777777,
+          "meanInputFanOut": 5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4172,
+        "trainMse": 0.03812048965859949,
+        "holdoutMse": 0.03953185143089238,
+        "recordsScored": 60000,
+        "recordsToThreshold": 42300,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.3,
+          "meanInputFanOut": 6.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4173,
+        "trainMse": 0.03579807599572801,
+        "holdoutMse": 0.034621046067905885,
+        "recordsScored": 60000,
+        "recordsToThreshold": 41700,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.857142857142857,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4174,
+        "trainMse": 0.03911222250857154,
+        "holdoutMse": 0.04178304356823272,
+        "recordsScored": 60000,
+        "recordsToThreshold": 37800,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.25,
+          "meanInputFanOut": 3.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4175,
+        "trainMse": 0.038580908874667266,
+        "holdoutMse": 0.04160006781860541,
+        "recordsScored": 60000,
+        "recordsToThreshold": 18000,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.375,
+          "meanInputFanOut": 3.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4176,
+        "trainMse": 0.024789435861428802,
+        "holdoutMse": 0.026289852984045087,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27000,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.7142857142857144,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4177,
+        "trainMse": 0.02229681809451456,
+        "holdoutMse": 0.022333209073135886,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11100,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.625,
+          "meanInputFanOut": 4.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4178,
+        "trainMse": 0.05032595129688375,
+        "holdoutMse": 0.05533581986170011,
+        "recordsScored": 60000,
+        "recordsToThreshold": 44400,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.75,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d2-f3",
+        "seed": 4179,
+        "trainMse": 0.04933678257037619,
+        "holdoutMse": 0.05730152007280238,
+        "recordsScored": 60000,
+        "recordsToThreshold": 36000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 2,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4160,
+        "trainMse": 0.033403418997034334,
+        "holdoutMse": 0.03782315314552801,
+        "recordsScored": 60000,
+        "recordsToThreshold": 22200,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4161,
+        "trainMse": 0.06764591223526828,
+        "holdoutMse": 0.0761318073659243,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.375,
+          "meanInputFanOut": 1.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4162,
+        "trainMse": 0.02228182764910572,
+        "holdoutMse": 0.023740518731557168,
+        "recordsScored": 60000,
+        "recordsToThreshold": 17700,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4163,
+        "trainMse": 0.053159770440367904,
+        "holdoutMse": 0.050914895372948465,
+        "recordsScored": 60000,
+        "recordsToThreshold": 49500,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.888888888888889,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4164,
+        "trainMse": 0.02731789584685044,
+        "holdoutMse": 0.028473774429198753,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.7777777777777777,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4165,
+        "trainMse": 0.10747092024109677,
+        "holdoutMse": 0.11776679238294493,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6923076923076925,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4166,
+        "trainMse": 0.043630802665288265,
+        "holdoutMse": 0.04674357052373842,
+        "recordsScored": 60000,
+        "recordsToThreshold": 22500,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6153846153846154,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4167,
+        "trainMse": 0.05880986981729669,
+        "holdoutMse": 0.06323872539276935,
+        "recordsScored": 60000,
+        "recordsToThreshold": 55200,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5714285714285716,
+          "meanInputFanOut": 0.75,
+          "reachable": false
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4168,
+        "trainMse": 0.04480736497413716,
+        "holdoutMse": 0.051433115469892945,
+        "recordsScored": 60000,
+        "recordsToThreshold": 17100,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4169,
+        "trainMse": 0.022810649236012694,
+        "holdoutMse": 0.02323130004034576,
+        "recordsScored": 60000,
+        "recordsToThreshold": 10800,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.25,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4170,
+        "trainMse": 0.06457666249485626,
+        "holdoutMse": 0.06910799801425299,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6666666666666665,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4171,
+        "trainMse": 0.1203843004040255,
+        "holdoutMse": 0.1357589949830866,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4172,
+        "trainMse": 0.13864285894571582,
+        "holdoutMse": 0.16125988973356958,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6153846153846154,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4173,
+        "trainMse": 0.041679749189320964,
+        "holdoutMse": 0.04863427041850351,
+        "recordsScored": 60000,
+        "recordsToThreshold": 30900,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.2857142857142856,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4174,
+        "trainMse": 0.08975108938132725,
+        "holdoutMse": 0.1009730405475511,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.75,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4175,
+        "trainMse": 0.026438937913222615,
+        "holdoutMse": 0.029456985307277493,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21300,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.411764705882353,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4176,
+        "trainMse": 0.02576545143382638,
+        "holdoutMse": 0.027677155436213217,
+        "recordsScored": 60000,
+        "recordsToThreshold": 34800,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.388888888888889,
+          "meanInputFanOut": 1.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4177,
+        "trainMse": 0.07584814710807762,
+        "holdoutMse": 0.0844340706651177,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4178,
+        "trainMse": 0.1331912182334768,
+        "holdoutMse": 0.14718726258577897,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 1.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f1",
+        "seed": 4179,
+        "trainMse": 0.05911434072386388,
+        "holdoutMse": 0.06659196691638679,
+        "recordsScored": 60000,
+        "recordsToThreshold": 56100,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 1,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4160,
+        "trainMse": 0.03260436908040527,
+        "holdoutMse": 0.03367046389913197,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16500,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4161,
+        "trainMse": 0.03938213773267088,
+        "holdoutMse": 0.0427303657303745,
+        "recordsScored": 60000,
+        "recordsToThreshold": 15600,
+        "generations": 15,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.375,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4162,
+        "trainMse": 0.059212918909587166,
+        "holdoutMse": 0.06418149702328307,
+        "recordsScored": 60000,
+        "recordsToThreshold": 57300,
+        "generations": 17,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.75,
+          "meanInputFanOut": 1.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4163,
+        "trainMse": 0.025961488899790594,
+        "holdoutMse": 0.027112164158184234,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11700,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.375,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4164,
+        "trainMse": 0.14770676749044626,
+        "holdoutMse": 0.16793573955578436,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4165,
+        "trainMse": 0.04121592407867288,
+        "holdoutMse": 0.042876640741554756,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27900,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4166,
+        "trainMse": 0.047268105296876056,
+        "holdoutMse": 0.05193806628958764,
+        "recordsScored": 60000,
+        "recordsToThreshold": 37500,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4167,
+        "trainMse": 0.03881686892511543,
+        "holdoutMse": 0.041901065956963975,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27600,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4168,
+        "trainMse": 0.02135372806573774,
+        "holdoutMse": 0.022396242440176767,
+        "recordsScored": 60000,
+        "recordsToThreshold": 6000,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.6153846153846154,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4169,
+        "trainMse": 0.1272903813082514,
+        "holdoutMse": 0.13280415015813674,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.125,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4170,
+        "trainMse": 0.022475928534788504,
+        "holdoutMse": 0.022744231663208977,
+        "recordsScored": 60000,
+        "recordsToThreshold": 26100,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4171,
+        "trainMse": 0.1581024024499485,
+        "holdoutMse": 0.1741649071594278,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.7142857142857144,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4172,
+        "trainMse": 0.04926766949643726,
+        "holdoutMse": 0.046589506312894116,
+        "recordsScored": 60000,
+        "recordsToThreshold": 41700,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.375,
+          "meanInputFanOut": 2.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4173,
+        "trainMse": 0.030842921253642543,
+        "holdoutMse": 0.032372106509415056,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11400,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4174,
+        "trainMse": 0.027327854091462503,
+        "holdoutMse": 0.02845871015711134,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21600,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.4444444444444446,
+          "meanInputFanOut": 3.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4175,
+        "trainMse": 0.0788306472785077,
+        "holdoutMse": 0.09802566646591858,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 14,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 2.5833333333333335,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4176,
+        "trainMse": 0.02128178926580585,
+        "holdoutMse": 0.021900798432244198,
+        "recordsScored": 60000,
+        "recordsToThreshold": 6000,
+        "generations": 16,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4177,
+        "trainMse": 0.17208702713886373,
+        "holdoutMse": 0.1796952865469213,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.5,
+          "meanInputFanOut": 3,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4178,
+        "trainMse": 0.04413635213937308,
+        "holdoutMse": 0.045350263701174356,
+        "recordsScored": 60000,
+        "recordsToThreshold": 51000,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.4444444444444446,
+          "meanInputFanOut": 3.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f2",
+        "seed": 4179,
+        "trainMse": 0.08400804515277521,
+        "holdoutMse": 0.09175805921649295,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 2.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4160,
+        "trainMse": 0.025267444592527638,
+        "holdoutMse": 0.027684765041202996,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16500,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.125,
+          "meanInputFanOut": 5.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4161,
+        "trainMse": 0.03037584923433501,
+        "holdoutMse": 0.04297207008737313,
+        "recordsScored": 60000,
+        "recordsToThreshold": 15600,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.375,
+          "meanInputFanOut": 5.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4162,
+        "trainMse": 0.061902560160025974,
+        "holdoutMse": 0.0661464300229103,
+        "recordsScored": 60000,
+        "recordsToThreshold": 57300,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.125,
+          "meanInputFanOut": 5.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4163,
+        "trainMse": 0.025291207669062614,
+        "holdoutMse": 0.025147856839921826,
+        "recordsScored": 60000,
+        "recordsToThreshold": 42900,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.25,
+          "meanInputFanOut": 5.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4164,
+        "trainMse": 0.043046181340417405,
+        "holdoutMse": 0.04686594288053542,
+        "recordsScored": 60000,
+        "recordsToThreshold": 44100,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.8461538461538463,
+          "meanInputFanOut": 7.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4165,
+        "trainMse": 0.09361758895054648,
+        "holdoutMse": 0.10262937098024798,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.875,
+          "meanInputFanOut": 6.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4166,
+        "trainMse": 0.03878280086839236,
+        "holdoutMse": 0.036603258049919006,
+        "recordsScored": 60000,
+        "recordsToThreshold": 21600,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.75,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4167,
+        "trainMse": 0.06349268123624413,
+        "holdoutMse": 0.07279462903626757,
+        "recordsScored": 60000,
+        "recordsToThreshold": 57000,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.625,
+          "meanInputFanOut": 6.25,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4168,
+        "trainMse": 0.07890789658791048,
+        "holdoutMse": 0.08292343853511458,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.857142857142857,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4169,
+        "trainMse": 0.06272984875478095,
+        "holdoutMse": 0.06399239848940706,
+        "recordsScored": 60000,
+        "recordsToThreshold": 60000,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.75,
+          "meanInputFanOut": 4.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4170,
+        "trainMse": 0.06184913284392823,
+        "holdoutMse": 0.06847222028411312,
+        "recordsScored": 60000,
+        "recordsToThreshold": 60000,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.375,
+          "meanInputFanOut": 5.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4171,
+        "trainMse": 0.02021418983912083,
+        "holdoutMse": 0.02190798867443038,
+        "recordsScored": 60000,
+        "recordsToThreshold": 30900,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.875,
+          "meanInputFanOut": 4.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4172,
+        "trainMse": 0.023596541304020828,
+        "holdoutMse": 0.02358454221090846,
+        "recordsScored": 60000,
+        "recordsToThreshold": 11400,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4173,
+        "trainMse": 0.05298643107102827,
+        "holdoutMse": 0.052786199512908485,
+        "recordsScored": 60000,
+        "recordsToThreshold": 43800,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.5,
+          "meanInputFanOut": 6,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4174,
+        "trainMse": 0.03624800198966007,
+        "holdoutMse": 0.03427686237351598,
+        "recordsScored": 60000,
+        "recordsToThreshold": 16500,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.25,
+          "meanInputFanOut": 5.5,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4175,
+        "trainMse": 0.11623768642563725,
+        "holdoutMse": 0.12895422151813088,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 5,
+          "meanInputFanOut": 7,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4176,
+        "trainMse": 0.0818764077000498,
+        "holdoutMse": 0.08271476380523295,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.5,
+          "meanInputFanOut": 4,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4177,
+        "trainMse": 0.15924888647236868,
+        "holdoutMse": 0.18456147114181762,
+        "recordsScored": 60000,
+        "recordsToThreshold": null,
+        "generations": 13,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.1538461538461537,
+          "meanInputFanOut": 5.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4178,
+        "trainMse": 0.02078469235224805,
+        "holdoutMse": 0.021608816155022737,
+        "recordsScored": 60000,
+        "recordsToThreshold": 27600,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 4.875,
+          "meanInputFanOut": 6.75,
+          "reachable": true
+        }
+      },
+      {
+        "arm": "d3-f3",
+        "seed": 4179,
+        "trainMse": 0.05325095911194022,
+        "holdoutMse": 0.05553716777571085,
+        "recordsScored": 60000,
+        "recordsToThreshold": 59100,
+        "generations": 11,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 3,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3,
+          "meanInputFanOut": 5,
+          "reachable": true
+        }
+      }
+    ]
+  },
+  "confirmatory": {
+    "arm": "d3-f1",
+    "comparison": {
+      "meanDiff": 0.028621248482354245,
+      "ci": {
+        "mean": 0.028621248482354245,
+        "low": 0.014586034021427255,
+        "high": 0.0438541344062899
+      },
+      "wins": 5,
+      "losses": 15,
+      "medianArm": 0.05733592043133115,
+      "medianControl": 0.03728672003589549,
+      "upperQuartileArm": 0.08856881313572605,
+      "upperQuartileControl": 0.04695182701099358,
+      "verdict": "harm"
+    }
+  },
+  "exploratory": [
+    {
+      "arm": "d1.5-f1",
+      "comparison": {
+        "meanDiff": 0.033096371731887564,
+        "ci": {
+          "mean": 0.033096371731887564,
+          "low": 0.016236779481899055,
+          "high": 0.049901764903964876
+        },
+        "wins": 3,
+        "losses": 17,
+        "medianArm": 0.06908205271607856,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.09614908568681087,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "harm"
+      }
+    },
+    {
+      "arm": "d1.5-f2",
+      "comparison": {
+        "meanDiff": 0.010973541386347532,
+        "ci": {
+          "mean": 0.010973541386347532,
+          "low": -0.002508297346092805,
+          "high": 0.025385522035333556
+        },
+        "wins": 10,
+        "losses": 10,
+        "medianArm": 0.037624914546171756,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.07496057768844085,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "no-benefit"
+      }
+    },
+    {
+      "arm": "d1.5-f3",
+      "comparison": {
+        "meanDiff": 0.006621552458634572,
+        "ci": {
+          "mean": 0.006621552458634572,
+          "low": -0.003158845948163626,
+          "high": 0.017674121728526237
+        },
+        "wins": 9,
+        "losses": 11,
+        "medianArm": 0.03690858493285226,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.0537573755336175,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "no-benefit"
+      }
+    },
+    {
+      "arm": "d2-f1",
+      "comparison": {
+        "meanDiff": 0.030880100347419604,
+        "ci": {
+          "mean": 0.030880100347419604,
+          "low": 0.012449981617781901,
+          "high": 0.05094727473091505
+        },
+        "wins": 8,
+        "losses": 12,
+        "medianArm": 0.06089410705779376,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.09893172709980946,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "harm"
+      }
+    },
+    {
+      "arm": "d2-f2",
+      "comparison": {
+        "meanDiff": 0.015033314331766532,
+        "ci": {
+          "mean": 0.015033314331766532,
+          "low": 0.0007467096473902718,
+          "high": 0.032059714507774055
+        },
+        "wins": 7,
+        "losses": 13,
+        "medianArm": 0.046001818327633504,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.054475312166801765,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "harm"
+      }
+    },
+    {
+      "arm": "d2-f3",
+      "comparison": {
+        "meanDiff": 0.002966601383695737,
+        "ci": {
+          "mean": 0.002966601383695737,
+          "low": -0.006969570035926116,
+          "high": 0.0141669264545367
+        },
+        "wins": 10,
+        "losses": 10,
+        "medianArm": 0.04169155569341906,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.055827244914475674,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "no-benefit"
+      }
+    },
+    {
+      "arm": "d3-f1",
+      "comparison": {
+        "meanDiff": 0.028621248482354245,
+        "ci": {
+          "mean": 0.028621248482354245,
+          "low": 0.014586034021427255,
+          "high": 0.0438541344062899
+        },
+        "wins": 5,
+        "losses": 15,
+        "medianArm": 0.05733592043133115,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.08856881313572605,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "harm"
+      }
+    },
+    {
+      "arm": "d3-f2",
+      "comparison": {
+        "meanDiff": 0.027522580715124277,
+        "ci": {
+          "mean": 0.027522580715124277,
+          "low": 0.007786818510197536,
+          "high": 0.04932799028775253
+        },
+        "wins": 10,
+        "losses": 10,
+        "medianArm": 0.044113452221364556,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.09332496102884935,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "harm"
+      }
+    },
+    {
+      "arm": "d3-f3",
+      "comparison": {
+        "meanDiff": 0.021200504779959505,
+        "ci": {
+          "mean": 0.021200504779959505,
+          "low": 0.003278474525265362,
+          "high": 0.04024915363578948
+        },
+        "wins": 7,
+        "losses": 13,
+        "medianArm": 0.05416168364430966,
+        "medianControl": 0.03728672003589549,
+        "upperQuartileArm": 0.07527466272850891,
+        "upperQuartileControl": 0.04695182701099358,
+        "verdict": "harm"
+      }
+    }
+  ],
+  "perArm": [
+    {
+      "arm": "control",
+      "n": 20,
+      "medianHoldout": 0.03728672003589549,
+      "upperQuartileHoldout": 0.04695182701099358,
+      "medianTrain": 0.03469315874689678,
+      "medianRecordsToThreshold": 21600,
+      "reachedThreshold": 19,
+      "stalled": 0,
+      "meanInitialInDegree": 4,
+      "meanInitialFanOut": 8
+    },
+    {
+      "arm": "d1.5-f1",
+      "n": 20,
+      "medianHoldout": 0.06908205271607856,
+      "upperQuartileHoldout": 0.09614908568681087,
+      "medianTrain": 0.06176512890785377,
+      "medianRecordsToThreshold": 38250,
+      "reachedThreshold": 10,
+      "stalled": 0,
+      "meanInitialInDegree": 1.5,
+      "meanInitialFanOut": 1
+    },
+    {
+      "arm": "d1.5-f2",
+      "n": 20,
+      "medianHoldout": 0.037624914546171756,
+      "upperQuartileHoldout": 0.07496057768844085,
+      "medianTrain": 0.034147191473244715,
+      "medianRecordsToThreshold": 19200,
+      "reachedThreshold": 14,
+      "stalled": 0,
+      "meanInitialInDegree": 1.5,
+      "meanInitialFanOut": 2
+    },
+    {
+      "arm": "d1.5-f3",
+      "n": 20,
+      "medianHoldout": 0.03690858493285226,
+      "upperQuartileHoldout": 0.0537573755336175,
+      "medianTrain": 0.034667776923570454,
+      "medianRecordsToThreshold": 23250,
+      "reachedThreshold": 16,
+      "stalled": 0,
+      "meanInitialInDegree": 1.5,
+      "meanInitialFanOut": 3
+    },
+    {
+      "arm": "d2-f1",
+      "n": 20,
+      "medianHoldout": 0.06089410705779376,
+      "upperQuartileHoldout": 0.09893172709980946,
+      "medianTrain": 0.0543483161547194,
+      "medianRecordsToThreshold": 25500,
+      "reachedThreshold": 11,
+      "stalled": 0,
+      "meanInitialInDegree": 2,
+      "meanInitialFanOut": 1
+    },
+    {
+      "arm": "d2-f2",
+      "n": 20,
+      "medianHoldout": 0.046001818327633504,
+      "upperQuartileHoldout": 0.054475312166801765,
+      "medianTrain": 0.044320205445530336,
+      "medianRecordsToThreshold": 33000,
+      "reachedThreshold": 17,
+      "stalled": 0,
+      "meanInitialInDegree": 2,
+      "meanInitialFanOut": 2
+    },
+    {
+      "arm": "d2-f3",
+      "n": 20,
+      "medianHoldout": 0.04169155569341906,
+      "upperQuartileHoldout": 0.055827244914475674,
+      "medianTrain": 0.03835069926663338,
+      "medianRecordsToThreshold": 29100,
+      "reachedThreshold": 19,
+      "stalled": 0,
+      "meanInitialInDegree": 2,
+      "meanInitialFanOut": 3
+    },
+    {
+      "arm": "d3-f1",
+      "n": 20,
+      "medianHoldout": 0.05733592043133115,
+      "upperQuartileHoldout": 0.08856881313572605,
+      "medianTrain": 0.0559848201288323,
+      "medianRecordsToThreshold": 24750,
+      "reachedThreshold": 12,
+      "stalled": 0,
+      "meanInitialInDegree": 3,
+      "meanInitialFanOut": 1
+    },
+    {
+      "arm": "d3-f2",
+      "n": 20,
+      "medianHoldout": 0.044113452221364556,
+      "upperQuartileHoldout": 0.09332496102884935,
+      "medianTrain": 0.04267613810902298,
+      "medianRecordsToThreshold": 23850,
+      "reachedThreshold": 14,
+      "stalled": 0,
+      "meanInitialInDegree": 3,
+      "meanInitialFanOut": 2
+    },
+    {
+      "arm": "d3-f3",
+      "n": 20,
+      "medianHoldout": 0.05416168364430966,
+      "upperQuartileHoldout": 0.07527466272850891,
+      "medianTrain": 0.053118695091484244,
+      "medianRecordsToThreshold": 42900,
+      "reachedThreshold": 15,
+      "stalled": 0,
+      "meanInitialInDegree": 3,
+      "meanInitialFanOut": 3
+    }
+  ],
+  "coverage": {
+    "expectedRuns": 240,
+    "completedRuns": 240,
+    "failures": []
+  }
+}

@@ -135,6 +135,9 @@ Tuning guides and benchmark research.
   own outcomes (Jin 2011 §5). Off by default; it observes and changes no
   selection. What it measured is in
   [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
+- **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
+  — initial connectivity and input fan-out as priors (Issue #4160): a negative
+  result; no sparse start beat the current initialisation.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
