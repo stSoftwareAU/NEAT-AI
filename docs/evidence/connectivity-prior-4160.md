@@ -92,7 +92,7 @@ control's.
 | `d3-f1`            | 20 | 0.05734        | 0.08857                | 0.05598      | 2.475e+4                    | 12/20   | 0       |
 | `d3-f2`            | 20 | 0.04411        | 0.09332                | 0.04268      | 2.385e+4                    | 14/20   | 0       |
 | `d3-f3`            | 20 | 0.05416        | 0.07527                | 0.05312      | 4.290e+4                    | 15/20   | 0       |
-| `control-selfloop` | 20 | 0.03495        | 0.04584                | 0.03202      | 2.400e+4                    | 17/20   | 0       |
+| `control-selfloop` | 20 | 0.04488        | 0.06514                | 0.04025      | 3.795e+4                    | 16/20   | 0       |
 
 ### Calibration cost and coverage
 
@@ -114,18 +114,23 @@ Tested only on the already-supported recurrent path; no forward-only engine was
 changed. The grid cells run forward-only (the production default). One
 exploratory arm, `control-selfloop`, is the control topology plus a self-loop on
 every hidden neuron (8 self-loops), built with `forwardOnly: false` and evolved
-with `feedbackLoop: true` and `disableRandomSamples: true`. State is cleared
-before every score, so a score depends on the creature alone. The arm is never a
-calibration candidate.
+with `feedbackLoop: true` and `disableRandomSamples: true`. It is also _scored_
+on the recurrent path: `scoreCreature` is called with `feedbackLoop: true`, so
+state carries from one record to the next in corpus order, from a state cleared
+once per score. (The stateless default resets state before every record, which
+zeroes a self-loop's contribution; an earlier run of this study scored the arm
+that way and its self-loop result is withdrawn.) The arm is never a calibration
+candidate.
 
 | Arm (vs control)   | Mean diff | CI95                 | W/L  | Verdict      |
 | ------------------ | --------- | -------------------- | ---- | ------------ |
-| `control-selfloop` | +0.001449 | [−0.008916, +0.0121] | 9/11 | `no-benefit` |
+| `control-selfloop` | +0.01213  | [−0.001913, +0.0277] | 9/11 | `no-benefit` |
 
-Its median holdout MSE (0.03495) and upper quartile (0.04584) are a little lower
-than the control's, but the CI spans zero. In all 20 validation runs the best
-creature had **no self-loops left** (`selfLoops.final` is 0): evolution removed
-them. On this static regression, self-loops are neither kept nor a benefit.
+Its median holdout MSE (0.04488) and upper quartile (0.06514) are higher (worse)
+than the control's (0.03729 and 0.04695), but the CI spans zero. In all 20
+validation runs the best creature had **no self-loops left** (`selfLoops.final`
+is 0): evolution removed them. On this static regression, self-loops are neither
+kept nor a benefit.
 
 ## Limitations
 

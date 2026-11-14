@@ -11,6 +11,7 @@ import {
   assertNotEquals,
   assertThrows,
 } from "@std/assert";
+import { Creature } from "@creature";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
 import {
@@ -27,6 +28,7 @@ import {
   DEFAULT_SETTINGS,
   pairedBootstrapCi,
   runArm,
+  scoreRecurrentAware,
   SELF_LOOP_ARM,
   type StudySettings,
   validateCell,
@@ -91,8 +93,8 @@ Deno.test("buildPriorCreature is deterministic in the seed", () => {
   assertNotEquals(json(1), json(2));
 });
 
-Deno.test("runArm is reproducible and restores global state", () => {
-  withRngTestLock(() => {
+Deno.test("runArm is reproducible and restores global state", async () => {
+  await withRngTestLock(() => {
     const corpus = buildStudyCorpus(4160, 60, 60);
     const before = getRandomNumberGenerator();
     const uuidBefore = crypto.randomUUID;
@@ -106,8 +108,8 @@ Deno.test("runArm is reproducible and restores global state", () => {
   });
 });
 
-Deno.test("the holdout never guides selection", () => {
-  withRngTestLock(() => {
+Deno.test("the holdout never guides selection", async () => {
+  await withRngTestLock(() => {
     const corpus = buildStudyCorpus(4160, 60, 60);
     const flipped = {
       train: corpus.train,
@@ -122,8 +124,8 @@ Deno.test("the holdout never guides selection", () => {
   });
 });
 
-Deno.test("recordsToThreshold reads the first pass or null", () => {
-  withRngTestLock(() => {
+Deno.test("recordsToThreshold reads the first pass or null", async () => {
+  await withRngTestLock(() => {
     const corpus = buildStudyCorpus(4160, 60, 60);
     const easy = runArm(CELL("control"), 5, {
       ...SMALL,
@@ -235,8 +237,8 @@ Deno.test("the control carries no self-loops", () => {
   assertEquals(countSelfLoops(buildControlCreature(createSeededRng(3))), 0);
 });
 
-Deno.test("the self-loop arm runs on the recurrent path and is reproducible", () => {
-  withRngTestLock(() => {
+Deno.test("the self-loop arm runs on the recurrent path and is reproducible", async () => {
+  await withRngTestLock(() => {
     const corpus = buildStudyCorpus(4160, 60, 60);
     const a = runArm(CELL(SELF_LOOP_ARM), 11, SMALL, corpus);
     const b = runArm(CELL(SELF_LOOP_ARM), 11, SMALL, corpus);
@@ -257,4 +259,38 @@ Deno.test("the self-loop arm is never a calibration candidate", () => {
   ];
   assertEquals(chooseCell(runs), "d2-f2");
   assertThrows(() => chooseCell([run(SELF_LOOP_ARM, 1, 0.01)]));
+});
+
+Deno.test("self-loops change the score on the recurrent path and are inert statelessly", () => {
+  const corpus = buildStudyCorpus(4160, 60, 60).train;
+  const withLoops = buildSelfLoopCreature(createSeededRng(3));
+  const exported = withLoops.exportJSON();
+  const without = () =>
+    Creature.fromJSON({
+      ...exported,
+      synapses: exported.synapses.filter((s) => s.fromUUID !== s.toUUID),
+    });
+  assertEquals(countSelfLoops(without()), 0);
+  assert(countSelfLoops(withLoops) > 0);
+
+  const recurrentWith = scoreRecurrentAware(withLoops, corpus, true);
+  const recurrentWithout = scoreRecurrentAware(without(), corpus, true);
+  assert(Number.isFinite(recurrentWith) && Number.isFinite(recurrentWithout));
+  assertNotEquals(recurrentWith, recurrentWithout);
+
+  // The stateless path zeroes the state before every record, so it cannot
+  // see a self-loop: this is why the arm must not be scored that way.
+  assertEquals(
+    scoreRecurrentAware(withLoops, corpus, false),
+    scoreRecurrentAware(without(), corpus, false),
+  );
+});
+
+Deno.test("the forward-only control scores the same in either mode", () => {
+  const corpus = buildStudyCorpus(4160, 60, 60).train;
+  const control = buildControlCreature(createSeededRng(3));
+  assertEquals(
+    scoreRecurrentAware(control, corpus, true),
+    scoreRecurrentAware(control, corpus, false),
+  );
 });

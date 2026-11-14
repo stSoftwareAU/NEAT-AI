@@ -9,9 +9,10 @@ equal budget of charged train records, with separate calibration and validation
 seeds and paired bootstrap statistics. The result is a **negative finding**: the
 cell chosen on calibration seeds (`d3-f1`) is `harm` against the control, and
 none of the nine cells shows a benefit. Self-loops were tested only on the
-already-supported recurrent path, as one exploratory arm (`control-selfloop`):
-`no-benefit`, and evolution removed every self-loop. No optional prior is added,
-and nothing under `src/` changed.
+already-supported recurrent path, as one exploratory arm (`control-selfloop`),
+both trained and scored with `feedbackLoop: true`: `no-benefit`, and evolution
+removed every self-loop. No optional prior is added, and nothing under `src/`
+changed.
 
 ## Spec
 
@@ -46,9 +47,14 @@ and nothing under `src/` changed.
   control plus one self-loop per hidden neuron (`forwardOnly: false`), evolved
   with `feedbackLoop: true` and `disableRandomSamples: true` (the engine
   requires both). `breedOffspring` gains an optional `forwardOnly` argument
-  (default `true`, so existing callers are unchanged). State is cleared before
-  every score in that arm. `chooseCell` now considers grid cells only, so the
-  self-loop arm is never the confirmatory cell.
+  (default `true`, so existing callers are unchanged). The arm is also scored on
+  the recurrent path: `scoreCreature` gains an optional `feedbackLoop` argument
+  (default `false`, so existing callers are unchanged) and the arm passes
+  `true`, scoring the records in corpus order after one `clearState()` per
+  score. The stateless default resets state before every record, which zeroes a
+  self-loop's contribution, so the arm must not be scored that way. `chooseCell`
+  now considers grid cells only, so the self-loop arm is never the confirmatory
+  cell.
 
 ### Undiscoverable Facts
 
@@ -57,6 +63,9 @@ and nothing under `src/` changed.
 - `createNeatConfig` without `seed` installs an unseeded global generator, and
   mutation names new neurons with `crypto.randomUUID`. `runArm` therefore passes
   the seed and swaps in a seeded uuid stream, restoring both in `finally`.
+- A first version of the self-loop arm was scored statelessly, so its self-loops
+  were inert and its result did not measure self-loops. The arm is now scored
+  with `feedbackLoop: true` and the study was rerun.
 - The first full run showed the original random fan-out assignment could not
   build `d1.5-f3` (its 12-edge budget leaves no room for repair edges). The
   round-robin assignment fixes it, and a test builds every cell for 5 seeds.
@@ -66,11 +75,11 @@ and nothing under `src/` changed.
 Script/CLI change; no UI files are touched. The full record is
 `docs/evidence/connectivity-prior-4160.md`, and the machine-readable artefact is
 `docs/evidence/connectivity-prior-4160.json`. The artefact holds the manifest
-(code commit 20b8f005, NEAT-AI version, Deno version, corpus seed, seeds,
-settings, criteria, the self-loop status), calibration runs and cost (2,640,000
-records), per-run results, the comparisons, the self-loop comparison and
-coverage (264 of 264 runs, no failures, no stalls). Adding the arm left every
-earlier arm's result unchanged.
+(code version `1b7e0f57-working-tree`, NEAT-AI version, Deno version, corpus
+seed, seeds, settings, criteria, the self-loop status), calibration runs and
+cost (2,640,000 records), per-run results, the comparisons, the self-loop
+comparison and coverage (264 of 264 runs, no failures, no stalls). Scoring the
+self-loop arm on the recurrent path left every other arm's result unchanged.
 
 The diff is the arm's holdout MSE minus the control's, so a negative diff is
 better:
@@ -83,9 +92,10 @@ better:
 | `d2-f3`              | +0.002967 | [−0.0070, +0.0142]   | 10/10 | `no-benefit` |
 
 The other five exploratory cells are `harm`. The self-loop arm,
-`control-selfloop`, is `no-benefit`: mean diff +0.001449, CI95 [−0.008916,
-+0.0121], W/L 9/11. Its best creature kept no self-loops in any of the 20 runs.
-The control's median holdout MSE is 0.03729 and its upper-quartile
+`control-selfloop`, scored on the recurrent path, is `no-benefit`: mean diff
++0.01213, CI95 [−0.001913, +0.0277], W/L 9/11; its median holdout MSE (0.04488)
+is higher than the control's. Its best creature kept no self-loops in any of the
+20 runs. The control's median holdout MSE is 0.03729 and its upper-quartile
 (lower-quartile performance) value is 0.04695. It reached the threshold in 19 of
 20 runs, against 10–19 for the prior cells.
 
@@ -101,7 +111,7 @@ flowchart LR
 To reproduce:
 
 ```bash
-deno task connectivity-prior-study --code-version=20b8f005 \
+deno task connectivity-prior-study --code-version=1b7e0f57-working-tree \
   --json=docs/evidence/connectivity-prior-4160.json
 ```
 
@@ -111,14 +121,20 @@ deno task connectivity-prior-study --code-version=20b8f005 \
 
 - **met** — "Test self-loops only in an already-supported recurrent execution
   path" — evidence:
+  `test/scripts/ConnectivityPriorStudy.ts::self-loops change the score on the recurrent path and are inert statelessly`
+  (a self-loop creature scores differently from the same creature without its
+  self-loops on the recurrent path, and identically when scored statelessly),
+  `test/scripts/ConnectivityPriorStudy.ts::the forward-only control scores the same in either mode`,
   `test/scripts/ConnectivityPriorStudy.ts::the self-loop arm runs on the recurrent path and is reproducible`,
   `scripts/lib/connectivityPriorStudy.ts` (`buildSelfLoopCreature`,
-  `feedbackLoop: true`), `docs/evidence/connectivity-prior-4160.json`
-  (`manifest.selfLoops`, `selfLoop`) — reviewer: met
+  `scoreRecurrentAware`, `feedbackLoop: true`),
+  `docs/evidence/connectivity-prior-4160.json` (`manifest.selfLoops`,
+  `selfLoop`) — reviewer: met
 
 ## Test Plan
 
-- Added `test/scripts/ConnectivityPriorStudy.ts` (18 tests):
+- Added `test/scripts/ConnectivityPriorStudy.ts` (20 tests; the four that use
+  `withRngTestLock` are `async` and await it):
   - `buildPriorCreature` gives the exact in-degree and fan-out, reachability,
     forward-only synapses and no duplicate pairs; every grid cell builds for 5
     seeds (the regression for the `d1.5-f3` failure);
@@ -134,16 +150,20 @@ deno task connectivity-prior-study --code-version=20b8f005 \
     mismatched seeds; `pairedBootstrapCi` determinism, bounds and empty input;
   - `buildSelfLoopCreature` adds exactly one self-loop per hidden neuron, keeps
     every other synapse forward and is reachable; the control has none; the
-    self-loop arm runs reproducibly on the recurrent path; `chooseCell` never
-    picks it.
+    self-loop arm runs reproducibly on the recurrent path; a self-loop creature
+    and the same creature without self-loops score differently on the recurrent
+    path and identically statelessly; the forward-only control scores the same
+    in either mode; `chooseCell` never picks it.
 - `deno test -A test/scripts/ConnectivityPriorStudy.ts test/scripts/PreSelectionAB.ts`
-  on 20b8f005: `ok | 23 passed | 0 failed`. The full study was rerun on 20b8f005
-  (264 of 264 runs).
-- `scripts/lib/preSelectionAB.ts`: `breedOffspring` is only exported; the
-  existing `test/scripts/PreSelectionAB.ts` tests pass unchanged.
+  on the working tree: `ok | 25 passed | 0 failed`. The full study was rerun
+  there (264 of 264 runs).
+- `scripts/lib/preSelectionAB.ts`: `breedOffspring` is only exported and
+  `scoreCreature` gains the optional `feedbackLoop` argument; the existing
+  `test/scripts/PreSelectionAB.ts` tests pass unchanged.
 - `./quality.sh --rust-scorer-bin=<rust_scorer>` ran on head b7461c59 and exited
   0 with `ok | 10340 passed (5 steps) | 0 failed | 50 ignored (19m6s)`. It has
-  not been rerun since the self-loop arm was added; the worker reruns it.
+  not been rerun since the self-loop arm was added or rescored; the worker
+  reruns it.
 
 ## Not done / risks
 

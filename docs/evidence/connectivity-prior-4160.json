@@ -1,8 +1,8 @@
 {
   "manifest": {
     "issue": 4160,
-    "codeVersion": "20b8f005",
-    "neatAiVersion": "7.1.17",
+    "codeVersion": "1b7e0f57-working-tree",
+    "neatAiVersion": "7.1.18",
     "denoVersion": "2.9.8",
     "corpusSeed": 4160,
     "inputs": 4,
@@ -62,7 +62,7 @@
     "selfLoops": {
       "status": "swept",
       "arm": "control-selfloop",
-      "path": "recurrent: forwardOnly false, feedbackLoop true, disableRandomSamples true; state cleared before every score",
+      "path": "recurrent: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with feedbackLoop true over the records in order, state cleared once per score",
       "reason": "the grid cells run on the forward-only path (the production default); self-loops are tested only on the already-supported recurrent path, as one exploratory arm: the control topology plus a self-loop on every hidden neuron"
     },
     "paper": "arXiv 2610.33498 not read; the method is this repository's reading of the issue"
@@ -1032,8 +1032,8 @@
       {
         "arm": "control-selfloop",
         "seed": 94160,
-        "trainMse": 0.02590071037652538,
-        "holdoutMse": 0.02701806491037317,
+        "trainMse": 0.03676167932052484,
+        "holdoutMse": 0.04476889183035497,
         "recordsScored": 60000,
         "recordsToThreshold": null,
         "generations": 11,
@@ -1045,7 +1045,7 @@
         },
         "final": {
           "meanHiddenInDegree": 4,
-          "meanInputFanOut": 7,
+          "meanInputFanOut": 8,
           "reachable": true
         },
         "selfLoops": {
@@ -1056,11 +1056,11 @@
       {
         "arm": "control-selfloop",
         "seed": 94161,
-        "trainMse": 0.07788592834169394,
-        "holdoutMse": 0.09244711112350934,
+        "trainMse": 0.04961017106119394,
+        "holdoutMse": 0.047296915109227754,
         "recordsScored": 60000,
         "recordsToThreshold": null,
-        "generations": 11,
+        "generations": 12,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -1080,8 +1080,8 @@
       {
         "arm": "control-selfloop",
         "seed": 94162,
-        "trainMse": 0.025180781729046,
-        "holdoutMse": 0.028821851414724382,
+        "trainMse": 0.025195326680561892,
+        "holdoutMse": 0.028707222249841322,
         "recordsScored": 60000,
         "recordsToThreshold": null,
         "generations": 11,
@@ -1093,7 +1093,7 @@
         },
         "final": {
           "meanHiddenInDegree": 4,
-          "meanInputFanOut": 7.75,
+          "meanInputFanOut": 8,
           "reachable": true
         },
         "selfLoops": {
@@ -1104,11 +1104,11 @@
       {
         "arm": "control-selfloop",
         "seed": 94163,
-        "trainMse": 0.03960744249988412,
-        "holdoutMse": 0.04403504320262115,
+        "trainMse": 0.0273439058338145,
+        "holdoutMse": 0.02564145994045564,
         "recordsScored": 60000,
         "recordsToThreshold": null,
-        "generations": 12,
+        "generations": 11,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -1116,8 +1116,8 @@
           "reachable": true
         },
         "final": {
-          "meanHiddenInDegree": 3.875,
-          "meanInputFanOut": 7.75,
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
           "reachable": true
         },
         "selfLoops": {
@@ -5935,11 +5935,35 @@
       {
         "arm": "control-selfloop",
         "seed": 4160,
-        "trainMse": 0.030670427509605698,
-        "holdoutMse": 0.03273112723932357,
+        "trainMse": 0.02373175018026566,
+        "holdoutMse": 0.02786031978649426,
         "recordsScored": 60000,
-        "recordsToThreshold": 19500,
+        "recordsToThreshold": 15300,
         "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 5,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.7777777777777777,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "selfLoops": {
+          "initial": 8,
+          "final": 0
+        }
+      },
+      {
+        "arm": "control-selfloop",
+        "seed": 4161,
+        "trainMse": 0.04050332025244593,
+        "holdoutMse": 0.04241082311988628,
+        "recordsScored": 60000,
+        "recordsToThreshold": 33600,
+        "generations": 11,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -5958,33 +5982,9 @@
       },
       {
         "arm": "control-selfloop",
-        "seed": 4161,
-        "trainMse": 0.03484389673296152,
-        "holdoutMse": 0.03274883274317964,
-        "recordsScored": 60000,
-        "recordsToThreshold": 22200,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 3.875,
-          "meanInputFanOut": 7.75,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
         "seed": 4162,
-        "trainMse": 0.08365448511302057,
-        "holdoutMse": 0.08233917151980825,
+        "trainMse": 0.0738750156132904,
+        "holdoutMse": 0.07823489623492244,
         "recordsScored": 60000,
         "recordsToThreshold": null,
         "generations": 11,
@@ -6007,10 +6007,10 @@
       {
         "arm": "control-selfloop",
         "seed": 4163,
-        "trainMse": 0.07156710368348773,
-        "holdoutMse": 0.08428450056724189,
+        "trainMse": 0.04580640753674714,
+        "holdoutMse": 0.048694470261342035,
         "recordsScored": 60000,
-        "recordsToThreshold": null,
+        "recordsToThreshold": 46200,
         "generations": 12,
         "stalled": false,
         "initial": {
@@ -6020,7 +6020,7 @@
         },
         "final": {
           "meanHiddenInDegree": 4,
-          "meanInputFanOut": 7,
+          "meanInputFanOut": 8,
           "reachable": true
         },
         "selfLoops": {
@@ -6031,11 +6031,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4164,
-        "trainMse": 0.030765930660361634,
-        "holdoutMse": 0.03521052647563299,
+        "trainMse": 0.07193766277602275,
+        "holdoutMse": 0.0781436086215457,
         "recordsScored": 60000,
-        "recordsToThreshold": 30000,
-        "generations": 12,
+        "recordsToThreshold": null,
+        "generations": 13,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6043,7 +6043,7 @@
           "reachable": true
         },
         "final": {
-          "meanHiddenInDegree": 4.125,
+          "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
         },
@@ -6055,11 +6055,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4165,
-        "trainMse": 0.025574902593693525,
-        "holdoutMse": 0.027085908147019614,
+        "trainMse": 0.026000933127001184,
+        "holdoutMse": 0.025660874515628294,
         "recordsScored": 60000,
-        "recordsToThreshold": 24000,
-        "generations": 14,
+        "recordsToThreshold": 30300,
+        "generations": 12,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6079,10 +6079,10 @@
       {
         "arm": "control-selfloop",
         "seed": 4166,
-        "trainMse": 0.03192246121372227,
-        "holdoutMse": 0.035543756524899946,
+        "trainMse": 0.030971868490354607,
+        "holdoutMse": 0.03899251690202923,
         "recordsScored": 60000,
-        "recordsToThreshold": 16200,
+        "recordsToThreshold": 38400,
         "generations": 11,
         "stalled": false,
         "initial": {
@@ -6103,11 +6103,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4167,
-        "trainMse": 0.03527288116691862,
-        "holdoutMse": 0.03913676107124069,
+        "trainMse": 0.06156314814973829,
+        "holdoutMse": 0.06094024080363947,
         "recordsScored": 60000,
-        "recordsToThreshold": 21600,
-        "generations": 13,
+        "recordsToThreshold": 60000,
+        "generations": 11,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6127,11 +6127,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4168,
-        "trainMse": 0.03211603288302417,
-        "holdoutMse": 0.034320720909515136,
+        "trainMse": 0.062333010068725006,
+        "holdoutMse": 0.06634648673122247,
         "recordsScored": 60000,
-        "recordsToThreshold": 27300,
-        "generations": 11,
+        "recordsToThreshold": 58500,
+        "generations": 12,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6139,8 +6139,8 @@
           "reachable": true
         },
         "final": {
-          "meanHiddenInDegree": 4.333333333333333,
-          "meanInputFanOut": 6,
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 8,
           "reachable": true
         },
         "selfLoops": {
@@ -6151,11 +6151,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4169,
-        "trainMse": 0.05962787468387975,
-        "holdoutMse": 0.06105405889619053,
+        "trainMse": 0.10760086207520676,
+        "holdoutMse": 0.12819905423560302,
         "recordsScored": 60000,
-        "recordsToThreshold": 57000,
-        "generations": 13,
+        "recordsToThreshold": null,
+        "generations": 11,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6175,11 +6175,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4170,
-        "trainMse": 0.02708250406856164,
-        "holdoutMse": 0.02757026247937668,
+        "trainMse": 0.025247800204603946,
+        "holdoutMse": 0.027563523751237173,
         "recordsScored": 60000,
-        "recordsToThreshold": 24900,
-        "generations": 12,
+        "recordsToThreshold": 14400,
+        "generations": 13,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6199,11 +6199,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4171,
-        "trainMse": 0.030177123906465007,
-        "holdoutMse": 0.0346845123350496,
+        "trainMse": 0.03998835484733277,
+        "holdoutMse": 0.04734008154161623,
         "recordsScored": 60000,
-        "recordsToThreshold": 26400,
-        "generations": 12,
+        "recordsToThreshold": 44400,
+        "generations": 11,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6223,10 +6223,10 @@
       {
         "arm": "control-selfloop",
         "seed": 4172,
-        "trainMse": 0.02424632786547469,
-        "holdoutMse": 0.028056626024271107,
+        "trainMse": 0.03469773385552584,
+        "holdoutMse": 0.0348828377886469,
         "recordsScored": 60000,
-        "recordsToThreshold": 16800,
+        "recordsToThreshold": 41700,
         "generations": 12,
         "stalled": false,
         "initial": {
@@ -6247,10 +6247,34 @@
       {
         "arm": "control-selfloop",
         "seed": 4173,
-        "trainMse": 0.019740508894055816,
-        "holdoutMse": 0.019969610747884975,
+        "trainMse": 0.028313903014863466,
+        "holdoutMse": 0.02923512099117777,
         "recordsScored": 60000,
-        "recordsToThreshold": 17100,
+        "recordsToThreshold": 28800,
+        "generations": 12,
+        "stalled": false,
+        "initial": {
+          "meanHiddenInDegree": 5,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "final": {
+          "meanHiddenInDegree": 3.7777777777777777,
+          "meanInputFanOut": 8,
+          "reachable": true
+        },
+        "selfLoops": {
+          "initial": 8,
+          "final": 0
+        }
+      },
+      {
+        "arm": "control-selfloop",
+        "seed": 4174,
+        "trainMse": 0.053655722904833676,
+        "holdoutMse": 0.06246581935159901,
+        "recordsScored": 60000,
+        "recordsToThreshold": 38700,
         "generations": 11,
         "stalled": false,
         "initial": {
@@ -6270,11 +6294,11 @@
       },
       {
         "arm": "control-selfloop",
-        "seed": 4174,
-        "trainMse": 0.023550952027007643,
-        "holdoutMse": 0.024298951965275064,
+        "seed": 4175,
+        "trainMse": 0.025319227641119237,
+        "holdoutMse": 0.02964862237101844,
         "recordsScored": 60000,
-        "recordsToThreshold": 17100,
+        "recordsToThreshold": 22500,
         "generations": 11,
         "stalled": false,
         "initial": {
@@ -6284,31 +6308,7 @@
         },
         "final": {
           "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4175,
-        "trainMse": 0.03831228126412562,
-        "holdoutMse": 0.04142645480180687,
-        "recordsScored": 60000,
-        "recordsToThreshold": 42300,
-        "generations": 13,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
+          "meanInputFanOut": 7,
           "reachable": true
         },
         "selfLoops": {
@@ -6319,11 +6319,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4176,
-        "trainMse": 0.030203113311205704,
-        "holdoutMse": 0.03356556916530885,
+        "trainMse": 0.03755169126007781,
+        "holdoutMse": 0.03522725056320508,
         "recordsScored": 60000,
-        "recordsToThreshold": 21600,
-        "generations": 15,
+        "recordsToThreshold": 37500,
+        "generations": 12,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6331,7 +6331,7 @@
           "reachable": true
         },
         "final": {
-          "meanHiddenInDegree": 4,
+          "meanHiddenInDegree": 4.125,
           "meanInputFanOut": 8,
           "reachable": true
         },
@@ -6343,11 +6343,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4177,
-        "trainMse": 0.06570772321063408,
-        "holdoutMse": 0.07612246902945789,
+        "trainMse": 0.06201719424020948,
+        "holdoutMse": 0.06473406046196424,
         "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 14,
+        "recordsToThreshold": 57900,
+        "generations": 11,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6355,7 +6355,7 @@
           "reachable": true
         },
         "final": {
-          "meanHiddenInDegree": 3.875,
+          "meanHiddenInDegree": 4.125,
           "meanInputFanOut": 7.75,
           "reachable": true
         },
@@ -6367,11 +6367,11 @@
       {
         "arm": "control-selfloop",
         "seed": 4178,
-        "trainMse": 0.049124183772866786,
-        "holdoutMse": 0.053783490529210526,
+        "trainMse": 0.0345208621774216,
+        "holdoutMse": 0.035712700847506704,
         "recordsScored": 60000,
-        "recordsToThreshold": 47400,
-        "generations": 11,
+        "recordsToThreshold": 21900,
+        "generations": 12,
         "stalled": false,
         "initial": {
           "meanHiddenInDegree": 5,
@@ -6379,8 +6379,8 @@
           "reachable": true
         },
         "final": {
-          "meanHiddenInDegree": 3.7777777777777777,
-          "meanInputFanOut": 8,
+          "meanHiddenInDegree": 4,
+          "meanInputFanOut": 7.75,
           "reachable": true
         },
         "selfLoops": {
@@ -6391,10 +6391,10 @@
       {
         "arm": "control-selfloop",
         "seed": 4179,
-        "trainMse": 0.038368617738983236,
-        "holdoutMse": 0.043192122749472664,
+        "trainMse": 0.08597957604435878,
+        "holdoutMse": 0.09843377122487389,
         "recordsScored": 60000,
-        "recordsToThreshold": 38400,
+        "recordsToThreshold": null,
         "generations": 11,
         "stalled": false,
         "initial": {
@@ -6403,8 +6403,8 @@
           "reachable": true
         },
         "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
+          "meanHiddenInDegree": 4.111111111111111,
+          "meanInputFanOut": 9,
           "reachable": true
         },
         "selfLoops": {
@@ -6599,17 +6599,17 @@
   "selfLoop": {
     "arm": "control-selfloop",
     "comparison": {
-      "meanDiff": 0.0014485558052832685,
+      "meanDiff": 0.012128638114482875,
       "ci": {
-        "mean": 0.0014485558052832685,
-        "low": -0.008916123186699442,
-        "high": 0.0121025980678221
+        "mean": 0.012128638114482875,
+        "low": -0.0019133140540499782,
+        "high": 0.027706032980496474
       },
       "wins": 9,
       "losses": 11,
-      "medianArm": 0.0349475194053413,
+      "medianArm": 0.044875452330751256,
       "medianControl": 0.03728672003589549,
-      "upperQuartileArm": 0.045839964694407126,
+      "upperQuartileArm": 0.0651371670292788,
       "upperQuartileControl": 0.04695182701099358,
       "verdict": "no-benefit"
     }
@@ -6738,11 +6738,11 @@
     {
       "arm": "control-selfloop",
       "n": 20,
-      "medianHoldout": 0.0349475194053413,
-      "upperQuartileHoldout": 0.045839964694407126,
-      "medianTrain": 0.03201924704837322,
-      "medianRecordsToThreshold": 24000,
-      "reachedThreshold": 17,
+      "medianHoldout": 0.044875452330751256,
+      "upperQuartileHoldout": 0.0651371670292788,
+      "medianTrain": 0.04024583754988935,
+      "medianRecordsToThreshold": 37950,
+      "reachedThreshold": 16,
       "stalled": 0,
       "meanInitialInDegree": 5,
       "meanInitialFanOut": 8

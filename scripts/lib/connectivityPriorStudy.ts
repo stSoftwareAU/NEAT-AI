@@ -446,6 +446,20 @@ function seededUuid(rng: RandomNumberGenerator): string {
   return `${hex(8)}-${hex(4)}-4${hex(3)}-${variant}${hex(3)}-${hex(12)}`;
 }
 
+/**
+ * Score a creature the way its arm executes it: statelessly for the
+ * forward-only arms, on the recurrent path (state carried across the records
+ * in order, from a cleared state) for the self-loop arm.
+ */
+export function scoreRecurrentAware(
+  creature: Creature,
+  records: readonly ABRecord[],
+  recurrent: boolean,
+): number {
+  if (recurrent) creature.clearState();
+  return scoreCreature(creature, records, 1, recurrent).score;
+}
+
 /** Run one arm at one seed, with the global generator and uuids seeded. */
 export function runArm(
   arm: StudyArm,
@@ -503,12 +517,12 @@ function runSeeded(
   }
   const initial = connectivityStats(population[0]);
   const initialSelfLoops = countSelfLoops(population[0]);
-  // A recurrent creature carries state between activations; every score
-  // starts from a cleared state so a score depends on the creature alone.
-  const score = (creature: Creature, records: readonly ABRecord[]) => {
-    if (recurrent) creature.clearState();
-    return scoreCreature(creature, records).score;
-  };
+  // A recurrent creature must be activated with `feedbackLoop: true`: the
+  // stateless path resets state before every record, which zeroes each
+  // self-loop's contribution. Records go in corpus order, from a cleared
+  // state, so a score depends on the creature alone.
+  const score = (creature: Creature, records: readonly ABRecord[]) =>
+    scoreRecurrentAware(creature, records, recurrent);
 
   let recordsScored = 0;
   let recordsToThreshold: number | null = null;
@@ -870,7 +884,7 @@ export function runStudy(options: StudyOptions = {}) {
         status: "swept",
         arm: SELF_LOOP_ARM,
         path:
-          "recurrent: forwardOnly false, feedbackLoop true, disableRandomSamples true; state cleared before every score",
+          "recurrent: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with feedbackLoop true over the records in order, state cleared once per score",
         reason:
           "the grid cells run on the forward-only path (the production default); self-loops are tested only on the already-supported recurrent path, as one exploratory arm: the control topology plus a self-loop on every hidden neuron",
       },
