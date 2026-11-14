@@ -308,6 +308,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4157:** an opt-in study, `deno task census-restart-study`, compares
+  restarting on an offspring census (Good–Turing unseen estimate over species
+  and quantised-genome identities) against restarting on a score plateau, with a
+  no-restart control and an identical partial reseed. The result is
+  **negative**: no arm meets the benefit criterion, none is harm, and the census
+  fires earlier without beating stagnation. Nothing under `src/` changes. See
+  [`docs/evidence/census-restart-4157.md`](./docs/evidence/census-restart-4157.md).
 - **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
   quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in
   native code). The teardown now warns
