@@ -313,10 +313,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   (350,100 scored records per seed, 20 pre-declared seeds): no exchange, a
   neighbour-only ring that sends topology-diverse Pareto members, and the
   global-champion broadcast the fleet uses today as the control. Both verdicts
-  are **worse** than the broadcast. The ring keeps the islands diverse
-  (inter-island distance 0.44 against 0.002) but the broadcast, which collapses
-  every island onto one champion, still wins held-out error on this synthetic
-  corpus. No default and nothing under `src/` changed. See
+  are **no benefit** against the broadcast. The ring keeps the islands diverse
+  (inter-island distance 0.41 against 0.0004) and its mean held-out error is
+  lower, but the interval spans zero. An earlier run, which left unmutated
+  clones among the fills, called both **worse** and is superseded. No default
+  and nothing under `src/` changed. See
   [`docs/evidence/island-exchange-4159.md`](./docs/evidence/island-exchange-4159.md).
 - **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
   quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in

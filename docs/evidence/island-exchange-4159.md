@@ -17,8 +17,10 @@ motivation only.
 
 ## Versions
 
-- NEAT-AI 7.1.17, code commit `80ce8ff27b298f8d4ce2d14043a47b5c74e34243` (the
-  artefact's `version` and `commit` fields).
+- NEAT-AI 7.1.18. The artefact's `commit` field is
+  `faaa0ad6ca96110245927024e28003dc7cd292b1`, the parent of the commit that
+  carries the mutated-fill change below, so the run is the working tree on top
+  of that commit.
 - A synthetic two-input regression from `preSelectionAB.buildCorpus`, seeded per
   study seed. No private data.
 
@@ -44,9 +46,22 @@ both arms.
 **Equal evaluation budget.** Every generation each island scores exactly
 islandPopulation − elitism new offspring. Migrants keep their train score (same
 train split). Crossover that refuses a pair is retried 3 times and the remaining
-slots are filled with mutation-only copies (`mutationFills`), so every arm
-charges exactly 350,100 records per seed (train plus calibration). Holdout is
-reported only: never charged and never read by a decision (a test proves it).
+slots are filled with mutants (`mutationFills`), so every arm charges exactly
+350,100 records per seed (train plus calibration). Holdout is reported only:
+never charged and never read by a decision. A test runs the same arm and seed
+against materially different holdout targets and asserts that the reported
+island, calibration error, records, transfers, bytes and per-generation traces
+are identical while only the holdout error moves.
+
+**Fills are always real mutants.** A fill copies a parent from the island and
+mutates it at rate 1, redrawing until its content uuid differs from the parent's
+(`makeMutantFill`). An earlier run mutated fills at the 0.5 mutation rate, so
+about half were exact copies of a parent the island already held; they were
+scored again for nothing and made the next crossover refusal likelier. That run
+is superseded, and its verdicts were not the same as the ones below. In this run
+`fillRedraws` (draws that left the parent unchanged) averages 0.05 per seed for
+`none`, 0.15 for `ring` and 0 for `broadcast`, so redraws are rare and no fill
+is a clone.
 
 **Baseline.** The common zero for "improvement" is the same
 select-on-calibration rule applied to the starting islands: 18,900 preparation
@@ -67,7 +82,7 @@ pairwise distance between the six island champions is below 0.05.
 ```mermaid
 flowchart TD
     A["Score offspring on train"] --> B{"Every 4th generation?"}
-    B -- "no" --> E["Breed: crossover, mutation-only fill"]
+    B -- "no" --> E["Breed: crossover, mutant fill"]
     B -- "yes" --> C["Exchange: none, ring or broadcast"]
     C --> E
     E --> F{"After generation 24?"}
@@ -81,42 +96,53 @@ flowchart TD
 
 Means over 20 seeds.
 
-| Arm         | Held-out MSE | Improvement vs start | Per million records | Per evaluation-hour (indicative) | Final inter-island distance | Within-island distance | Collapse rate | Transfers | Bytes  | Mutation fills |
-| ----------- | ------------ | -------------------- | ------------------- | -------------------------------- | --------------------------- | ---------------------- | ------------- | --------- | ------ | -------------- |
-| `none`      | 1.678e-2     | 6.877e-2             | 0.196               | 1317                             | 0.950                       | 0.007                  | 0.00          | 0         | 0      | 424.5          |
-| `ring`      | 1.205e-2     | 7.350e-2             | 0.210               | 1384                             | 0.443                       | 0.081                  | 0.10          | 25        | 29,491 | 230.5          |
-| `broadcast` | 1.115e-2     | 7.440e-2             | 0.213               | 1431                             | 0.002                       | 0.004                  | 1.00          | 25        | 32,201 | 271.8          |
+| Arm         | Held-out MSE | Improvement vs start | Per million records | Per evaluation-hour (indicative) | Final inter-island distance | Within-island distance | Collapse rate | Transfers | Bytes  | Mutant fills |
+| ----------- | ------------ | -------------------- | ------------------- | -------------------------------- | --------------------------- | ---------------------- | ------------- | --------- | ------ | ------------ |
+| `none`      | 1.243e-2     | 7.312e-2             | 0.209               | 973                              | 0.950                       | 0.006                  | 0.00          | 0         | 0      | 291.6        |
+| `ring`      | 1.116e-2     | 7.439e-2             | 0.212               | 934                              | 0.405                       | 0.052                  | 0.15          | 25        | 28,682 | 196.8        |
+| `broadcast` | 1.224e-2     | 7.331e-2             | 0.209               | 946                              | 0.000                       | 0.004                  | 1.00          | 25        | 32,892 | 205.5        |
 
 Paired comparisons, arm − broadcast (negative means the arm is better), with a
 2,000-resample percentile bootstrap:
 
-- `ring` vs `broadcast`: **worse**. Mean +8.96e-4, 95% CI [4.22e-5, 1.82e-3],
-  ring wins 8/20 seeds, collapse 0.10 vs 1.00, bytes ratio 0.916.
-- `none` vs `broadcast`: **worse**. Mean +5.63e-3, 95% CI [1.61e-3, 1.26e-2],
-  wins 3/20, collapse 0.00 vs 1.00.
+- `ring` vs `broadcast`: **no benefit**. Mean −1.08e-3, 95% CI [−3.32e-3,
+  2.95e-4], ring wins 9/20 seeds, collapse 0.15 vs 1.00, bytes ratio 0.872. The
+  mean favours the ring, but the interval spans zero, so the pre-declared rule
+  does not call it better.
+- `none` vs `broadcast`: **no benefit**. Mean +1.85e-4, 95% CI [−2.40e-3,
+  1.91e-3], wins 5/20, collapse 0.00 vs 1.00.
 
 Coverage is 60/60 runs, 0 failures. Transport time (JSON export/import
-round-trip) was about 3.3 ms per run for ring and 2.7 ms for broadcast,
+round-trip) was about 8.4 ms per run for ring and 6.4 ms for broadcast,
 indicative only on a shared parallel host. The evaluation-hour figures use
 wall-clock on a shared host and are indicative; the records-based column is the
 deterministic one.
 
 ## Reading
 
-A negative finding. On this corpus the broadcast collapses every island onto one
-champion in all 20 seeds and still gives the best held-out error. The ring keeps
-topology diverse (inter-island distance 0.44 vs 0.002, 2 of 20 seeds collapsed)
-but does not convert that into held-out improvement. Its deficit is small and
-the interval's lower bound is only just above zero. No exchange is clearly
-worst. Diversity is not, here, the bottleneck.
+No benefit, in either direction. On this corpus the broadcast collapses every
+island onto one champion in all 20 seeds, and still gives held-out error that
+the other two arms cannot be separated from. The ring keeps the islands
+topologically diverse (inter-island distance 0.41 vs 0.0004, 3 of 20 seeds
+collapsed) at 0.87 of the broadcast's bytes, and its mean held-out error is
+lower (1.12e-2 against 1.22e-2), but the interval for that difference includes
+zero and the ring wins only 9 of 20 seeds. No exchange is also indistinguishable
+from the broadcast. Diversity is not, here, the bottleneck, and the data do not
+show that it helps.
+
+An earlier run of this harness, with unmutated clones among the fills, called
+both comparisons **worse**. Making every fill a real mutant changed both
+verdicts to no benefit, so that earlier verdict should not be relied on.
 
 Caveats:
 
 - The creatures are tiny and the target is a smooth two-input function, where
   one champion is a good answer for every island.
 - Within-island diversity is near zero in every arm (10-creature islands).
-- Many offspring are mutation-only fills (crossover refuses clone pairs), most
-  in `none`.
+- Many offspring are mutant fills (crossover refuses clone pairs): about 25% of
+  the train evaluations in `none`, 17% in `ring` and 18% in `broadcast`. They
+  are real mutants and are charged the same, but the arms still do not run the
+  same share of crossover.
 - No representative production run was made, so this does not show what a ring
   would do on production-size creatures or deceptive objectives.
 
@@ -127,8 +153,9 @@ research runs are separate from CI (the unit tests use tiny settings).
 
 `withSeededUuids` replaces `crypto.randomUUID` with a seeded generator inside
 the harness only, and the harness passes a seeded `rng` to `createNeatConfig`
-(which otherwise installs an unseeded global generator). Two runs at the same
-commit gave identical results apart from the wall-clock fields.
+(which otherwise installs an unseeded global generator). Two runs of the final
+code gave identical results apart from the wall-clock fields, and the test
+`island study — one arm and seed reproduce exactly` pins the same property.
 
 Observed while building it: `runArm` in `scripts/lib/preSelectionAB.ts` calls
 `createNeatConfig` without `rng` after seeding the global generator, so its

@@ -476,6 +476,44 @@ export function exchange(
  */
 const MAX_BREED_ATTEMPTS = 3;
 
+/** Mutation draws tried before a fill is declared unable to differ. */
+const MAX_FILL_ATTEMPTS = 50;
+
+/**
+ * A mutation-only fill that is guaranteed to be a new creature.
+ *
+ * `Mutator.mutate` only touches a creature with probability `mutationRate`, and
+ * an operator can also find nothing to change, so one pass may hand back an
+ * exact copy of the parent. That copy would take the parent's content uuid,
+ * lose its score and be evaluated again for a result the island already holds.
+ * The fill is therefore redrawn until its content uuid differs from the
+ * parent's, and `redraws` reports how many draws that took. `mutator` should
+ * have a mutation rate of 1; if no draw changes the parent within
+ * {@link MAX_FILL_ATTEMPTS} the call throws rather than hand back a clone.
+ */
+export function makeMutantFill(
+  parent: Creature,
+  mutator: Mutator,
+): { fill: Creature; redraws: number } {
+  const parentUuid = CreatureUtil.makeUUID(parent);
+  for (let attempt = 0; attempt < MAX_FILL_ATTEMPTS; attempt++) {
+    const fill = Creature.fromJSON(
+      JSON.parse(JSON.stringify(parent.exportJSON())),
+    );
+    delete fill.score;
+    mutator.mutate([fill]);
+    delete fill.score;
+    delete fill.uuid;
+    if (CreatureUtil.makeUUID(fill) !== parentUuid) {
+      return { fill, redraws: attempt };
+    }
+  }
+  throw new Error(
+    `no mutation changed the parent in ${MAX_FILL_ATTEMPTS} draws; ` +
+      "refusing to hand back an unmutated clone",
+  );
+}
+
 /** One generation of one run. */
 export interface GenerationTrace {
   generation: number;
@@ -503,6 +541,8 @@ export interface ArmSeedResult {
   withinIslandDistance: number;
   collapsed: boolean;
   mutationFills: number;
+  /** Mutation draws rejected because they left the parent's content unchanged. */
+  fillRedraws: number;
   generations: GenerationTrace[];
 }
 
@@ -590,6 +630,9 @@ function runArmSeedBody(
       rng: createSeededRng(settings.seed),
     });
     const mutator = new Mutator(config);
+    // Fills are always mutated: a fill that kept its parent's content would be
+    // an exact clone scored again for nothing (see makeMutantFill).
+    const fillMutator = new Mutator({ ...config, mutationRate: 1 });
     let islands = loadIslands(initialIslands);
     let trainRecordsCharged = 0;
     let evaluationMs = 0;
@@ -597,6 +640,7 @@ function runArmSeedBody(
     let bytes = 0;
     let transportMs = 0;
     let mutationFills = 0;
+    let fillRedraws = 0;
     const traces: GenerationTrace[] = [];
     const slots = settings.islandPopulation - settings.elitism;
 
@@ -669,16 +713,9 @@ function runArmSeedBody(
               const parent = island[
                 Math.floor(rng.random() * rng.random() * island.length)
               ];
-              const copy = Creature.fromJSON(
-                JSON.parse(JSON.stringify(parent.exportJSON())),
-              );
-              delete copy.score;
-              fills.push(copy);
-            }
-            mutator.mutate(fills);
-            for (const fill of fills) {
-              delete fill.score;
-              CreatureUtil.makeUUID(fill);
+              const made = makeMutantFill(parent, fillMutator);
+              fillRedraws += made.redraws;
+              fills.push(made.fill);
             }
             offspring.push(...fills);
             mutationFills += missing;
@@ -709,6 +746,7 @@ function runArmSeedBody(
       withinIslandDistance: mean(islands.map((i) => meanPairwise(i))),
       collapsed: finalInter < settings.collapseThreshold,
       mutationFills,
+      fillRedraws,
       generations: traces,
     };
   } finally {
@@ -905,6 +943,7 @@ export interface ArmSummary {
   transportMs: number;
   recordsCharged: number;
   mutationFills: number;
+  fillRedraws: number;
 }
 
 /** A comparison of one arm against the control. */
@@ -1010,6 +1049,7 @@ export function runStudy(
       transportMs: mean(rows.map((r) => r.transportMs)),
       recordsCharged: records,
       mutationFills: mean(rows.map((r) => r.mutationFills)),
+      fillRedraws: mean(rows.map((r) => r.fillRedraws)),
     };
   });
 

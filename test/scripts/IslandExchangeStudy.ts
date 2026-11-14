@@ -15,6 +15,13 @@ import {
 } from "@std/assert";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "@utils/RandomNumberGenerator.ts";
 import {
   buildInitialIslands,
   buildSplits,
@@ -23,6 +30,7 @@ import {
   DEFAULT_ISLAND_SETTINGS,
   exchange,
   type IslandStudySettings,
+  makeMutantFill,
   pairedBootstrap,
   paretoFront,
   pickDiverseMigrants,
@@ -136,6 +144,71 @@ Deno.test("island study — migrants exclude what the destination already holds"
   assertEquals(pickDiverseMigrants([top], [copy], 2), []);
 });
 
+/**
+ * A creature whose hidden neurons carry the named uuids, so its topology
+ * distance to another is decided by which names they share.
+ */
+function shaped(hidden: string[], score: number, bias = 0): Creature {
+  const c = new Creature(2, 1, { layers: [{ count: hidden.length }] });
+  let k = 0;
+  for (const n of c.neurons) {
+    if (n.type === "hidden") {
+      n.uuid = hidden[k++];
+      n.bias = bias;
+    }
+  }
+  delete c.uuid;
+  CreatureUtil.makeUUID(c);
+  c.score = score;
+  return c;
+}
+
+Deno.test("island study — the diverse pick prefers distance over score", () => {
+  const destination = [shaped(["a", "b"], -1, 0.1)];
+  const near = shaped(["a", "b", "c"], -0.1, 0.2);
+  const far = shaped(["x"], -0.5, 0.3);
+  assertEquals(paretoFront([near, far]), [near, far]);
+  assertEquals(pickDiverseMigrants([near, far], destination, 1), [far]);
+  assertEquals(pickDiverseMigrants([far, near], destination, 2), [far, near]);
+});
+
+Deno.test("island study — the diverse pick takes the front before a dominated member", () => {
+  const destination = [shaped(["a", "b"], -1, 0.1)];
+  const front = shaped(["a", "b", "c"], -0.1, 0.2);
+  const dominated = shaped(["p", "q", "r", "s"], -0.9, 0.3);
+  assertEquals(paretoFront([front, dominated]), [front]);
+  assertEquals(
+    pickDiverseMigrants([dominated, front], destination, 1),
+    [front],
+  );
+});
+
+Deno.test("island study — beyond the front the diverse pick follows in score order", () => {
+  const destination = [shaped(["a", "b"], -1, 0.1)];
+  const front = shaped(["a", "b", "c"], -0.1, 0.2);
+  const low = shaped(["p", "q", "r", "s"], -0.9, 0.3);
+  const mid = shaped(["m", "n", "o", "t"], -0.7, 0.4);
+  assertEquals(
+    pickDiverseMigrants([low, front, mid], destination, 3),
+    [front, mid, low],
+  );
+});
+
+Deno.test("island study — a second pick is chosen for distance from the first", () => {
+  const destination = [shaped(["d1", "d2"], -1, 0.1)];
+  // Every candidate is equally far from the destination, so the first pick is
+  // the best score; the second must then be the one far from that first pick,
+  // not the next best score.
+  const top = shaped(["y1", "y2", "y3"], -0.1, 0.2);
+  const sibling = shaped(["y1", "y2"], -0.3, 0.3);
+  const stranger = shaped(["x"], -0.5, 0.4);
+  assertEquals(paretoFront([top, sibling, stranger]).length, 3);
+  assertEquals(
+    pickDiverseMigrants([top, sibling, stranger], destination, 2),
+    [top, stranger],
+  );
+});
+
 Deno.test("island study — transport copies faithfully and never touches the source", () => {
   const source = make(2, -0.25, 0.4);
   const before = JSON.stringify(source.exportJSON());
@@ -221,29 +294,84 @@ Deno.test("island study — arms spend the same records; holdout never influence
     assert(ring.transfers > 0 && ring.bytes > 0);
     assert(broadcast.transfers > 0 && broadcast.bytes > 0);
 
-    // Holdout isolation. Rather than comparing two runs, isolation is shown
-    // by observing WHEN the holdout is first read: only after the last clock
-    // tick, i.e. after every training, exchange and calibration decision has
-    // been made. (Same-seed runs do reproduce exactly; see the reproduction
-    // test below.)
-    let ticks = 0;
-    const tickClock = () => ++ticks;
-    let ticksAtFirstHoldoutRead = -1;
-    const spied = {
+    // Holdout isolation, by outcome: change the holdout targets materially (not
+    // by a uniform shift, which could not change a ranking) and everything a
+    // decision touches must stay identical; only the reported holdout moves.
+    const altered: typeof splits = {
       ...splits,
-      holdout: splits.holdout.map((r) => ({
+      holdout: splits.holdout.map((r, i) => ({
         input: r.input,
-        get target() {
-          if (ticksAtFirstHoldoutRead < 0) ticksAtFirstHoldoutRead = ticks;
-          return r.target + 10;
-        },
+        target: -r.target + (i % 7) * 0.9 - 2,
       })),
     };
-    const observed = runArmSeed("ring", SMALL, spied, initial, tickClock);
-    assert(ticksAtFirstHoldoutRead > 0, "the holdout is read for the report");
-    assertEquals(ticksAtFirstHoldoutRead, ticks);
-    assert(observed.holdoutMse > 10, "the report reflects the holdout targets");
-    assert(observed.calibrationMse < 10, "calibration never saw the holdout");
+    for (const arm of ["ring", "broadcast"] as const) {
+      const real = run(arm);
+      const other = run(arm, altered);
+      assertEquals(other.reportedUuid, real.reportedUuid);
+      assertEquals(other.calibrationMse, real.calibrationMse);
+      assertEquals(other.recordsCharged, real.recordsCharged);
+      assertEquals(other.transfers, real.transfers);
+      assertEquals(other.bytes, real.bytes);
+      assertEquals(other.generations, real.generations);
+      assertEquals(other.mutationFills, real.mutationFills);
+      assertNotEquals(other.holdoutMse, real.holdoutMse);
+    }
+  });
+});
+
+Deno.test("island study — a mutation-only fill is always a new creature", async () => {
+  await withRngTestLock(() => {
+    const previous = getRandomNumberGenerator();
+    try {
+      const config = createNeatConfig({
+        mutationRate: 1,
+        rng: createSeededRng(7),
+      });
+      const mutator = new Mutator(config);
+      for (const hidden of [1, 2, 3]) {
+        const parent = make(hidden, -0.2, 0.1);
+        const parentBefore = JSON.stringify(parent.exportJSON());
+        const { fill, redraws } = makeMutantFill(parent, mutator);
+        assertNotEquals(CreatureUtil.makeUUID(fill), parent.uuid);
+        assertEquals(fill.score, undefined);
+        assert(redraws >= 0);
+        assertEquals(JSON.stringify(parent.exportJSON()), parentBefore);
+      }
+      // A mutator that never mutates cannot make a fill that differs, and the
+      // refusal is loud rather than a clone handed back to be scored again.
+      const idle = new Mutator({ ...config, mutationRate: 0 });
+      assertThrows(
+        () => makeMutantFill(make(2, -0.2), idle),
+        Error,
+        "unmutated clone",
+      );
+    } finally {
+      setRandomNumberGenerator(previous);
+    }
+  });
+});
+
+Deno.test("island study — a collapsed start is refilled with mutants and still charges the same records", async () => {
+  await withRngTestLock(() => {
+    const splits = buildSplits(SMALL);
+    const first = buildInitialIslands(SMALL);
+    // Every island starts as clones of one creature, so crossover refuses every
+    // pair and each offspring slot is a mutation-only fill.
+    const clones = first.map((island) => island.map(() => island[0]));
+    const result = (arm: "none" | "ring" | "broadcast") =>
+      runArmSeed(arm, SMALL, splits, clones, counterClock());
+    const none = result("none");
+    const ring = result("ring");
+    assert(none.mutationFills > 0, "the clone islands force fills");
+    assert(ring.mutationFills > 0);
+    assertEquals(none.recordsCharged, ring.recordsCharged);
+    assertEquals(
+      none.trainRecordsCharged,
+      SMALL.islands *
+        (SMALL.islandPopulation +
+          (SMALL.generations - 1) * (SMALL.islandPopulation - SMALL.elitism)) *
+        SMALL.trainRecords,
+    );
   });
 });
 

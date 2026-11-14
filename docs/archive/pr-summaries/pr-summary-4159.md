@@ -7,12 +7,13 @@ broadcast (the control). It includes the reproducible command
 `deno task island-exchange-study`, the 20-seed machine-readable results and an
 evidence page.
 
-**The result is negative.** Under the pre-declared rules both the ring and no
-exchange are **worse** than the broadcast on paired held-out MSE. The ring keeps
-islands far more diverse (final inter-island distance 0.44 against 0.002;
-collapse rate 0.10 against 1.00) at about the same transport cost (bytes ratio
-0.92), but its held-out deficit is small and its interval only just clears zero.
-Nothing under `src/` changes and no default changes. Closes #4159.
+**The result is negative.** Under the pre-declared rules neither the ring nor no
+exchange can be called better than the broadcast on paired held-out MSE: both
+are **no benefit**. The ring keeps islands far more diverse (final inter-island
+distance 0.41 against 0.0004; collapse rate 0.15 against 1.00) at 0.87 of the
+broadcast's bytes, and its mean held-out error is lower (1.12e-2 against
+1.22e-2), but its 95% interval spans zero and it wins 9 of 20 seeds. Nothing
+under `src/` changes and no default changes. Closes #4159.
 
 ## Spec
 
@@ -43,12 +44,22 @@ Nothing under `src/` changes and no default changes. Closes #4159.
   their train score. When crossover refuses a pair (clone pairs on a collapsed
   island), the slot is filled with a mutation-only copy, counted as
   `mutationFills`. Every arm charges exactly 350,100 records per seed.
+- **Fills are real mutants.** A fill copies a parent and mutates it at rate 1,
+  redrawing until its content uuid differs from the parent's (`makeMutantFill`);
+  it throws rather than hand back a clone. An earlier run used the 0.5 mutation
+  rate, so about half the fills were exact copies of a parent, scored again for
+  nothing. That run called both comparisons `worse`; with real mutants both are
+  `no-benefit`, so the earlier verdict is superseded. `fillRedraws` in the
+  artefact counts the rare redraws (0.05, 0.15 and 0 per seed for `none`, `ring`
+  and `broadcast`).
 - **Three disjoint splits.** Train drives selection and migrant ranking.
   Calibration picks which island champion is reported. Holdout is only reported:
   it is never charged and never read by a decision. The pre-declared rules
   (`PREDECLARED`, `comparisonVerdict`) are a 95% paired-bootstrap interval below
   zero, a collapse rate no higher than the control's, and at most 1.25× the
-  control's bytes for `better`.
+  control's bytes for `better`. A test reruns an arm and seed against materially
+  different holdout targets and asserts that every decision-driven output is
+  identical while only the holdout error moves.
 - **Kept rather than removed.** The harness is the reproducible command the
   issue asks for and has no production caller. Nothing optional was added under
   `src/`, so there is no product code to remove after the negative result.
@@ -71,15 +82,16 @@ Nothing under `src/` changes and no default changes. Closes #4159.
 
 Backend and CLI research harness only; no UI. Full write-up:
 `docs/evidence/island-exchange-4159.md`. Artefact:
-`docs/evidence/island-exchange-4159.json`. Code commit `80ce8ff2`, NEAT-AI
-7.1.17, 20 seeds (4159–4178), 6 islands × 10 creatures, 24 generations, exchange
-every 4 generations, coverage 60/60 runs, 0 failures.
+`docs/evidence/island-exchange-4159.json`. NEAT-AI 7.1.18, artefact `commit`
+`faaa0ad6` (the parent of the commit carrying the mutant-fill change), 20 seeds
+(4159–4178), 6 islands × 10 creatures, 24 generations, exchange every 4
+generations, coverage 60/60 runs, 0 failures.
 
 ```mermaid
 flowchart TD
     A["Score new offspring on train"] --> B{"Every 4th generation?"}
     B -- "yes" --> C["Exchange: none, ring or broadcast"]
-    B -- "no" --> D["Breed: crossover, mutation-only fill"]
+    B -- "no" --> D["Breed: crossover, mutant fill"]
     C --> D
     D --> E{"Generation 24?"}
     E -- "no" --> A
@@ -89,16 +101,16 @@ flowchart TD
 
 | Arm         | Held-out MSE | Inter-island distance | Collapse rate | Transfers | Bytes  | Records |
 | ----------- | ------------ | --------------------- | ------------- | --------- | ------ | ------- |
-| `none`      | 1.678e-2     | 0.950                 | 0.00          | 0         | 0      | 350,100 |
-| `ring`      | 1.205e-2     | 0.443                 | 0.10          | 25        | 29,491 | 350,100 |
-| `broadcast` | 1.115e-2     | 0.002                 | 1.00          | 25        | 32,201 | 350,100 |
+| `none`      | 1.243e-2     | 0.950                 | 0.00          | 0         | 0      | 350,100 |
+| `ring`      | 1.116e-2     | 0.405                 | 0.15          | 25        | 28,682 | 350,100 |
+| `broadcast` | 1.224e-2     | 0.000                 | 1.00          | 25        | 32,892 | 350,100 |
 
-- `ring` vs `broadcast`: **worse**. Mean paired difference +8.96e-4, 95% CI
-  [4.22e-5, 1.82e-3], ring wins 8/20 seeds.
-- `none` vs `broadcast`: **worse**. Mean +5.63e-3, 95% CI [1.61e-3, 1.26e-2],
-  wins 3/20.
-- Reproducibility: the study was run twice at the same code. The results were
-  identical apart from wall-clock fields, and the test
+- `ring` vs `broadcast`: **no benefit**. Mean paired difference −1.08e-3, 95% CI
+  [−3.32e-3, 2.95e-4], ring wins 9/20 seeds, bytes ratio 0.872.
+- `none` vs `broadcast`: **no benefit**. Mean +1.85e-4, 95% CI [−2.40e-3,
+  1.91e-3], wins 5/20.
+- Reproducibility: the final code was run twice. The results were identical
+  apart from wall-clock fields, and the test
   `island study — one arm and seed reproduce exactly` pins it.
 
 Issue numbers cited: #4159 (Experiment: Compare neighbour-only island exchange
@@ -108,7 +120,7 @@ pre-selection harness, already cited in its own module).
 
 ## Test Plan
 
-- Added `test/scripts/IslandExchangeStudy.ts` (13 tests):
+- Added `test/scripts/IslandExchangeStudy.ts` (19 tests):
   - split sizes, disjointness and determinism
   - ring allocation, which spends exactly the budget, is fair over a cycle and
     refuses bad input
@@ -117,10 +129,19 @@ pre-selection harness, already cited in its own module).
   - the Pareto front drops dominated and unscored creatures
   - migrants exclude what the receiver already holds, and the result is empty
     when everything is a duplicate
+  - the ring's diverse pick, on fixtures where the answers differ: a
+    lower-scoring but topologically further front member is picked first, the
+    front is taken before a dominated member that is further away, the remainder
+    follows in score order, and a second pick is chosen for distance from the
+    first pick
   - transport copies faithfully and never touches the source
   - each exchange arm moves what it promises
-  - every arm charges exactly the same records, and holdout is read only after
-    the last decision
+  - every arm charges exactly the same records, and changing the holdout targets
+    leaves the reported island, calibration error, records, transfers, bytes and
+    per-generation traces unchanged for `ring` and `broadcast`
+  - a fill is always a new creature, a mutator that cannot change the parent is
+    refused, and a start of clone-only islands is refilled with mutants while
+    charging the same records
   - the paired bootstrap
   - every verdict rule, including a `better` interval refused for bytes and for
     collapse
@@ -131,12 +152,13 @@ pre-selection harness, already cited in its own module).
   `breedOffspring` only. No existing test was edited or removed.
   `test/scripts/PreSelectionAB.ts` still passes.
 - `deno test --allow-all test/scripts/IslandExchangeStudy.ts test/scripts/PreSelectionAB.ts`
-  passed (18 passed, 0 failed).
+  passed (24 passed, 0 failed).
 - All non-helper files in `test/docs/` passed (318 passed, 0 failed).
-- `./quality.sh --rust-scorer-bin=<built rust_scorer>` ran on head `99a5f6d5`
-  and passed: exit 0, 10,339 passed, 0 failed, 50 ignored. The `rust_scorer`
-  binary was built from a temporary NEAT-AI-scorer clone, which was then
-  deleted.
+- `deno fmt`, `deno lint` and `deno check` on `scripts/` and `test/scripts/`
+  passed on the final code. The full `./quality.sh` was not re-run on this head:
+  it needs a built `rust_scorer` binary and a dependency update that this host
+  does not run unattended. The earlier full run (head `99a5f6d5`, 10,339 passed)
+  predates the mutant-fill change.
 - Not checked: macOS and Windows; discovery tests ran in skip mode (no Discovery
   library on this host). No representative production run was made, so the
   finding covers tiny creatures on a smooth synthetic target only.
