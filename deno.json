@@ -91,6 +91,7 @@
     "pre-selection-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/pre_selection_ab.ts",
     "differential-weight-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/differential_weight_study.ts",
     "memetic-gain-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/memetic_gain_study.ts",
+    "connectivity-prior-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/connectivity_prior_study.ts",
     "surrogate-uncertainty-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_uncertainty_ab.ts",
     "lineage-targeting-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/lineage_targeting_study.ts"
   },
