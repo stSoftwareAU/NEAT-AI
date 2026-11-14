@@ -374,3 +374,94 @@ Deno.test("lineage study - validateSettings names the offending setting", () => 
     "historyExploration",
   );
 });
+
+Deno.test("lineage study - history selects the lowest delta for the relevant stratum", async () => {
+  await withRngTestLock(() => {
+    const saved = getRandomNumberGenerator();
+    try {
+      const settings = {
+        ...SMALL,
+        historyExploration: 0,
+        historyProposals: 100,
+        candidatesPerTarget: 1,
+      };
+      const corpus = buildStratifiedCorpus(settings);
+      const parent = seedPopulation(settings, createSeededRng(7))[2];
+      const errors = {
+        train: stratumErrors(parent, corpus.train),
+        calibration: stratumErrors(parent, corpus.calibration),
+      };
+      const history = new OperatorHistory();
+      // Weight changes win overall; bias changes win in every individual
+      // stratum, including this parent's worst one.
+      history.record(edge("MOD_WEIGHT", [1, 1, 1, 1], -2));
+      history.record(edge("MOD_BIAS", [-2, -2, -2, -2], 1));
+      const breed = (arm: ArmName, prior: OperatorHistory) => {
+        const ctx = createBreedContext(settings, corpus.calibration, prior);
+        setRandomNumberGenerator(createSeededRng(11));
+        return breedPair(arm, parent, errors, ctx, 1)[1];
+      };
+      assertEquals(breed("history", history).edge.operator, "MOD_WEIGHT");
+      assertEquals(
+        breed("history-targeted", history).edge.operator,
+        "MOD_BIAS",
+      );
+      const ordinary = breed("ordinary", history);
+      const unsteered = breed("ordinary", new OperatorHistory());
+      assertEquals(ordinary.edge.operator, unsteered.edge.operator);
+      assertEquals(
+        stratumErrors(ordinary.child, corpus.calibration),
+        stratumErrors(unsteered.child, corpus.calibration),
+      );
+    } finally {
+      setRandomNumberGenerator(saved);
+    }
+  });
+});
+
+Deno.test("lineage study - best-of-R screening improves the targeted child and charges every candidate", async () => {
+  await withRngTestLock(() => {
+    const saved = getRandomNumberGenerator();
+    try {
+      const corpus = buildStratifiedCorpus(SMALL);
+      const parent = seedPopulation(SMALL, createSeededRng(7))[2];
+      const errors = {
+        train: stratumErrors(parent, corpus.train),
+        calibration: stratumErrors(parent, corpus.calibration),
+      };
+      let improvements = 0;
+      for (const seed of [11, 12, 13, 14, 15]) {
+        const breed = (candidatesPerTarget: number) => {
+          const ctx = createBreedContext(
+            { ...SMALL, candidatesPerTarget },
+            corpus.calibration,
+          );
+          setRandomNumberGenerator(createSeededRng(seed));
+          const child = breedPair("targeted", parent, errors, ctx, 1)[1];
+          const stratum = child.edge.targetStratum!;
+          const scored = stratumErrors(
+            child.child,
+            corpus.calibration,
+            stratum,
+          );
+          assertEquals(ctx.screenRecords, candidatesPerTarget * scored.records);
+          return { stratum, error: scored.overall };
+        };
+        const first = breed(1);
+        const best = breed(8);
+        assertEquals(best.stratum, first.stratum);
+        assert(
+          best.error <= first.error,
+          `seed ${seed}: ${best.error} > ${first.error}`,
+        );
+        if (best.error < first.error) improvements++;
+      }
+      assert(
+        improvements > 0,
+        "screening must improve at least one seeded child",
+      );
+    } finally {
+      setRandomNumberGenerator(saved);
+    }
+  });
+});

@@ -126,7 +126,7 @@ as a closure block.
 
 ## Test Plan
 
-- Added `test/scripts/LineageTargetingStudy.ts` (14 tests): the corpus is
+- Added `test/scripts/LineageTargetingStudy.ts` (16 tests): the corpus is
   deterministic, disjoint and stratified; onlyStratum scores just that stratum;
   affectedGenes diffs by UUID identity; OperatorHistory averages deltas from
   edges only; breeding never modifies the parent; holdout never guides any
@@ -146,9 +146,10 @@ as a closure block.
   scripts.
 - The full `./quality.sh --rust-scorer-bin=<built rust_scorer>` ran in the
   foreground on head `534b8fa3` and exited 0: 10,340 passed, 0 failed, 50
-  ignored. Head `534b8fa3` is the last code commit; later commits touch only
-  this summary. The Discovery library is absent on this host, so the gate
-  skipped its verification and discovery tests ran in their skip mode.
+  ignored. Later commit `b4411dc1` removed two unused initialisers; the review
+  follow-up adds two behaviour tests without changing the study implementation.
+  The Discovery library is absent on this host, so the gate skipped its
+  verification and discovery tests ran in their skip mode.
 
 ## Not done / risks
 
@@ -162,3 +163,11 @@ as a closure block.
   complete record.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+## Review follow-up
+
+Two deterministic tests exercise history selection through `breedPair` (overall
+versus stratum-specific deltas, with an ordinary-arm control), and best-of-R
+screening against the first candidate with exact record charging. Both pass.
+Each relevant regression was observed failing: reversed history selection,
+ignored stratum, worst-candidate screening, and first-candidate-only screening.
