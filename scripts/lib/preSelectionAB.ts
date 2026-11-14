@@ -437,6 +437,7 @@ export function breedOffspring(
   mutator: Mutator,
   config: ReturnType<typeof createNeatConfig>,
   rng: RandomNumberGenerator,
+  forwardOnly = true,
 ): Creature[] {
   const offspring: Creature[] = [];
   for (let i = 0; i < count; i++) {
@@ -451,7 +452,7 @@ export function breedOffspring(
     const child = Offspring.breed(mum, dad, {
       geneticCompatibilityThreshold: config.geneticCompatibilityThreshold,
       interSpeciesCrossoverThreshold: config.interSpeciesCrossoverThreshold,
-      forwardOnly: true,
+      forwardOnly,
     });
     if (child === undefined) continue;
     delete child.score;

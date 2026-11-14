@@ -59,7 +59,7 @@ console.info(
 );
 for (const row of study.perArm) {
   console.info(
-    `${row.arm.padEnd(9)} ${String(row.n).padStart(2)}  ${
+    `${row.arm.padEnd(16)} ${String(row.n).padStart(2)}  ${
       fmt(row.medianHoldout).padEnd(9)
     } ${fmt(row.upperQuartileHoldout).padEnd(9)} ${
       fmt(row.medianTrain).padEnd(9)
@@ -77,6 +77,16 @@ for (const e of study.exploratory) {
     } wins ${e.comparison.wins} losses ${e.comparison.losses}`,
   );
 }
+const selfLoop = study.selfLoop.comparison;
+console.info(
+  selfLoop === null
+    ? `\nSelf-loops (recurrent path): no paired runs`
+    : `\nSelf-loops (recurrent path, exploratory): ${study.selfLoop.arm} ${selfLoop.verdict} diff ${
+      fmt(selfLoop.meanDiff)
+    } CI [${fmt(selfLoop.ci.low)}, ${
+      fmt(selfLoop.ci.high)
+    }] wins ${selfLoop.wins} losses ${selfLoop.losses}`,
+);
 const cov = study.coverage;
 console.info(
   `\nCoverage: ${cov.completedRuns}/${cov.expectedRuns} runs, ${cov.failures.length} failures`,

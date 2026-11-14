@@ -118,12 +118,22 @@ export function validateSettings(s: StudySettings): void {
   }
 }
 
-/** One arm: the control, or one cell of the in-degree by fan-out grid. */
+/**
+ * One arm: the control, one cell of the in-degree by fan-out grid, or the
+ * self-loop arm, which runs on the recurrent execution path.
+ */
 export type StudyArm =
   | { arm: string; kind: "control" }
-  | { arm: string; kind: "prior"; inDegree: number; fanOut: number };
+  | { arm: string; kind: "prior"; inDegree: number; fanOut: number }
+  | { arm: string; kind: "selfLoop" };
 
-/** The control first, then the grid with in-degree outer and fan-out inner. */
+/** Name of the self-loop arm. */
+export const SELF_LOOP_ARM = "control-selfloop";
+
+/**
+ * The control first, then the grid with in-degree outer and fan-out inner,
+ * then the self-loop arm. The self-loop arm is never a calibration candidate.
+ */
 export const ARMS: readonly StudyArm[] = (() => {
   const arms: StudyArm[] = [{ arm: "control", kind: "control" }];
   for (const inDegree of IN_DEGREES) {
@@ -136,6 +146,7 @@ export const ARMS: readonly StudyArm[] = (() => {
       });
     }
   }
+  arms.push({ arm: SELF_LOOP_ARM, kind: "selfLoop" });
   return arms;
 })();
 
@@ -182,6 +193,36 @@ export function buildControlCreature(rng: RandomNumberGenerator): Creature {
   delete creature.uuid;
   CreatureUtil.makeUUID(creature);
   return creature;
+}
+
+/**
+ * The control topology plus a self-loop on every hidden neuron, built for the
+ * recurrent execution path (`forwardOnly: false`, run with
+ * `feedbackLoop: true`). The forward synapses are today's fully connected
+ * layer, so the self-loops are the only difference from the control.
+ */
+export function buildSelfLoopCreature(rng: RandomNumberGenerator): Creature {
+  const base = buildControlCreature(rng).exportJSON();
+  const selfLoops: CreatureExport["synapses"] = base.neurons
+    .filter((n) => n.type === "hidden")
+    .map((n) => ({
+      fromUUID: n.uuid,
+      toUUID: n.uuid,
+      weight: (rng.random() - 0.5) * 2,
+    }));
+  const creature = Creature.fromJSON({
+    ...base,
+    synapses: [...base.synapses, ...selfLoops],
+    forwardOnly: false,
+  });
+  delete creature.uuid;
+  CreatureUtil.makeUUID(creature);
+  return creature;
+}
+
+/** Self-loops on hidden neurons — a synapse from a neuron to itself. */
+export function countSelfLoops(creature: Creature): number {
+  return creature.synapses.filter((s) => s.from === s.to).length;
 }
 
 /** Refuse a grid cell that no forward-only layer can realise. */
@@ -388,6 +429,8 @@ export interface ArmRun {
   stalled: boolean;
   initial: ConnectivityStats;
   final: ConnectivityStats;
+  /** Self-loop synapses in the first starting creature and in the best. */
+  selfLoops: { initial: number; final: number };
 }
 
 /** A v4-looking uuid string drawn from a seeded stream. */
@@ -435,11 +478,15 @@ function runSeeded(
   corpus: { train: readonly ABRecord[]; holdout: readonly ABRecord[] },
 ): ArmRun {
   const rng = createSeededRng(seed ^ 0x5a5a);
+  const recurrent = arm.kind === "selfLoop";
   const config = createNeatConfig({
     populationSize: settings.populationSize,
     elitism: 2,
     mutationRate: settings.mutationRate,
     seed,
+    // The recurrent path: feedback mutations allowed and records presented
+    // in order (the engine requires the two together).
+    ...(recurrent ? { feedbackLoop: true, disableRandomSamples: true } : {}),
   });
   const mutator = new Mutator(config);
   const trainLen = corpus.train.length;
@@ -449,10 +496,19 @@ function runSeeded(
     population.push(
       arm.kind === "control"
         ? buildControlCreature(rng)
+        : arm.kind === "selfLoop"
+        ? buildSelfLoopCreature(rng)
         : buildPriorCreature(arm.inDegree, arm.fanOut, rng, `p${i}`),
     );
   }
   const initial = connectivityStats(population[0]);
+  const initialSelfLoops = countSelfLoops(population[0]);
+  // A recurrent creature carries state between activations; every score
+  // starts from a cleared state so a score depends on the creature alone.
+  const score = (creature: Creature, records: readonly ABRecord[]) => {
+    if (recurrent) creature.clearState();
+    return scoreCreature(creature, records).score;
+  };
 
   let recordsScored = 0;
   let recordsToThreshold: number | null = null;
@@ -464,7 +520,7 @@ function runSeeded(
         halted = true;
         return;
       }
-      creature.score = scoreCreature(creature, corpus.train).score;
+      creature.score = score(creature, corpus.train);
       recordsScored += trainLen;
     }
   };
@@ -498,6 +554,7 @@ function runSeeded(
       mutator,
       config,
       rng,
+      !recurrent,
     );
     stallCount = offspring.length === 0 ? stallCount + 1 : 0;
     if (stallCount >= settings.stallGenerations) {
@@ -516,7 +573,7 @@ function runSeeded(
 
   const best = population[0];
   const trainMse = -(best.score ?? -Infinity);
-  const holdoutMse = -scoreCreature(best, corpus.holdout).score;
+  const holdoutMse = -score(best, corpus.holdout);
   return {
     arm: arm.arm,
     seed,
@@ -528,6 +585,7 @@ function runSeeded(
     stalled,
     initial,
     final: connectivityStats(best),
+    selfLoops: { initial: initialSelfLoops, final: countSelfLoops(best) },
   };
 }
 
@@ -639,12 +697,15 @@ export function compareToControl(
   };
 }
 
-/** The prior arm with the lowest median train MSE; ties go to ARMS order. */
+/**
+ * The grid cell with the lowest median train MSE; ties go to ARMS order. The
+ * control and the self-loop arm are never candidates.
+ */
 export function chooseCell(calibrationRuns: readonly ArmRun[]): string {
   let best: string | undefined;
   let bestMedian = Infinity;
   for (const arm of ARMS) {
-    if (arm.kind === "control") continue;
+    if (arm.kind !== "prior") continue;
     const runs = calibrationRuns.filter((r) => r.arm === arm.arm);
     if (runs.length === 0) continue;
     const m = median(runs.map((r) => r.trainMse));
@@ -806,9 +867,12 @@ export function runStudy(options: StudyOptions = {}) {
       bootstrap: { resamples: BOOTSTRAP_RESAMPLES, seed: BOOTSTRAP_SEED },
       criteria: CRITERIA,
       selfLoops: {
-        status: "unavailable",
+        status: "swept",
+        arm: SELF_LOOP_ARM,
+        path:
+          "recurrent: forwardOnly false, feedbackLoop true, disableRandomSamples true; state cleared before every score",
         reason:
-          "this harness evaluates through the forward-only path (forwardOnly: true, the production default); self-loops were not swept",
+          "the grid cells run on the forward-only path (the production default); self-loops are tested only on the already-supported recurrent path, as one exploratory arm: the control topology plus a self-loop on every hidden neuron",
       },
       paper:
         "arXiv 2610.33498 not read; the method is this repository's reading of the issue",
@@ -822,6 +886,7 @@ export function runStudy(options: StudyOptions = {}) {
     validation: { runs: validationRuns },
     confirmatory: { arm: chosenCell, comparison: compare(chosenCell) },
     exploratory: priorArms.map((arm) => ({ arm, comparison: compare(arm) })),
+    selfLoop: { arm: SELF_LOOP_ARM, comparison: compare(SELF_LOOP_ARM) },
     perArm,
     coverage: {
       expectedRuns,

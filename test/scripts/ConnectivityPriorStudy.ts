@@ -18,13 +18,16 @@ import {
   ARMS,
   buildControlCreature,
   buildPriorCreature,
+  buildSelfLoopCreature,
   buildStudyCorpus,
   chooseCell,
   compareToControl,
   connectivityStats,
+  countSelfLoops,
   DEFAULT_SETTINGS,
   pairedBootstrapCi,
   runArm,
+  SELF_LOOP_ARM,
   type StudySettings,
   validateCell,
   verdict,
@@ -153,6 +156,7 @@ const run = (arm: string, seed: number, trainMse: number, h = 1): ArmRun => ({
   stalled: false,
   initial: { meanHiddenInDegree: 0, meanInputFanOut: 0, reachable: true },
   final: { meanHiddenInDegree: 0, meanInputFanOut: 0, reachable: true },
+  selfLoops: { initial: 0, final: 0 },
 });
 
 Deno.test("chooseCell picks the lowest median train MSE, ties to ARMS order", () => {
@@ -192,7 +196,7 @@ Deno.test("pairedBootstrapCi is deterministic and ordered", () => {
 
 Deno.test("every grid cell builds with exact connectivity for several seeds", () => {
   for (const arm of ARMS) {
-    if (arm.kind === "control") continue;
+    if (arm.kind !== "prior") continue;
     for (const seed of [1, 2, 3, 4, 5]) {
       const stats = connectivityStats(
         buildPriorCreature(
@@ -207,4 +211,50 @@ Deno.test("every grid cell builds with exact connectivity for several seeds", ()
       assert(stats.reachable, arm.arm);
     }
   }
+});
+
+Deno.test("buildSelfLoopCreature is the control plus one self-loop per hidden neuron", () => {
+  const creature = buildSelfLoopCreature(createSeededRng(3));
+  assertEquals(creature.forwardOnly, false);
+  assertEquals(countSelfLoops(creature), 8);
+  const hidden = new Set(
+    creature.neurons.filter((n) => n.type === "hidden").map((n) => n.index),
+  );
+  for (const s of creature.synapses) {
+    if (s.from === s.to) assert(hidden.has(s.from), "self-loop on hidden only");
+    else assert(s.from < s.to, "every other synapse is forward");
+  }
+  const stats = connectivityStats(creature);
+  // The self-loop counts as an inward synapse: 4 inputs plus itself.
+  assertEquals(stats.meanHiddenInDegree, 5);
+  assertEquals(stats.meanInputFanOut, 8);
+  assert(stats.reachable);
+});
+
+Deno.test("the control carries no self-loops", () => {
+  assertEquals(countSelfLoops(buildControlCreature(createSeededRng(3))), 0);
+});
+
+Deno.test("the self-loop arm runs on the recurrent path and is reproducible", () => {
+  withRngTestLock(() => {
+    const corpus = buildStudyCorpus(4160, 60, 60);
+    const a = runArm(CELL(SELF_LOOP_ARM), 11, SMALL, corpus);
+    const b = runArm(CELL(SELF_LOOP_ARM), 11, SMALL, corpus);
+    assertEquals(a, b);
+    assertEquals(a.selfLoops.initial, 8);
+    assert(Number.isFinite(a.trainMse));
+    assert(Number.isFinite(a.holdoutMse));
+    assert(a.recordsScored > 0 && a.recordsScored <= SMALL.budgetRecords);
+    const control = runArm(CELL("control"), 11, SMALL, corpus);
+    assertEquals(control.selfLoops.initial, 0);
+  });
+});
+
+Deno.test("the self-loop arm is never a calibration candidate", () => {
+  const runs = [
+    run(SELF_LOOP_ARM, 1, 0.01),
+    run("d2-f2", 1, 0.5),
+  ];
+  assertEquals(chooseCell(runs), "d2-f2");
+  assertThrows(() => chooseCell([run(SELF_LOOP_ARM, 1, 0.01)]));
 });
