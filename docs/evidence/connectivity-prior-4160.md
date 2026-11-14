@@ -80,23 +80,25 @@ control's.
 
 ### Per arm
 
-| Arm       | n  | Median holdout | Upper-quartile holdout | Median train | Median records to threshold | Reached | Stalled |
-| --------- | -- | -------------- | ---------------------- | ------------ | --------------------------- | ------- | ------- |
-| `control` | 20 | 0.03729        | 0.04695                | 0.03469      | 2.160e+4                    | 19/20   | 0       |
-| `d1.5-f1` | 20 | 0.06908        | 0.09615                | 0.06177      | 3.825e+4                    | 10/20   | 0       |
-| `d1.5-f2` | 20 | 0.03762        | 0.07496                | 0.03415      | 1.920e+4                    | 14/20   | 0       |
-| `d1.5-f3` | 20 | 0.03691        | 0.05376                | 0.03467      | 2.325e+4                    | 16/20   | 0       |
-| `d2-f1`   | 20 | 0.06089        | 0.09893                | 0.05435      | 2.550e+4                    | 11/20   | 0       |
-| `d2-f2`   | 20 | 0.04600        | 0.05448                | 0.04432      | 3.300e+4                    | 17/20   | 0       |
-| `d2-f3`   | 20 | 0.04169        | 0.05583                | 0.03835      | 2.910e+4                    | 19/20   | 0       |
-| `d3-f1`   | 20 | 0.05734        | 0.08857                | 0.05598      | 2.475e+4                    | 12/20   | 0       |
-| `d3-f2`   | 20 | 0.04411        | 0.09332                | 0.04268      | 2.385e+4                    | 14/20   | 0       |
-| `d3-f3`   | 20 | 0.05416        | 0.07527                | 0.05312      | 4.290e+4                    | 15/20   | 0       |
+| Arm                | n  | Median holdout | Upper-quartile holdout | Median train | Median records to threshold | Reached | Stalled |
+| ------------------ | -- | -------------- | ---------------------- | ------------ | --------------------------- | ------- | ------- |
+| `control`          | 20 | 0.03729        | 0.04695                | 0.03469      | 2.160e+4                    | 19/20   | 0       |
+| `d1.5-f1`          | 20 | 0.06908        | 0.09615                | 0.06177      | 3.825e+4                    | 10/20   | 0       |
+| `d1.5-f2`          | 20 | 0.03762        | 0.07496                | 0.03415      | 1.920e+4                    | 14/20   | 0       |
+| `d1.5-f3`          | 20 | 0.03691        | 0.05376                | 0.03467      | 2.325e+4                    | 16/20   | 0       |
+| `d2-f1`            | 20 | 0.06089        | 0.09893                | 0.05435      | 2.550e+4                    | 11/20   | 0       |
+| `d2-f2`            | 20 | 0.04600        | 0.05448                | 0.04432      | 3.300e+4                    | 17/20   | 0       |
+| `d2-f3`            | 20 | 0.04169        | 0.05583                | 0.03835      | 2.910e+4                    | 19/20   | 0       |
+| `d3-f1`            | 20 | 0.05734        | 0.08857                | 0.05598      | 2.475e+4                    | 12/20   | 0       |
+| `d3-f2`            | 20 | 0.04411        | 0.09332                | 0.04268      | 2.385e+4                    | 14/20   | 0       |
+| `d3-f3`            | 20 | 0.05416        | 0.07527                | 0.05312      | 4.290e+4                    | 15/20   | 0       |
+| `control-selfloop` | 20 | 0.03495        | 0.04584                | 0.03202      | 2.400e+4                    | 17/20   | 0       |
 
 ### Calibration cost and coverage
 
-Calibration consumed 2,400,000 charged records. Coverage was complete: 240
-expected runs, 240 completed, 0 failures.
+Calibration consumed 2,640,000 charged records (all eleven arms, including the
+self-loop arm). Coverage was complete: 264 expected runs, 264 completed, 0
+failures.
 
 ### Search economics
 
@@ -108,8 +110,22 @@ holdout (0.07496 against 0.04695). Starting sparse did not buy a cheaper search.
 
 ### Self-loops
 
-Not swept. This harness runs only the forward-only path (the production
-default); recurrent self-loops were not tested.
+Tested only on the already-supported recurrent path; no forward-only engine was
+changed. The grid cells run forward-only (the production default). One
+exploratory arm, `control-selfloop`, is the control topology plus a self-loop on
+every hidden neuron (8 self-loops), built with `forwardOnly: false` and evolved
+with `feedbackLoop: true` and `disableRandomSamples: true`. State is cleared
+before every score, so a score depends on the creature alone. The arm is never a
+calibration candidate.
+
+| Arm (vs control)   | Mean diff | CI95                 | W/L  | Verdict      |
+| ------------------ | --------- | -------------------- | ---- | ------------ |
+| `control-selfloop` | +0.001449 | [−0.008916, +0.0121] | 9/11 | `no-benefit` |
+
+Its median holdout MSE (0.03495) and upper quartile (0.04584) are a little lower
+than the control's, but the CI spans zero. In all 20 validation runs the best
+creature had **no self-loops left** (`selfLoops.final` is 0): evolution removed
+them. On this static regression, self-loops are neither kept nor a benefit.
 
 ## Limitations
 
@@ -125,7 +141,7 @@ default); recurrent self-loops were not tested.
 ## Reproduce
 
 ```bash
-deno task connectivity-prior-study --code-version=b345b837 \
+deno task connectivity-prior-study --code-version=20b8f005 \
   --json=docs/evidence/connectivity-prior-4160.json
 ```
 

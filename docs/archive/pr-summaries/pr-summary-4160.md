@@ -8,9 +8,10 @@ fan-out {1, 2, 3} against the current fully connected initialisation, at an
 equal budget of charged train records, with separate calibration and validation
 seeds and paired bootstrap statistics. The result is a **negative finding**: the
 cell chosen on calibration seeds (`d3-f1`) is `harm` against the control, and
-none of the nine cells shows a benefit. No optional prior is added, and nothing
-under `src/` changed. Self-loops in a recurrent execution path were not swept,
-so this PR is Part of #4160.
+none of the nine cells shows a benefit. Self-loops were tested only on the
+already-supported recurrent path, as one exploratory arm (`control-selfloop`):
+`no-benefit`, and evolution removed every self-loop. No optional prior is added,
+and nothing under `src/` changed.
 
 ## Spec
 
@@ -41,6 +42,13 @@ so this PR is Part of #4160.
   cells are reported as exploratory.
 - Assumption: equal charged records stand in for equal compute; wall-clock is
   not capped.
+- Self-loops: the grid stays forward-only. The `control-selfloop` arm is the
+  control plus one self-loop per hidden neuron (`forwardOnly: false`), evolved
+  with `feedbackLoop: true` and `disableRandomSamples: true` (the engine
+  requires both). `breedOffspring` gains an optional `forwardOnly` argument
+  (default `true`, so existing callers are unchanged). State is cleared before
+  every score in that arm. `chooseCell` now considers grid cells only, so the
+  self-loop arm is never the confirmatory cell.
 
 ### Undiscoverable Facts
 
@@ -58,10 +66,11 @@ so this PR is Part of #4160.
 Script/CLI change; no UI files are touched. The full record is
 `docs/evidence/connectivity-prior-4160.md`, and the machine-readable artefact is
 `docs/evidence/connectivity-prior-4160.json`. The artefact holds the manifest
-(code commit b345b837, NEAT-AI version, Deno version, corpus seed, seeds,
-settings, criteria, the self-loop status), calibration runs and cost (2,400,000
-records), per-run results, the comparisons and coverage (240 of 240 runs, no
-failures, no stalls).
+(code commit 20b8f005, NEAT-AI version, Deno version, corpus seed, seeds,
+settings, criteria, the self-loop status), calibration runs and cost (2,640,000
+records), per-run results, the comparisons, the self-loop comparison and
+coverage (264 of 264 runs, no failures, no stalls). Adding the arm left every
+earlier arm's result unchanged.
 
 The diff is the arm's holdout MSE minus the control's, so a negative diff is
 better:
@@ -73,9 +82,12 @@ better:
 | `d1.5-f3`            | +0.006622 | [−0.0032, +0.0177]   | 9/11  | `no-benefit` |
 | `d2-f3`              | +0.002967 | [−0.0070, +0.0142]   | 10/10 | `no-benefit` |
 
-The other five exploratory cells are `harm`. The control's median holdout MSE is
-0.03729 and its upper-quartile (lower-quartile performance) value is 0.04695. It
-reached the threshold in 19 of 20 runs, against 10–19 for the prior cells.
+The other five exploratory cells are `harm`. The self-loop arm,
+`control-selfloop`, is `no-benefit`: mean diff +0.001449, CI95 [−0.008916,
++0.0121], W/L 9/11. Its best creature kept no self-loops in any of the 20 runs.
+The control's median holdout MSE is 0.03729 and its upper-quartile
+(lower-quartile performance) value is 0.04695. It reached the threshold in 19 of
+20 runs, against 10–19 for the prior cells.
 
 ```mermaid
 flowchart LR
@@ -89,20 +101,24 @@ flowchart LR
 To reproduce:
 
 ```bash
-deno task connectivity-prior-study --code-version=$(git rev-parse --short=8 HEAD) \
+deno task connectivity-prior-study --code-version=20b8f005 \
   --json=docs/evidence/connectivity-prior-4160.json
 ```
 
 ## Acceptance Criteria
 
-- **missing** — "Test self-loops only in an already-supported recurrent
-  execution path" — reason: the harness evaluates only the forward-only path
-  (the production default); recurrent self-loops were not swept, and the
-  manifest reports them as not swept.
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **met** — "Test self-loops only in an already-supported recurrent execution
+  path" — evidence:
+  `test/scripts/ConnectivityPriorStudy.ts::the self-loop arm runs on the recurrent path and is reproducible`,
+  `scripts/lib/connectivityPriorStudy.ts` (`buildSelfLoopCreature`,
+  `feedbackLoop: true`), `docs/evidence/connectivity-prior-4160.json`
+  (`manifest.selfLoops`, `selfLoop`) — reviewer: met
 
 ## Test Plan
 
-- Added `test/scripts/ConnectivityPriorStudy.ts` (14 tests):
+- Added `test/scripts/ConnectivityPriorStudy.ts` (18 tests):
   - `buildPriorCreature` gives the exact in-degree and fan-out, reachability,
     forward-only synapses and no duplicate pairs; every grid cell builds for 5
     seeds (the regression for the `d1.5-f3` failure);
@@ -115,16 +131,25 @@ deno task connectivity-prior-study --code-version=$(git rev-parse --short=8 HEAD
   - `recordsToThreshold` with reachable and unreachable thresholds;
   - `verdict` for benefit, harm, no-benefit, and a CI benefit refused by the
     upper-quartile rule; `chooseCell` ties; `compareToControl` refuses
-    mismatched seeds; `pairedBootstrapCi` determinism, bounds and empty input.
+    mismatched seeds; `pairedBootstrapCi` determinism, bounds and empty input;
+  - `buildSelfLoopCreature` adds exactly one self-loop per hidden neuron, keeps
+    every other synapse forward and is reachable; the control has none; the
+    self-loop arm runs reproducibly on the recurrent path; `chooseCell` never
+    picks it.
+- `deno test -A test/scripts/ConnectivityPriorStudy.ts test/scripts/PreSelectionAB.ts`
+  on 20b8f005: `ok | 23 passed | 0 failed`. The full study was rerun on 20b8f005
+  (264 of 264 runs).
 - `scripts/lib/preSelectionAB.ts`: `breedOffspring` is only exported; the
   existing `test/scripts/PreSelectionAB.ts` tests pass unchanged.
 - `./quality.sh --rust-scorer-bin=<rust_scorer>` ran on head b7461c59 and exited
-  0 with `ok | 10340 passed (5 steps) | 0 failed | 50 ignored (19m6s)`. The only
-  later change is this summary.
+  0 with `ok | 10340 passed (5 steps) | 0 failed | 50 ignored (19m6s)`. It has
+  not been rerun since the self-loop arm was added; the worker reruns it.
 
 ## Not done / risks
 
-- Recurrent self-loops were not swept (see above).
+- Self-loops were tested as one arm (the control plus self-loops), not crossed
+  with the in-degree by fan-out grid, and on a static regression where evolution
+  removed them.
 - The objective is a synthetic 4-input regression with one distractor input and
   8 hidden neurons. The result says nothing about production-scale creatures,
   and no representative production run was made.
