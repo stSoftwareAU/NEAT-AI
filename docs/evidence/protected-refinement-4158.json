@@ -1,0 +1,3169 @@
+{
+  "manifest": {
+    "codeVersion": "6e9f8619 plus the review change that adds refinedMajor and refinedOrdinary",
+    "neatAiVersion": "7.1.18",
+    "deno": "2.9.8",
+    "corpusSeed": 4158,
+    "validationSeeds": {
+      "base": 4158,
+      "count": 20
+    },
+    "calibrationSeeds": {
+      "base": 94158,
+      "count": 4
+    },
+    "calibrationRefineRounds": [
+      2,
+      3,
+      4
+    ],
+    "bootstrap": {
+      "resamples": 10000,
+      "seed": 4158
+    },
+    "settings": {
+      "populationSize": 20,
+      "budgetRecords": 120000,
+      "trainRecords": 300,
+      "holdoutRecords": 300,
+      "refineStride": 10,
+      "refineSigma": 0.15,
+      "refineRounds": 3,
+      "penCapacity": 4,
+      "mutationRate": 0.5,
+      "maxGenerations": 2000
+    },
+    "criteria": {
+      "benefit": "ci95.upper < 0 AND winFraction >= 0.6 AND speciesRatio >= 0.8 (difference is arm minus baseline holdout MSE; negative is better)",
+      "harm": "ci95.lower > 0",
+      "otherwise": "no-benefit",
+      "minWinFraction": 0.6,
+      "minSpeciesRatio": 0.8
+    },
+    "arms": [
+      "immediate",
+      "protect-refine",
+      "protect-only",
+      "refine-only",
+      "matched-ordinary"
+    ],
+    "note": "arXiv 2610.35647 could not be verified; the method is this repository's reading of Issue #4158, measured on a synthetic regression corpus with cost counted in records charged."
+  },
+  "calibrationTable": [
+    {
+      "refineRounds": 2,
+      "medianTrainMse": 0.027986959414404065,
+      "recordsSpent": 476700,
+      "runs": 4
+    },
+    {
+      "refineRounds": 3,
+      "medianTrainMse": 0.028706212175015327,
+      "recordsSpent": 405630,
+      "runs": 4
+    },
+    {
+      "refineRounds": 4,
+      "medianTrainMse": 0.029461270901705083,
+      "recordsSpent": 479760,
+      "runs": 4
+    }
+  ],
+  "chosenRefineRounds": 2,
+  "calibrationRecords": 1362090,
+  "results": [
+    {
+      "arm": "immediate",
+      "seed": 4158,
+      "trainMse": 0.014651025387130623,
+      "holdoutMse": 0.014343592212822831,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 56,
+      "wallMs": 86.22087499999998,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 2,
+        "rewiring": 18,
+        "activation": 19
+      },
+      "majorCompeted": 37,
+      "majorRetained": 9,
+      "ordinaryCompeted": 343,
+      "ordinaryRetained": 237,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 4,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4158,
+      "trainMse": 0.04243999667395643,
+      "holdoutMse": 0.03925682581852829,
+      "recordsCharged": 119910,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2910
+      },
+      "generations": 48,
+      "wallMs": 94.39391599999999,
+      "majorProduced": 38,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 20,
+        "activation": 18
+      },
+      "majorCompeted": 33,
+      "majorRetained": 9,
+      "ordinaryCompeted": 337,
+      "ordinaryRetained": 175,
+      "refinedMajor": 33,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0.02807017543859649,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4158,
+      "trainMse": 0.018245321420311513,
+      "holdoutMse": 0.01715421383042829,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 65,
+      "wallMs": 95.2808329999998,
+      "majorProduced": 38,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 22,
+        "activation": 16
+      },
+      "majorCompeted": 38,
+      "majorRetained": 9,
+      "ordinaryCompeted": 342,
+      "ordinaryRetained": 226,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0.04210526315789472,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4158,
+      "trainMse": 0.011572835370572814,
+      "holdoutMse": 0.012098671441824716,
+      "recordsCharged": 119970,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2970
+      },
+      "generations": 52,
+      "wallMs": 85.51012499999979,
+      "majorProduced": 33,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 22,
+        "activation": 11
+      },
+      "majorCompeted": 33,
+      "majorRetained": 6,
+      "ordinaryCompeted": 337,
+      "ordinaryRetained": 211,
+      "refinedMajor": 33,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4158,
+      "trainMse": 0.013199299924801549,
+      "holdoutMse": 0.012849298597098366,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3150
+      },
+      "generations": 57,
+      "wallMs": 93.78558299999986,
+      "majorProduced": 35,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 27,
+        "activation": 8
+      },
+      "majorCompeted": 33,
+      "majorRetained": 12,
+      "ordinaryCompeted": 336,
+      "ordinaryRetained": 220,
+      "refinedMajor": 0,
+      "refinedOrdinary": 35,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4159,
+      "trainMse": 0.014158826469213006,
+      "holdoutMse": 0.013946419265295648,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 88,
+      "wallMs": 109.50304099999994,
+      "majorProduced": 35,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 20,
+        "activation": 16
+      },
+      "majorCompeted": 35,
+      "majorRetained": 13,
+      "ordinaryCompeted": 345,
+      "ordinaryRetained": 225,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 5,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4159,
+      "trainMse": 0.014231850872063134,
+      "holdoutMse": 0.01395686218021595,
+      "recordsCharged": 119970,
+      "recordsByPhase": {
+        "evaluation": 117600,
+        "refinement": 2370
+      },
+      "generations": 70,
+      "wallMs": 97.74312499999996,
+      "majorProduced": 29,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 17,
+        "activation": 12
+      },
+      "majorCompeted": 25,
+      "majorRetained": 10,
+      "ordinaryCompeted": 347,
+      "ordinaryRetained": 207,
+      "refinedMajor": 27,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4159,
+      "trainMse": 0.011365174390833323,
+      "holdoutMse": 0.011863823261358852,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 58,
+      "wallMs": 86.5207919999998,
+      "majorProduced": 27,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 17,
+        "activation": 11
+      },
+      "majorCompeted": 26,
+      "majorRetained": 6,
+      "ordinaryCompeted": 354,
+      "ordinaryRetained": 245,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4159,
+      "trainMse": 0.0164398649066624,
+      "holdoutMse": 0.01518927693751821,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2880
+      },
+      "generations": 46,
+      "wallMs": 83.89729199999965,
+      "majorProduced": 32,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 21,
+        "activation": 11
+      },
+      "majorCompeted": 31,
+      "majorRetained": 10,
+      "ordinaryCompeted": 339,
+      "ordinaryRetained": 132,
+      "refinedMajor": 32,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4159,
+      "trainMse": 0.012673174461657636,
+      "holdoutMse": 0.012474030470789096,
+      "recordsCharged": 119760,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3060
+      },
+      "generations": 77,
+      "wallMs": 100.27400000000034,
+      "majorProduced": 34,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 23,
+        "activation": 11
+      },
+      "majorCompeted": 34,
+      "majorRetained": 9,
+      "ordinaryCompeted": 335,
+      "ordinaryRetained": 172,
+      "refinedMajor": 0,
+      "refinedOrdinary": 34,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4160,
+      "trainMse": 0.11558795010155291,
+      "holdoutMse": 0.1071542878885022,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 48,
+      "wallMs": 97.66554099999985,
+      "majorProduced": 32,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 20,
+        "activation": 12
+      },
+      "majorCompeted": 30,
+      "majorRetained": 18,
+      "ordinaryCompeted": 350,
+      "ordinaryRetained": 262,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4160,
+      "trainMse": 0.011141816309290025,
+      "holdoutMse": 0.010901882424464417,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3150
+      },
+      "generations": 48,
+      "wallMs": 96.51829199999975,
+      "majorProduced": 42,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 23,
+        "activation": 19
+      },
+      "majorCompeted": 41,
+      "majorRetained": 16,
+      "ordinaryCompeted": 328,
+      "ordinaryRetained": 200,
+      "refinedMajor": 35,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4160,
+      "trainMse": 0.08171160238370564,
+      "holdoutMse": 0.0756779511264541,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 44,
+      "wallMs": 100.14750000000004,
+      "majorProduced": 30,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 19,
+        "activation": 11
+      },
+      "majorCompeted": 29,
+      "majorRetained": 8,
+      "ordinaryCompeted": 351,
+      "ordinaryRetained": 257,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4160,
+      "trainMse": 0.01419393514939393,
+      "holdoutMse": 0.014813892411763282,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2880
+      },
+      "generations": 121,
+      "wallMs": 110.611042,
+      "majorProduced": 32,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 23,
+        "activation": 10
+      },
+      "majorCompeted": 32,
+      "majorRetained": 15,
+      "ordinaryCompeted": 338,
+      "ordinaryRetained": 206,
+      "refinedMajor": 32,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4160,
+      "trainMse": 0.018035460052040854,
+      "holdoutMse": 0.01775328957529324,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2880
+      },
+      "generations": 38,
+      "wallMs": 94.18166699999983,
+      "majorProduced": 32,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 18,
+        "activation": 14
+      },
+      "majorCompeted": 32,
+      "majorRetained": 11,
+      "ordinaryCompeted": 338,
+      "ordinaryRetained": 217,
+      "refinedMajor": 0,
+      "refinedOrdinary": 32,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4161,
+      "trainMse": 0.051403524548010705,
+      "holdoutMse": 0.04887913847048867,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 231,
+      "wallMs": 146.64133299999958,
+      "majorProduced": 38,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 32,
+        "activation": 6
+      },
+      "majorCompeted": 37,
+      "majorRetained": 10,
+      "ordinaryCompeted": 343,
+      "ordinaryRetained": 175,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4161,
+      "trainMse": 0.06414053623530397,
+      "holdoutMse": 0.06104242987338923,
+      "recordsCharged": 119910,
+      "recordsByPhase": {
+        "evaluation": 116400,
+        "refinement": 3510
+      },
+      "generations": 145,
+      "wallMs": 139.21241699999973,
+      "majorProduced": 39,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 31,
+        "activation": 8
+      },
+      "majorCompeted": 39,
+      "majorRetained": 8,
+      "ordinaryCompeted": 329,
+      "ordinaryRetained": 144,
+      "refinedMajor": 39,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4161,
+      "trainMse": 0.056575263743364544,
+      "holdoutMse": 0.05373707446982254,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 128,
+      "wallMs": 108.83704099999977,
+      "majorProduced": 41,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 27,
+        "activation": 14
+      },
+      "majorCompeted": 41,
+      "majorRetained": 10,
+      "ordinaryCompeted": 339,
+      "ordinaryRetained": 193,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4161,
+      "trainMse": 0.0649677093274932,
+      "holdoutMse": 0.06230281793289862,
+      "recordsCharged": 119940,
+      "recordsByPhase": {
+        "evaluation": 117600,
+        "refinement": 2340
+      },
+      "generations": 54,
+      "wallMs": 90.1805000000004,
+      "majorProduced": 26,
+      "majorByKind": {
+        "addNeuron": 3,
+        "rewiring": 20,
+        "activation": 7
+      },
+      "majorCompeted": 26,
+      "majorRetained": 9,
+      "ordinaryCompeted": 346,
+      "ordinaryRetained": 130,
+      "refinedMajor": 26,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4161,
+      "trainMse": 0.013357639694088668,
+      "holdoutMse": 0.013152330830564926,
+      "recordsCharged": 119730,
+      "recordsByPhase": {
+        "evaluation": 116400,
+        "refinement": 3330
+      },
+      "generations": 78,
+      "wallMs": 95.21516599999995,
+      "majorProduced": 38,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 26,
+        "activation": 12
+      },
+      "majorCompeted": 38,
+      "majorRetained": 19,
+      "ordinaryCompeted": 330,
+      "ordinaryRetained": 210,
+      "refinedMajor": 0,
+      "refinedOrdinary": 37,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4162,
+      "trainMse": 0.03903241133009705,
+      "holdoutMse": 0.035814460732696694,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 54,
+      "wallMs": 106.53662499999973,
+      "majorProduced": 34,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 21,
+        "activation": 13
+      },
+      "majorCompeted": 34,
+      "majorRetained": 12,
+      "ordinaryCompeted": 346,
+      "ordinaryRetained": 254,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4162,
+      "trainMse": 0.03698403934824504,
+      "holdoutMse": 0.03426346989250527,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2700
+      },
+      "generations": 38,
+      "wallMs": 98.40483300000051,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 23,
+        "activation": 14
+      },
+      "majorCompeted": 34,
+      "majorRetained": 7,
+      "ordinaryCompeted": 337,
+      "ordinaryRetained": 211,
+      "refinedMajor": 30,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4162,
+      "trainMse": 0.012513338880553225,
+      "holdoutMse": 0.01305090480158712,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 68,
+      "wallMs": 107.89645800000017,
+      "majorProduced": 30,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 23,
+        "activation": 9
+      },
+      "majorCompeted": 30,
+      "majorRetained": 9,
+      "ordinaryCompeted": 350,
+      "ordinaryRetained": 250,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4162,
+      "trainMse": 0.015092668956707819,
+      "holdoutMse": 0.01415371423396999,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2880
+      },
+      "generations": 45,
+      "wallMs": 106.61516699999993,
+      "majorProduced": 33,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 24,
+        "activation": 9
+      },
+      "majorCompeted": 33,
+      "majorRetained": 13,
+      "ordinaryCompeted": 337,
+      "ordinaryRetained": 202,
+      "refinedMajor": 32,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 4,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4162,
+      "trainMse": 0.03957746356193513,
+      "holdoutMse": 0.03638874948143465,
+      "recordsCharged": 119970,
+      "recordsByPhase": {
+        "evaluation": 117900,
+        "refinement": 2070
+      },
+      "generations": 49,
+      "wallMs": 103.2056249999996,
+      "majorProduced": 23,
+      "majorByKind": {
+        "addNeuron": 2,
+        "rewiring": 15,
+        "activation": 8
+      },
+      "majorCompeted": 23,
+      "majorRetained": 9,
+      "ordinaryCompeted": 350,
+      "ordinaryRetained": 212,
+      "refinedMajor": 0,
+      "refinedOrdinary": 23,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4163,
+      "trainMse": 0.016534982828585853,
+      "holdoutMse": 0.014676791835546078,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 75,
+      "wallMs": 101.96137499999986,
+      "majorProduced": 27,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 20,
+        "activation": 8
+      },
+      "majorCompeted": 27,
+      "majorRetained": 8,
+      "ordinaryCompeted": 353,
+      "ordinaryRetained": 163,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4163,
+      "trainMse": 0.014882562439508711,
+      "holdoutMse": 0.01451078562128361,
+      "recordsCharged": 119940,
+      "recordsByPhase": {
+        "evaluation": 117900,
+        "refinement": 2040
+      },
+      "generations": 148,
+      "wallMs": 131.27620900000056,
+      "majorProduced": 24,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 15,
+        "activation": 9
+      },
+      "majorCompeted": 22,
+      "majorRetained": 10,
+      "ordinaryCompeted": 351,
+      "ordinaryRetained": 223,
+      "refinedMajor": 23,
+      "refinedOrdinary": 0,
+      "penPeak": 3,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4163,
+      "trainMse": 0.010186748689139552,
+      "holdoutMse": 0.010183623382174621,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 68,
+      "wallMs": 100.83170800000062,
+      "majorProduced": 25,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 16,
+        "activation": 9
+      },
+      "majorCompeted": 24,
+      "majorRetained": 8,
+      "ordinaryCompeted": 356,
+      "ordinaryRetained": 223,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4163,
+      "trainMse": 0.01207667574338131,
+      "holdoutMse": 0.01184321228599869,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2700
+      },
+      "generations": 59,
+      "wallMs": 97.33550000000014,
+      "majorProduced": 30,
+      "majorByKind": {
+        "addNeuron": 9,
+        "rewiring": 22,
+        "activation": 8
+      },
+      "majorCompeted": 30,
+      "majorRetained": 19,
+      "ordinaryCompeted": 341,
+      "ordinaryRetained": 211,
+      "refinedMajor": 30,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 5,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4163,
+      "trainMse": 0.01612836256655635,
+      "holdoutMse": 0.015511140197474332,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 117600,
+        "refinement": 2250
+      },
+      "generations": 68,
+      "wallMs": 93.67849999999999,
+      "majorProduced": 26,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 21,
+        "activation": 5
+      },
+      "majorCompeted": 26,
+      "majorRetained": 8,
+      "ordinaryCompeted": 346,
+      "ordinaryRetained": 162,
+      "refinedMajor": 0,
+      "refinedOrdinary": 25,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4164,
+      "trainMse": 0.008277503210158747,
+      "holdoutMse": 0.007836660765014191,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 578,
+      "wallMs": 392.2459580000004,
+      "majorProduced": 39,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 27,
+        "activation": 13
+      },
+      "majorCompeted": 39,
+      "majorRetained": 12,
+      "ordinaryCompeted": 341,
+      "ordinaryRetained": 203,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4164,
+      "trainMse": 0.014247326704914852,
+      "holdoutMse": 0.014383786058384036,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117900,
+        "refinement": 1980
+      },
+      "generations": 37,
+      "wallMs": 100.37770899999941,
+      "majorProduced": 28,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 18,
+        "activation": 10
+      },
+      "majorCompeted": 27,
+      "majorRetained": 5,
+      "ordinaryCompeted": 346,
+      "ordinaryRetained": 204,
+      "refinedMajor": 22,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4164,
+      "trainMse": 0.01271858204735364,
+      "holdoutMse": 0.012957821742642307,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 59,
+      "wallMs": 101.406833,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 21,
+        "activation": 17
+      },
+      "majorCompeted": 36,
+      "majorRetained": 9,
+      "ordinaryCompeted": 344,
+      "ordinaryRetained": 195,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 4,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4164,
+      "trainMse": 0.007153722442697314,
+      "holdoutMse": 0.006926076575933993,
+      "recordsCharged": 119760,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3060
+      },
+      "generations": 76,
+      "wallMs": 106.07583400000021,
+      "majorProduced": 34,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 26,
+        "activation": 8
+      },
+      "majorCompeted": 34,
+      "majorRetained": 16,
+      "ordinaryCompeted": 335,
+      "ordinaryRetained": 205,
+      "refinedMajor": 34,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0.017543859649122813,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4164,
+      "trainMse": 0.006638622664359018,
+      "holdoutMse": 0.006342947790291741,
+      "recordsCharged": 119910,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2610
+      },
+      "generations": 48,
+      "wallMs": 97.45866699999988,
+      "majorProduced": 29,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 21,
+        "activation": 8
+      },
+      "majorCompeted": 29,
+      "majorRetained": 5,
+      "ordinaryCompeted": 342,
+      "ordinaryRetained": 216,
+      "refinedMajor": 0,
+      "refinedOrdinary": 29,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4165,
+      "trainMse": 0.015867064113283806,
+      "holdoutMse": 0.015932839108181385,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 102,
+      "wallMs": 110.47279200000048,
+      "majorProduced": 35,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 26,
+        "activation": 9
+      },
+      "majorCompeted": 35,
+      "majorRetained": 14,
+      "ordinaryCompeted": 345,
+      "ordinaryRetained": 234,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4165,
+      "trainMse": 0.011002608855240582,
+      "holdoutMse": 0.011845965476209449,
+      "recordsCharged": 119730,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2430
+      },
+      "generations": 133,
+      "wallMs": 117.57283300000017,
+      "majorProduced": 29,
+      "majorByKind": {
+        "addNeuron": 1,
+        "rewiring": 20,
+        "activation": 10
+      },
+      "majorCompeted": 26,
+      "majorRetained": 9,
+      "ordinaryCompeted": 345,
+      "ordinaryRetained": 219,
+      "refinedMajor": 27,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4165,
+      "trainMse": 0.011543741957935399,
+      "holdoutMse": 0.012967513858954272,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 85,
+      "wallMs": 97.63416700000016,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 28,
+        "activation": 10
+      },
+      "majorCompeted": 35,
+      "majorRetained": 8,
+      "ordinaryCompeted": 345,
+      "ordinaryRetained": 178,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4165,
+      "trainMse": 0.012592658123953309,
+      "holdoutMse": 0.013543440615407439,
+      "recordsCharged": 114090,
+      "recordsByPhase": {
+        "evaluation": 111300,
+        "refinement": 2790
+      },
+      "generations": 2000,
+      "wallMs": 910.9854169999999,
+      "majorProduced": 31,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 19,
+        "activation": 13
+      },
+      "majorCompeted": 31,
+      "majorRetained": 10,
+      "ordinaryCompeted": 320,
+      "ordinaryRetained": 190,
+      "refinedMajor": 31,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0.02631578947368421,
+      "championHiddenNeurons": 3,
+      "stalled": true
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4165,
+      "trainMse": 0.010982905685107515,
+      "holdoutMse": 0.012246692469607912,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2880
+      },
+      "generations": 148,
+      "wallMs": 116.13495899999998,
+      "majorProduced": 38,
+      "majorByKind": {
+        "addNeuron": 9,
+        "rewiring": 32,
+        "activation": 6
+      },
+      "majorCompeted": 38,
+      "majorRetained": 12,
+      "ordinaryCompeted": 332,
+      "ordinaryRetained": 203,
+      "refinedMajor": 0,
+      "refinedOrdinary": 32,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0.002631578947368421,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4166,
+      "trainMse": 0.049917767905596405,
+      "holdoutMse": 0.045955348680940485,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 145,
+      "wallMs": 132.84400000000005,
+      "majorProduced": 50,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 36,
+        "activation": 14
+      },
+      "majorCompeted": 50,
+      "majorRetained": 15,
+      "ordinaryCompeted": 330,
+      "ordinaryRetained": 216,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4166,
+      "trainMse": 0.013849806095078557,
+      "holdoutMse": 0.013497790504600735,
+      "recordsCharged": 119910,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2610
+      },
+      "generations": 91,
+      "wallMs": 105.85620800000015,
+      "majorProduced": 30,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 22,
+        "activation": 8
+      },
+      "majorCompeted": 29,
+      "majorRetained": 13,
+      "ordinaryCompeted": 342,
+      "ordinaryRetained": 171,
+      "refinedMajor": 29,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4166,
+      "trainMse": 0.050710956267727,
+      "holdoutMse": 0.04661519920527888,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 255,
+      "wallMs": 149.45883400000002,
+      "majorProduced": 23,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 19,
+        "activation": 4
+      },
+      "majorCompeted": 22,
+      "majorRetained": 6,
+      "ordinaryCompeted": 358,
+      "ordinaryRetained": 183,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4166,
+      "trainMse": 0.04769900001770504,
+      "holdoutMse": 0.04370424063583637,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 116100,
+        "refinement": 3780
+      },
+      "generations": 81,
+      "wallMs": 109.39724999999999,
+      "majorProduced": 42,
+      "majorByKind": {
+        "addNeuron": 10,
+        "rewiring": 31,
+        "activation": 20
+      },
+      "majorCompeted": 41,
+      "majorRetained": 10,
+      "ordinaryCompeted": 326,
+      "ordinaryRetained": 164,
+      "refinedMajor": 42,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0.1403508771929823,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4166,
+      "trainMse": 0.01257077954515814,
+      "holdoutMse": 0.012238799695601052,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2880
+      },
+      "generations": 271,
+      "wallMs": 167.71441700000105,
+      "majorProduced": 35,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 29,
+        "activation": 7
+      },
+      "majorCompeted": 33,
+      "majorRetained": 7,
+      "ordinaryCompeted": 337,
+      "ordinaryRetained": 143,
+      "refinedMajor": 0,
+      "refinedOrdinary": 32,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4167,
+      "trainMse": 0.016847122780224624,
+      "holdoutMse": 0.016639791702863678,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 42,
+      "wallMs": 99.40245800000048,
+      "majorProduced": 26,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 21,
+        "activation": 6
+      },
+      "majorCompeted": 26,
+      "majorRetained": 14,
+      "ordinaryCompeted": 354,
+      "ordinaryRetained": 243,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 6,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4167,
+      "trainMse": 0.13731603583256774,
+      "holdoutMse": 0.1300358222965219,
+      "recordsCharged": 119970,
+      "recordsByPhase": {
+        "evaluation": 117600,
+        "refinement": 2370
+      },
+      "generations": 49,
+      "wallMs": 90.26745800000026,
+      "majorProduced": 27,
+      "majorByKind": {
+        "addNeuron": 3,
+        "rewiring": 16,
+        "activation": 11
+      },
+      "majorCompeted": 25,
+      "majorRetained": 7,
+      "ordinaryCompeted": 347,
+      "ordinaryRetained": 160,
+      "refinedMajor": 27,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4167,
+      "trainMse": 0.13804227313159814,
+      "holdoutMse": 0.12994892404356895,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 79,
+      "wallMs": 111.12720799999988,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 3,
+        "rewiring": 25,
+        "activation": 11
+      },
+      "majorCompeted": 33,
+      "majorRetained": 5,
+      "ordinaryCompeted": 347,
+      "ordinaryRetained": 217,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4167,
+      "trainMse": 0.03984135984481051,
+      "holdoutMse": 0.03744320254381422,
+      "recordsCharged": 119940,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3240
+      },
+      "generations": 90,
+      "wallMs": 103.3080000000009,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 9,
+        "rewiring": 26,
+        "activation": 10
+      },
+      "majorCompeted": 36,
+      "majorRetained": 10,
+      "ordinaryCompeted": 333,
+      "ordinaryRetained": 190,
+      "refinedMajor": 36,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 9,
+      "meanGeneticDistance": 0.012280701754385968,
+      "championHiddenNeurons": 0,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4167,
+      "trainMse": 0.03984135984481051,
+      "holdoutMse": 0.03744320254381422,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3150
+      },
+      "generations": 88,
+      "wallMs": 107.81370799999968,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 9,
+        "rewiring": 28,
+        "activation": 9
+      },
+      "majorCompeted": 37,
+      "majorRetained": 7,
+      "ordinaryCompeted": 332,
+      "ordinaryRetained": 183,
+      "refinedMajor": 0,
+      "refinedOrdinary": 35,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 0,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4168,
+      "trainMse": 0.017417835401806622,
+      "holdoutMse": 0.017749479045393295,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 74,
+      "wallMs": 98.42441700000018,
+      "majorProduced": 33,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 22,
+        "activation": 14
+      },
+      "majorCompeted": 33,
+      "majorRetained": 4,
+      "ordinaryCompeted": 347,
+      "ordinaryRetained": 217,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4168,
+      "trainMse": 0.012093764517392962,
+      "holdoutMse": 0.012167326327715607,
+      "recordsCharged": 119760,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3060
+      },
+      "generations": 63,
+      "wallMs": 100.68024999999943,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 29,
+        "activation": 7
+      },
+      "majorCompeted": 36,
+      "majorRetained": 6,
+      "ordinaryCompeted": 333,
+      "ordinaryRetained": 214,
+      "refinedMajor": 34,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4168,
+      "trainMse": 0.013197634195486115,
+      "holdoutMse": 0.013410502090636755,
+      "recordsCharged": 98100,
+      "recordsByPhase": {
+        "evaluation": 98100,
+        "refinement": 0
+      },
+      "generations": 2000,
+      "wallMs": 1302.3082090000007,
+      "majorProduced": 19,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 14,
+        "activation": 5
+      },
+      "majorCompeted": 19,
+      "majorRetained": 2,
+      "ordinaryCompeted": 288,
+      "ordinaryRetained": 180,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 3,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": true
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4168,
+      "trainMse": 0.008178247820419253,
+      "holdoutMse": 0.00798419559347606,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2700
+      },
+      "generations": 114,
+      "wallMs": 120.4091669999998,
+      "majorProduced": 30,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 22,
+        "activation": 8
+      },
+      "majorCompeted": 30,
+      "majorRetained": 16,
+      "ordinaryCompeted": 341,
+      "ordinaryRetained": 255,
+      "refinedMajor": 30,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4168,
+      "trainMse": 0.014681793791892413,
+      "holdoutMse": 0.015122384440383616,
+      "recordsCharged": 111240,
+      "recordsByPhase": {
+        "evaluation": 108000,
+        "refinement": 3240
+      },
+      "generations": 2000,
+      "wallMs": 949.8927920000006,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 13,
+        "rewiring": 29,
+        "activation": 8
+      },
+      "majorCompeted": 37,
+      "majorRetained": 18,
+      "ordinaryCompeted": 303,
+      "ordinaryRetained": 206,
+      "refinedMajor": 0,
+      "refinedOrdinary": 36,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": true
+    },
+    {
+      "arm": "immediate",
+      "seed": 4169,
+      "trainMse": 0.048173704736672,
+      "holdoutMse": 0.044197486825146966,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 77,
+      "wallMs": 109.78420900000128,
+      "majorProduced": 33,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 26,
+        "activation": 7
+      },
+      "majorCompeted": 33,
+      "majorRetained": 16,
+      "ordinaryCompeted": 347,
+      "ordinaryRetained": 199,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4169,
+      "trainMse": 0.04730416939743215,
+      "holdoutMse": 0.043044771004980276,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3150
+      },
+      "generations": 68,
+      "wallMs": 105.01008300000103,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 2,
+        "rewiring": 25,
+        "activation": 11
+      },
+      "majorCompeted": 36,
+      "majorRetained": 15,
+      "ordinaryCompeted": 333,
+      "ordinaryRetained": 221,
+      "refinedMajor": 35,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4169,
+      "trainMse": 0.0441110664840592,
+      "holdoutMse": 0.0401775837954352,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 68,
+      "wallMs": 98.68191699999988,
+      "majorProduced": 29,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 25,
+        "activation": 5
+      },
+      "majorCompeted": 28,
+      "majorRetained": 9,
+      "ordinaryCompeted": 352,
+      "ordinaryRetained": 226,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4169,
+      "trainMse": 0.013347449301731583,
+      "holdoutMse": 0.013159465807301707,
+      "recordsCharged": 119940,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3240
+      },
+      "generations": 62,
+      "wallMs": 96.94762499999888,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 3,
+        "rewiring": 28,
+        "activation": 8
+      },
+      "majorCompeted": 36,
+      "majorRetained": 16,
+      "ordinaryCompeted": 333,
+      "ordinaryRetained": 213,
+      "refinedMajor": 36,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4169,
+      "trainMse": 0.013858138376780389,
+      "holdoutMse": 0.014768858111470445,
+      "recordsCharged": 119760,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3060
+      },
+      "generations": 52,
+      "wallMs": 115.56508399999984,
+      "majorProduced": 34,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 25,
+        "activation": 9
+      },
+      "majorCompeted": 34,
+      "majorRetained": 9,
+      "ordinaryCompeted": 335,
+      "ordinaryRetained": 177,
+      "refinedMajor": 0,
+      "refinedOrdinary": 34,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4170,
+      "trainMse": 0.012200135945319676,
+      "holdoutMse": 0.012036487610724678,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 51,
+      "wallMs": 96.30970799999886,
+      "majorProduced": 33,
+      "majorByKind": {
+        "addNeuron": 3,
+        "rewiring": 22,
+        "activation": 11
+      },
+      "majorCompeted": 32,
+      "majorRetained": 14,
+      "ordinaryCompeted": 348,
+      "ordinaryRetained": 210,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4170,
+      "trainMse": 0.013886324363405986,
+      "holdoutMse": 0.01347286183972629,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3150
+      },
+      "generations": 115,
+      "wallMs": 129.96545799999876,
+      "majorProduced": 35,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 20,
+        "activation": 15
+      },
+      "majorCompeted": 35,
+      "majorRetained": 7,
+      "ordinaryCompeted": 334,
+      "ordinaryRetained": 225,
+      "refinedMajor": 35,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4170,
+      "trainMse": 0.017077324656544445,
+      "holdoutMse": 0.01880943798300857,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 75,
+      "wallMs": 111.86100000000079,
+      "majorProduced": 26,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 18,
+        "activation": 8
+      },
+      "majorCompeted": 25,
+      "majorRetained": 4,
+      "ordinaryCompeted": 355,
+      "ordinaryRetained": 230,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4170,
+      "trainMse": 0.01213512910418172,
+      "holdoutMse": 0.01209344225192258,
+      "recordsCharged": 119940,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3240
+      },
+      "generations": 128,
+      "wallMs": 133.8271249999998,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 23,
+        "activation": 14
+      },
+      "majorCompeted": 36,
+      "majorRetained": 12,
+      "ordinaryCompeted": 333,
+      "ordinaryRetained": 216,
+      "refinedMajor": 36,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4170,
+      "trainMse": 0.012445043378578925,
+      "holdoutMse": 0.013631317567520661,
+      "recordsCharged": 119730,
+      "recordsByPhase": {
+        "evaluation": 116400,
+        "refinement": 3330
+      },
+      "generations": 45,
+      "wallMs": 94.33220799999981,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 21,
+        "activation": 18
+      },
+      "majorCompeted": 37,
+      "majorRetained": 7,
+      "ordinaryCompeted": 331,
+      "ordinaryRetained": 192,
+      "refinedMajor": 0,
+      "refinedOrdinary": 37,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4171,
+      "trainMse": 0.018833353992039007,
+      "holdoutMse": 0.017690690623065577,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 77,
+      "wallMs": 106.27700000000004,
+      "majorProduced": 41,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 27,
+        "activation": 15
+      },
+      "majorCompeted": 41,
+      "majorRetained": 7,
+      "ordinaryCompeted": 339,
+      "ordinaryRetained": 203,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4171,
+      "trainMse": 0.050993951363132936,
+      "holdoutMse": 0.04652238890980902,
+      "recordsCharged": 91710,
+      "recordsByPhase": {
+        "evaluation": 90000,
+        "refinement": 1710
+      },
+      "generations": 2000,
+      "wallMs": 1421.0324180000007,
+      "majorProduced": 20,
+      "majorByKind": {
+        "addNeuron": 1,
+        "rewiring": 15,
+        "activation": 5
+      },
+      "majorCompeted": 20,
+      "majorRetained": 3,
+      "ordinaryCompeted": 260,
+      "ordinaryRetained": 179,
+      "refinedMajor": 19,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": true
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4171,
+      "trainMse": 0.01641336713792249,
+      "holdoutMse": 0.01586078006995851,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 61,
+      "wallMs": 97.37233299999934,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 25,
+        "activation": 11
+      },
+      "majorCompeted": 35,
+      "majorRetained": 5,
+      "ordinaryCompeted": 345,
+      "ordinaryRetained": 191,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 4,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4171,
+      "trainMse": 0.014364783151809994,
+      "holdoutMse": 0.01347019734029497,
+      "recordsCharged": 119790,
+      "recordsByPhase": {
+        "evaluation": 116100,
+        "refinement": 3690
+      },
+      "generations": 54,
+      "wallMs": 87.68420799999876,
+      "majorProduced": 41,
+      "majorByKind": {
+        "addNeuron": 2,
+        "rewiring": 28,
+        "activation": 13
+      },
+      "majorCompeted": 40,
+      "majorRetained": 17,
+      "ordinaryCompeted": 327,
+      "ordinaryRetained": 157,
+      "refinedMajor": 41,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4171,
+      "trainMse": 0.05306721399448669,
+      "holdoutMse": 0.04856131804380963,
+      "recordsCharged": 88500,
+      "recordsByPhase": {
+        "evaluation": 85800,
+        "refinement": 2700
+      },
+      "generations": 2000,
+      "wallMs": 1192.1332509999993,
+      "majorProduced": 30,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 24,
+        "activation": 6
+      },
+      "majorCompeted": 30,
+      "majorRetained": 7,
+      "ordinaryCompeted": 236,
+      "ordinaryRetained": 126,
+      "refinedMajor": 0,
+      "refinedOrdinary": 30,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": true
+    },
+    {
+      "arm": "immediate",
+      "seed": 4172,
+      "trainMse": 0.019456792846855156,
+      "holdoutMse": 0.016941425525072083,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 39,
+      "wallMs": 91.31674999999996,
+      "majorProduced": 40,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 23,
+        "activation": 17
+      },
+      "majorCompeted": 40,
+      "majorRetained": 23,
+      "ordinaryCompeted": 340,
+      "ordinaryRetained": 220,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 5,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4172,
+      "trainMse": 0.01634000037242199,
+      "holdoutMse": 0.016141793157101268,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2700
+      },
+      "generations": 52,
+      "wallMs": 117.83062500000051,
+      "majorProduced": 32,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 18,
+        "activation": 14
+      },
+      "majorCompeted": 29,
+      "majorRetained": 8,
+      "ordinaryCompeted": 342,
+      "ordinaryRetained": 223,
+      "refinedMajor": 30,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4172,
+      "trainMse": 0.012506579067914097,
+      "holdoutMse": 0.012864440865743348,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 46,
+      "wallMs": 104.20562499999869,
+      "majorProduced": 36,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 16,
+        "activation": 20
+      },
+      "majorCompeted": 34,
+      "majorRetained": 6,
+      "ordinaryCompeted": 346,
+      "ordinaryRetained": 231,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4172,
+      "trainMse": 0.02365248995185467,
+      "holdoutMse": 0.022126256253651385,
+      "recordsCharged": 119730,
+      "recordsByPhase": {
+        "evaluation": 116400,
+        "refinement": 3330
+      },
+      "generations": 43,
+      "wallMs": 93.31724999999824,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 9,
+        "rewiring": 26,
+        "activation": 12
+      },
+      "majorCompeted": 37,
+      "majorRetained": 22,
+      "ordinaryCompeted": 331,
+      "ordinaryRetained": 248,
+      "refinedMajor": 37,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4172,
+      "trainMse": 0.021768729939690513,
+      "holdoutMse": 0.022661343457101833,
+      "recordsCharged": 119940,
+      "recordsByPhase": {
+        "evaluation": 117600,
+        "refinement": 2340
+      },
+      "generations": 34,
+      "wallMs": 95.32825000000048,
+      "majorProduced": 26,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 17,
+        "activation": 9
+      },
+      "majorCompeted": 26,
+      "majorRetained": 15,
+      "ordinaryCompeted": 346,
+      "ordinaryRetained": 199,
+      "refinedMajor": 0,
+      "refinedOrdinary": 26,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4173,
+      "trainMse": 0.013074382302069962,
+      "holdoutMse": 0.012898227118426813,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 100,
+      "wallMs": 98.8379160000004,
+      "majorProduced": 41,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 32,
+        "activation": 9
+      },
+      "majorCompeted": 41,
+      "majorRetained": 16,
+      "ordinaryCompeted": 339,
+      "ordinaryRetained": 149,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 4,
+      "meanGeneticDistance": 0.021052631578947368,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4173,
+      "trainMse": 0.01668534280124899,
+      "holdoutMse": 0.015635702720324163,
+      "recordsCharged": 119730,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3030
+      },
+      "generations": 42,
+      "wallMs": 93.18741699999919,
+      "majorProduced": 40,
+      "majorByKind": {
+        "addNeuron": 10,
+        "rewiring": 29,
+        "activation": 11
+      },
+      "majorCompeted": 38,
+      "majorRetained": 3,
+      "ordinaryCompeted": 331,
+      "ordinaryRetained": 158,
+      "refinedMajor": 34,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4173,
+      "trainMse": 0.019789597120884714,
+      "holdoutMse": 0.01877793941529322,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 81,
+      "wallMs": 117.30933300000106,
+      "majorProduced": 34,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 24,
+        "activation": 10
+      },
+      "majorCompeted": 31,
+      "majorRetained": 1,
+      "ordinaryCompeted": 349,
+      "ordinaryRetained": 142,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4173,
+      "trainMse": 0.011294415773236255,
+      "holdoutMse": 0.012397352385202131,
+      "recordsCharged": 119760,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3060
+      },
+      "generations": 63,
+      "wallMs": 94.50779200000034,
+      "majorProduced": 34,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 22,
+        "activation": 12
+      },
+      "majorCompeted": 34,
+      "majorRetained": 10,
+      "ordinaryCompeted": 335,
+      "ordinaryRetained": 166,
+      "refinedMajor": 34,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4173,
+      "trainMse": 0.011583171471902052,
+      "holdoutMse": 0.012379845538890908,
+      "recordsCharged": 119820,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2520
+      },
+      "generations": 143,
+      "wallMs": 122.52104199999667,
+      "majorProduced": 33,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 27,
+        "activation": 7
+      },
+      "majorCompeted": 33,
+      "majorRetained": 9,
+      "ordinaryCompeted": 338,
+      "ordinaryRetained": 174,
+      "refinedMajor": 0,
+      "refinedOrdinary": 28,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4174,
+      "trainMse": 0.017122900954126503,
+      "holdoutMse": 0.01667962404037994,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 75,
+      "wallMs": 119.87754100000166,
+      "majorProduced": 31,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 21,
+        "activation": 10
+      },
+      "majorCompeted": 31,
+      "majorRetained": 7,
+      "ordinaryCompeted": 349,
+      "ordinaryRetained": 242,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4174,
+      "trainMse": 0.020376400174140497,
+      "holdoutMse": 0.0194166313561419,
+      "recordsCharged": 119820,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2520
+      },
+      "generations": 44,
+      "wallMs": 102.38933299999917,
+      "majorProduced": 33,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 25,
+        "activation": 8
+      },
+      "majorCompeted": 31,
+      "majorRetained": 3,
+      "ordinaryCompeted": 340,
+      "ordinaryRetained": 232,
+      "refinedMajor": 28,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4174,
+      "trainMse": 0.016568372578283284,
+      "holdoutMse": 0.01581704501280166,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 65,
+      "wallMs": 115.04912499999773,
+      "majorProduced": 38,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 26,
+        "activation": 12
+      },
+      "majorCompeted": 38,
+      "majorRetained": 5,
+      "ordinaryCompeted": 342,
+      "ordinaryRetained": 230,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4174,
+      "trainMse": 0.012446082435886399,
+      "holdoutMse": 0.012294523165500755,
+      "recordsCharged": 119880,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2880
+      },
+      "generations": 52,
+      "wallMs": 111.34370800000033,
+      "majorProduced": 32,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 19,
+        "activation": 13
+      },
+      "majorCompeted": 31,
+      "majorRetained": 13,
+      "ordinaryCompeted": 339,
+      "ordinaryRetained": 246,
+      "refinedMajor": 32,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4174,
+      "trainMse": 0.01302713482110241,
+      "holdoutMse": 0.012488156870573341,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2700
+      },
+      "generations": 83,
+      "wallMs": 117.22533300000214,
+      "majorProduced": 30,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 22,
+        "activation": 8
+      },
+      "majorCompeted": 29,
+      "majorRetained": 11,
+      "ordinaryCompeted": 342,
+      "ordinaryRetained": 205,
+      "refinedMajor": 0,
+      "refinedOrdinary": 30,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4175,
+      "trainMse": 0.03993965722694683,
+      "holdoutMse": 0.03614991387990614,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 111,
+      "wallMs": 110.7508749999979,
+      "majorProduced": 49,
+      "majorByKind": {
+        "addNeuron": 12,
+        "rewiring": 40,
+        "activation": 10
+      },
+      "majorCompeted": 49,
+      "majorRetained": 20,
+      "ordinaryCompeted": 331,
+      "ordinaryRetained": 247,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4175,
+      "trainMse": 0.04171249356509638,
+      "holdoutMse": 0.03773358140161124,
+      "recordsCharged": 119790,
+      "recordsByPhase": {
+        "evaluation": 117000,
+        "refinement": 2790
+      },
+      "generations": 85,
+      "wallMs": 108.765542000001,
+      "majorProduced": 35,
+      "majorByKind": {
+        "addNeuron": 8,
+        "rewiring": 29,
+        "activation": 6
+      },
+      "majorCompeted": 33,
+      "majorRetained": 11,
+      "ordinaryCompeted": 337,
+      "ordinaryRetained": 211,
+      "refinedMajor": 31,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4175,
+      "trainMse": 0.043270970042424244,
+      "holdoutMse": 0.0397726016066925,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 94,
+      "wallMs": 101.12666700000045,
+      "majorProduced": 39,
+      "majorByKind": {
+        "addNeuron": 11,
+        "rewiring": 31,
+        "activation": 10
+      },
+      "majorCompeted": 39,
+      "majorRetained": 13,
+      "ordinaryCompeted": 341,
+      "ordinaryRetained": 210,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4175,
+      "trainMse": 0.04199025824860358,
+      "holdoutMse": 0.03855479580819013,
+      "recordsCharged": 119760,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3060
+      },
+      "generations": 85,
+      "wallMs": 106.75279099999898,
+      "majorProduced": 34,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 23,
+        "activation": 11
+      },
+      "majorCompeted": 33,
+      "majorRetained": 11,
+      "ordinaryCompeted": 336,
+      "ordinaryRetained": 225,
+      "refinedMajor": 34,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4175,
+      "trainMse": 0.038100965619438106,
+      "holdoutMse": 0.03528943103057444,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 117300,
+        "refinement": 2700
+      },
+      "generations": 103,
+      "wallMs": 114.18637500000114,
+      "majorProduced": 32,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 25,
+        "activation": 8
+      },
+      "majorCompeted": 32,
+      "majorRetained": 14,
+      "ordinaryCompeted": 339,
+      "ordinaryRetained": 225,
+      "refinedMajor": 0,
+      "refinedOrdinary": 30,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4176,
+      "trainMse": 0.13818787041466965,
+      "holdoutMse": 0.13055031649618154,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 550,
+      "wallMs": 349.87975000000006,
+      "majorProduced": 31,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 21,
+        "activation": 10
+      },
+      "majorCompeted": 31,
+      "majorRetained": 7,
+      "ordinaryCompeted": 349,
+      "ordinaryRetained": 177,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4176,
+      "trainMse": 0.031505404027712465,
+      "holdoutMse": 0.029589452310974363,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 117600,
+        "refinement": 2250
+      },
+      "generations": 104,
+      "wallMs": 110.79312500000015,
+      "majorProduced": 28,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 21,
+        "activation": 7
+      },
+      "majorCompeted": 27,
+      "majorRetained": 8,
+      "ordinaryCompeted": 345,
+      "ordinaryRetained": 190,
+      "refinedMajor": 25,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 0,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4176,
+      "trainMse": 0.011159626674133095,
+      "holdoutMse": 0.0114316102559769,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 78,
+      "wallMs": 102.83908399999927,
+      "majorProduced": 35,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 22,
+        "activation": 14
+      },
+      "majorCompeted": 33,
+      "majorRetained": 13,
+      "ordinaryCompeted": 347,
+      "ordinaryRetained": 218,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4176,
+      "trainMse": 0.05666608855126242,
+      "holdoutMse": 0.05259013765154927,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 116400,
+        "refinement": 3600
+      },
+      "generations": 48,
+      "wallMs": 94.71550000000207,
+      "majorProduced": 40,
+      "majorByKind": {
+        "addNeuron": 7,
+        "rewiring": 28,
+        "activation": 14
+      },
+      "majorCompeted": 39,
+      "majorRetained": 22,
+      "ordinaryCompeted": 329,
+      "ordinaryRetained": 204,
+      "refinedMajor": 40,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 3,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4176,
+      "trainMse": 0.012306346018085211,
+      "holdoutMse": 0.012097840745447943,
+      "recordsCharged": 119850,
+      "recordsByPhase": {
+        "evaluation": 117600,
+        "refinement": 2250
+      },
+      "generations": 163,
+      "wallMs": 138.38679200000115,
+      "majorProduced": 28,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 22,
+        "activation": 6
+      },
+      "majorCompeted": 28,
+      "majorRetained": 12,
+      "ordinaryCompeted": 344,
+      "ordinaryRetained": 236,
+      "refinedMajor": 0,
+      "refinedOrdinary": 25,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 1,
+      "stalled": false
+    },
+    {
+      "arm": "immediate",
+      "seed": 4177,
+      "trainMse": 0.009363077264059645,
+      "holdoutMse": 0.009887980169702026,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 120000,
+        "refinement": 0
+      },
+      "generations": 113,
+      "wallMs": 121.66891699999906,
+      "majorProduced": 39,
+      "majorByKind": {
+        "addNeuron": 6,
+        "rewiring": 32,
+        "activation": 7
+      },
+      "majorCompeted": 39,
+      "majorRetained": 16,
+      "ordinaryCompeted": 341,
+      "ordinaryRetained": 246,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "protect-refine",
+      "seed": 4177,
+      "trainMse": 0.010960330802177464,
+      "holdoutMse": 0.011439537151496983,
+      "recordsCharged": 120000,
+      "recordsByPhase": {
+        "evaluation": 116400,
+        "refinement": 3600
+      },
+      "generations": 104,
+      "wallMs": 128.0945419999989,
+      "majorProduced": 41,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 22,
+        "activation": 19
+      },
+      "majorCompeted": 41,
+      "majorRetained": 4,
+      "ordinaryCompeted": 327,
+      "ordinaryRetained": 219,
+      "refinedMajor": 40,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": false
+    },
+    {
+      "arm": "protect-only",
+      "seed": 4177,
+      "trainMse": 0.011012416443093741,
+      "holdoutMse": 0.011429845262143508,
+      "recordsCharged": 84600,
+      "recordsByPhase": {
+        "evaluation": 84600,
+        "refinement": 0
+      },
+      "generations": 2000,
+      "wallMs": 1162.274125,
+      "majorProduced": 22,
+      "majorByKind": {
+        "addNeuron": 4,
+        "rewiring": 13,
+        "activation": 10
+      },
+      "majorCompeted": 22,
+      "majorRetained": 4,
+      "ordinaryCompeted": 240,
+      "ordinaryRetained": 163,
+      "refinedMajor": 0,
+      "refinedOrdinary": 0,
+      "penPeak": 4,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 2,
+      "stalled": true
+    },
+    {
+      "arm": "refine-only",
+      "seed": 4177,
+      "trainMse": 0.010705894653429868,
+      "holdoutMse": 0.011157318061561113,
+      "recordsCharged": 119790,
+      "recordsByPhase": {
+        "evaluation": 116100,
+        "refinement": 3690
+      },
+      "generations": 112,
+      "wallMs": 124.46041699999842,
+      "majorProduced": 41,
+      "majorByKind": {
+        "addNeuron": 9,
+        "rewiring": 24,
+        "activation": 17
+      },
+      "majorCompeted": 41,
+      "majorRetained": 12,
+      "ordinaryCompeted": 326,
+      "ordinaryRetained": 225,
+      "refinedMajor": 41,
+      "refinedOrdinary": 0,
+      "penPeak": 0,
+      "speciesCount": 1,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 3,
+      "stalled": false
+    },
+    {
+      "arm": "matched-ordinary",
+      "seed": 4177,
+      "trainMse": 0.01106214630697508,
+      "holdoutMse": 0.011970933453676717,
+      "recordsCharged": 119940,
+      "recordsByPhase": {
+        "evaluation": 116700,
+        "refinement": 3240
+      },
+      "generations": 107,
+      "wallMs": 114.02641700000095,
+      "majorProduced": 37,
+      "majorByKind": {
+        "addNeuron": 5,
+        "rewiring": 24,
+        "activation": 13
+      },
+      "majorCompeted": 36,
+      "majorRetained": 14,
+      "ordinaryCompeted": 333,
+      "ordinaryRetained": 227,
+      "refinedMajor": 0,
+      "refinedOrdinary": 36,
+      "penPeak": 0,
+      "speciesCount": 2,
+      "meanGeneticDistance": 0,
+      "championHiddenNeurons": 4,
+      "stalled": false
+    }
+  ],
+  "comparisons": [
+    {
+      "label": "protect-refine vs immediate",
+      "n": 20,
+      "meanDiff": -0.0023550647835183457,
+      "ci95": {
+        "lower": -0.021190864331635733,
+        "upper": 0.01585925768339231
+      },
+      "wins": 9,
+      "losses": 11,
+      "ties": 0,
+      "winFraction": 0.45,
+      "speciesRatio": 0.8205128205128206,
+      "retainedFractionArm": 0.2583732057416268,
+      "retainedFractionBaseline": 0.3541666666666667,
+      "verdict": "no-benefit"
+    },
+    {
+      "label": "protect-refine vs matched-ordinary",
+      "n": 20,
+      "meanDiff": 0.010674387770728247,
+      "ci95": {
+        "lower": 0.0021092794255127556,
+        "upper": 0.022091407212155238
+      },
+      "wins": 9,
+      "losses": 11,
+      "ties": 0,
+      "winFraction": 0.45,
+      "speciesRatio": 0.9696969696969698,
+      "retainedFractionArm": 0.2583732057416268,
+      "retainedFractionBaseline": 0.3333333333333333,
+      "verdict": "harm"
+    },
+    {
+      "label": "protect-refine vs refine-only",
+      "n": 20,
+      "meanDiff": 0.00805067181961842,
+      "ci95": {
+        "lower": -0.0016597191663243866,
+        "upper": 0.019779901443512205
+      },
+      "wins": 8,
+      "losses": 12,
+      "ties": 0,
+      "winFraction": 0.4,
+      "speciesRatio": 0.6808510638297872,
+      "retainedFractionArm": 0.2583732057416268,
+      "retainedFractionBaseline": 0.3932748538011696,
+      "verdict": "no-benefit"
+    },
+    {
+      "label": "protect-refine vs protect-only",
+      "n": 20,
+      "meanDiff": 0.00031754151230119616,
+      "ci95": {
+        "lower": -0.009224150582402831,
+        "upper": 0.008031223505720744
+      },
+      "wins": 7,
+      "losses": 13,
+      "ties": 0,
+      "winFraction": 0.35,
+      "speciesRatio": 1.103448275862069,
+      "retainedFractionArm": 0.2583732057416268,
+      "retainedFractionBaseline": 0.22653721682847897,
+      "verdict": "no-benefit"
+    }
+  ],
+  "coverage": {
+    "immediate": {
+      "completed": 20,
+      "planned": 20
+    },
+    "protect-refine": {
+      "completed": 20,
+      "planned": 20
+    },
+    "protect-only": {
+      "completed": 20,
+      "planned": 20
+    },
+    "refine-only": {
+      "completed": 20,
+      "planned": 20
+    },
+    "matched-ordinary": {
+      "completed": 20,
+      "planned": 20
+    }
+  },
+  "failures": []
+}

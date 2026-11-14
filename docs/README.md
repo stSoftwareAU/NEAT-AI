@@ -135,6 +135,11 @@ Tuning guides and benchmark research.
   own outcomes (Jin 2011 §5). Off by default; it observes and changes no
   selection. What it measured is in
   [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
+- **[evidence/protected-refinement-4158.md](evidence/protected-refinement-4158.md)**
+  — a negative result (Issue #4158): holding major topology mutations in a
+  protected pen for short refinement rounds lowered their retention and did not
+  improve held-out error. Opt-in study harness only; nothing under `src/`
+  changed.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
