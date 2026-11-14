@@ -32,6 +32,7 @@ import {
   type RefinementSettings,
   refineRound,
   runArm,
+  runStudy,
   validateSettings,
   verdict,
 } from "../../scripts/lib/protectedRefinementStudy.ts";
@@ -144,6 +145,44 @@ Deno.test("refineRound keeps structure, never worsens, charges, and does not tou
   assertEquals(JSON.stringify(creature.exportJSON()), beforeJson);
 });
 
+Deno.test("refineRound adopts an improving perturbation and scores what it returns", () => {
+  const corpus = buildStudyCorpus(SMALL);
+  const subsample = corpus.train.filter((_, i) => i % 10 === 0);
+  // Start from a deliberately poor creature so a perturbation can improve it.
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  for (const synapse of creature.synapses) synapse.weight = 0;
+  for (const neuron of creature.neurons) neuron.bias = 0;
+  delete creature.uuid;
+  const startScore = scoreCreature(creature, subsample).score;
+  // A round may or may not improve; scan fixed seeds for one that does.
+  let out = refineRound(creature, subsample, 0.5, createSeededRng(1));
+  for (let seed = 2; out.creature === creature && seed <= 50; seed++) {
+    out = refineRound(creature, subsample, 0.5, createSeededRng(seed));
+  }
+  assertNotEquals(out.creature, creature);
+  assert(out.score > startScore, `${out.score} <= ${startScore}`);
+  assertEquals(out.score, scoreCreature(out.creature, subsample).score);
+  // Charged for scoring both the input and the perturbed clone.
+  assertEquals(out.records, subsample.length * 2);
+});
+
+Deno.test("refineRound returns the original when no perturbation improves it", () => {
+  const corpus = buildStudyCorpus(SMALL);
+  const subsample = corpus.train.filter((_, i) => i % 10 === 0);
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  // A known score no perturbation can beat.
+  const out = refineRound(
+    creature,
+    subsample,
+    0.15,
+    createSeededRng(7),
+    Number.POSITIVE_INFINITY,
+  );
+  assertEquals(out.creature, creature);
+  assertEquals(out.score, Number.POSITIVE_INFINITY);
+  assertEquals(out.records, subsample.length);
+});
+
 async function run(
   arm: RefinementArm,
   seed: number,
@@ -213,6 +252,39 @@ Deno.test("each arm spends refinement and pen capacity as designed", async () =>
   });
 });
 
+Deno.test("refinement goes to the descendants the arm names", async () => {
+  await withRngTestLock(async () => {
+    const sums = new Map<RefinementArm, { major: number; ordinary: number }>();
+    for (const arm of ARMS) {
+      const t = { major: 0, ordinary: 0 };
+      for (const seed of SEEDS) {
+        // deno-lint-ignore no-await-in-loop
+        const r = await run(arm, seed);
+        // At most `penCapacity` descendants are refined per generation.
+        const cap = SMALL.penCapacity * r.generations;
+        assert(r.refinedMajor <= cap, `${arm} ${seed} major`);
+        assert(r.refinedOrdinary <= cap, `${arm} ${seed} ordinary`);
+        if (arm === "matched-ordinary") {
+          // Matched to the majors produced, never more.
+          assert(r.refinedOrdinary <= r.majorProduced, `${arm} ${seed}`);
+        }
+        t.major += r.refinedMajor;
+        t.ordinary += r.refinedOrdinary;
+      }
+      sums.set(arm, t);
+    }
+    for (const arm of ["immediate", "protect-only"] as const) {
+      assertEquals(sums.get(arm), { major: 0, ordinary: 0 }, arm);
+    }
+    for (const arm of ["protect-refine", "refine-only"] as const) {
+      assert(sums.get(arm)!.major > 0, arm);
+      assertEquals(sums.get(arm)!.ordinary, 0, arm);
+    }
+    assertEquals(sums.get("matched-ordinary")!.major, 0);
+    assert(sums.get("matched-ordinary")!.ordinary > 0);
+  });
+});
+
 Deno.test("the holdout never guides the run", async () => {
   await withRngTestLock(async () => {
     const corpus = buildStudyCorpus(SMALL);
@@ -249,6 +321,8 @@ function result(
     majorRetained: 1,
     ordinaryCompeted: 0,
     ordinaryRetained: 0,
+    refinedMajor: 0,
+    refinedOrdinary: 0,
     penPeak: 0,
     speciesCount,
     meanGeneticDistance: 0,
@@ -281,6 +355,23 @@ Deno.test("verdict: mixed differences are no-benefit", () => {
   const baseline = seedsTo(10).map((s) => result(s, 0.2));
   const c = pairedComparison(arm, baseline, "none");
   assertEquals(c.verdict, "no-benefit");
+});
+
+Deno.test("pairedComparison pairs by seed, skipping a seed either arm lacks", () => {
+  const arm = [
+    result(3, 0.1),
+    result(1, 0.1),
+    result(2, 0.1),
+    result(9, 0.1),
+  ];
+  // Reordered, and missing seed 2 and 9 but holding an extra seed 7.
+  const baseline = [result(1, 0.3), result(7, 0.3), result(3, 0.2)];
+  const c = pairedComparison(arm, baseline, "unpaired");
+  assertEquals(c.n, 2);
+  assertEquals(c.wins, 2);
+  assertEquals(c.losses, 0);
+  // Seeds 3 (0.1 - 0.2) and 1 (0.1 - 0.3).
+  assert(Math.abs(c.meanDiff - -0.15) < 1e-12);
 });
 
 Deno.test("verdict: a benefit with a species ratio under 0.8 is no-benefit", () => {
@@ -332,4 +423,89 @@ Deno.test("chooseRefineRounds picks the lowest median train MSE, ties to the fir
     ]),
     2,
   );
+});
+
+const STUDY = {
+  settings: SMALL,
+  calibrationSeeds: 1,
+  validationSeeds: 2,
+  codeVersion: "test",
+};
+
+Deno.test("runStudy calibrates on train MSE, validates every arm and accounts the cost", async () => {
+  await withRngTestLock(async () => {
+    const report = await runStudy(STUDY);
+
+    // Coverage: every arm completed every planned seed, with no failures.
+    assertEquals(report.failures, []);
+    for (const arm of ARMS) {
+      assertEquals(report.coverage[arm], { completed: 2, planned: 2 }, arm);
+    }
+    assertEquals(report.results.length, ARMS.length * 2);
+
+    // Four comparisons, each paired over both seeds.
+    assertEquals(report.comparisons.length, 4);
+    for (const c of report.comparisons) assertEquals(c.n, 2, c.label);
+
+    // The chosen depth is the lowest median train MSE; cost is the table's sum.
+    assertEquals(report.calibrationTable.length, 3);
+    const best = report.calibrationTable.reduce((a, b) =>
+      b.medianTrainMse < a.medianTrainMse ? b : a
+    );
+    assertEquals(report.chosenRefineRounds, best.refineRounds);
+    assertEquals(
+      report.calibrationRecords,
+      report.calibrationTable.reduce((a, r) => a + r.recordsSpent, 0),
+    );
+    assert(report.calibrationRecords > 0);
+    for (const row of report.calibrationTable) assertEquals(row.runs, 1);
+
+    // Validation runs with the chosen depth, not the default one: a refinement
+    // round per descendant is the same, but the pen releases after that many.
+    assertEquals(
+      (report.manifest.settings as RefinementSettings).refineRounds,
+      SMALL.refineRounds,
+    );
+  });
+});
+
+Deno.test("runStudy: the holdout never moves calibration or the chosen depth", async () => {
+  await withRngTestLock(async () => {
+    const a = await runStudy(STUDY);
+    // The study builds its own corpus, so alter only what a holdout change
+    // reaches: a different holdout size changes the holdout and nothing
+    // that guides a run.
+    const b = await runStudy({
+      ...STUDY,
+      settings: { ...SMALL, holdoutRecords: 90 },
+    });
+    assertEquals(b.chosenRefineRounds, a.chosenRefineRounds);
+    assertEquals(b.calibrationTable, a.calibrationTable);
+    assertEquals(b.calibrationRecords, a.calibrationRecords);
+    assertNotEquals(
+      b.results.map((r) => r.holdoutMse),
+      a.results.map((r) => r.holdoutMse),
+    );
+  });
+});
+
+Deno.test("runStudy lists a run that throws and pairs only the seeds both arms completed", async () => {
+  await withRngTestLock(async () => {
+    // Seed -1 is refused by `createNeatConfig`; seed 0 is accepted.
+    const report = await runStudy({ ...STUDY, validationBaseSeed: -1 });
+    assertEquals(report.failures.length, ARMS.length);
+    assertEquals(
+      report.failures.map((f) => f.arm).sort(),
+      [...ARMS].sort(),
+    );
+    for (const f of report.failures) {
+      assertEquals(f.seed, -1);
+      assert(f.message.length > 0);
+    }
+    for (const arm of ARMS) {
+      assertEquals(report.coverage[arm], { completed: 1, planned: 2 }, arm);
+    }
+    assert(report.results.every((r) => r.seed === 0));
+    for (const c of report.comparisons) assertEquals(c.n, 1, c.label);
+  });
 });

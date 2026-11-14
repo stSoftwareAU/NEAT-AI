@@ -349,6 +349,10 @@ export interface RefinementRunResult {
   readonly majorRetained: number;
   readonly ordinaryCompeted: number;
   readonly ordinaryRetained: number;
+  /** Major descendants that received at least one refinement round. */
+  readonly refinedMajor: number;
+  /** Ordinary descendants that received at least one refinement round. */
+  readonly refinedOrdinary: number;
   readonly penPeak: number;
   readonly speciesCount: number;
   readonly meanGeneticDistance: number;
@@ -360,6 +364,8 @@ interface Candidate {
   creature: Creature;
   major: boolean;
   subScore?: number;
+  /** Set once the descendant has received a refinement round. */
+  refined?: boolean;
 }
 
 interface PenEntry extends Candidate {
@@ -455,6 +461,8 @@ function runSeeded(
   let majorRetained = 0;
   let ordinaryCompeted = 0;
   let ordinaryRetained = 0;
+  let refinedMajor = 0;
+  let refinedOrdinary = 0;
   let penPeak = 0;
   let generations = 0;
   let stalled = false;
@@ -474,10 +482,15 @@ function runSeeded(
         current.subScore,
       );
       refinement += out.records;
+      if (!current.refined) {
+        if (current.major) refinedMajor++;
+        else refinedOrdinary++;
+      }
       current = {
         creature: out.creature,
         major: current.major,
         subScore: out.score,
+        refined: true,
       };
     }
     return current;
@@ -634,6 +647,8 @@ function runSeeded(
     majorRetained,
     ordinaryCompeted,
     ordinaryRetained,
+    refinedMajor,
+    refinedOrdinary,
     penPeak,
     speciesCount: genus.speciesMap.size,
     meanGeneticDistance: meanGeneticDistance(scoredPopulation),

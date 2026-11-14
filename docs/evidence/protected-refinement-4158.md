@@ -13,7 +13,9 @@ Harness:
 Tests:
 [`test/scripts/ProtectedRefinementStudy.ts`](../../test/scripts/ProtectedRefinementStudy.ts).
 Artefact: [`protected-refinement-4158.json`](./protected-refinement-4158.json),
-written at code commit `00208c7e`. Nothing under `src/` imports the harness, and
+written at code commit `6e9f8619` plus the review change that adds the
+`refinedMajor` and `refinedOrdinary` counters (the other results are unchanged
+from the first run at `00208c7e`). Nothing under `src/` imports the harness, and
 no selection behaviour changes.
 
 ## Verdict
@@ -107,6 +109,17 @@ pre-calibration default of 3; validation used `chosenRefineRounds` = 2.
 | protect-only     |            0.01584 |          0.02913 |            618 |            140 |                   0.227 |                      0.617 |                        0 |            2 |              84,600 |
 | refine-only      |            0.01351 |          0.02139 |            684 |            269 |                   0.393 |                      0.598 |                   62,010 |            1 |             114,090 |
 | matched-ordinary |            0.01339 |          0.01877 |            645 |            215 |                   0.333 |                      0.589 |                   56,340 |            2 |              88,500 |
+
+Who received refinement, summed over the 20 runs of each arm (a descendant is
+counted once, however many rounds it received):
+
+| Arm              | Major descendants refined | Ordinary descendants refined |
+| ---------------- | ------------------------: | ---------------------------: |
+| immediate        |                         0 |                            0 |
+| protect-refine   |                       603 |                            0 |
+| protect-only     |                         0 |                            0 |
+| refine-only      |                       689 |                            0 |
+| matched-ordinary |                         0 |                          626 |
 
 ## Findings
 
