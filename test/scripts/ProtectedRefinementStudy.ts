@@ -14,6 +14,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { Creature } from "@creature";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   createSeededRng,
@@ -305,6 +306,8 @@ function result(
   seed: number,
   holdoutMse: number,
   speciesCount = 5,
+  majorCompeted = 4,
+  majorRetained = 1,
 ): RefinementRunResult {
   return {
     arm: "protect-refine",
@@ -317,8 +320,8 @@ function result(
     wallMs: 0,
     majorProduced: 0,
     majorByKind: { addNeuron: 0, rewiring: 0, activation: 0 },
-    majorCompeted: 4,
-    majorRetained: 1,
+    majorCompeted,
+    majorRetained,
     ordinaryCompeted: 0,
     ordinaryRetained: 0,
     refinedMajor: 0,
@@ -339,7 +342,23 @@ Deno.test("verdict: a clear benefit", () => {
   const c = pairedComparison(arm, baseline, "benefit");
   assertEquals(c.wins, 10);
   assertEquals(c.verdict, "benefit");
+});
+
+Deno.test("pairedComparison reports the arm's and the baseline's retention separately", () => {
+  // The arm keeps 1 of 4 majors per run, the baseline 3 of 6.
+  const arm = seedsTo(4).map((s) => result(s, 0.1, 5, 4, 1));
+  const baseline = seedsTo(4).map((s) => result(s, 0.2, 5, 6, 3));
+  const c = pairedComparison(arm, baseline, "retention");
   assertEquals(c.retainedFractionArm, 0.25);
+  assertEquals(c.retainedFractionBaseline, 0.5);
+});
+
+Deno.test("pairedComparison retention is null when no paired run competed a major", () => {
+  const arm = seedsTo(3).map((s) => result(s, 0.1, 5, 0, 0));
+  const baseline = seedsTo(3).map((s) => result(s, 0.2, 5, 0, 0));
+  const c = pairedComparison(arm, baseline, "none competed");
+  assertEquals(c.retainedFractionArm, null);
+  assertEquals(c.retainedFractionBaseline, null);
 });
 
 Deno.test("verdict: a clear harm", () => {
@@ -498,15 +517,41 @@ Deno.test("runStudy lists a run that throws and pairs only the seeds both arms c
       report.failures.map((f) => f.arm).sort(),
       [...ARMS].sort(),
     );
+    // The message is whatever `createNeatConfig` refuses the seed with.
+    let expected = "";
+    try {
+      createNeatConfig({ seed: -1 });
+    } catch (error) {
+      expected = error instanceof Error ? error.message : String(error);
+    }
+    assert(expected.length > 0);
     for (const f of report.failures) {
       assertEquals(f.seed, -1);
-      assert(f.message.length > 0);
+      assertEquals(f.message, expected);
     }
     for (const arm of ARMS) {
       assertEquals(report.coverage[arm], { completed: 1, planned: 2 }, arm);
     }
     assert(report.results.every((r) => r.seed === 0));
     for (const c of report.comparisons) assertEquals(c.n, 1, c.label);
+  });
+});
+
+Deno.test("runStudy with no calibration runs reports no chosen depth and a failure", async () => {
+  await withRngTestLock(async () => {
+    const report = await runStudy({ ...STUDY, calibrationSeeds: 0 });
+    assertEquals(report.chosenRefineRounds, null);
+    assertEquals(report.results, []);
+    assertEquals(report.comparisons, []);
+    for (const arm of ARMS) {
+      assertEquals(report.coverage[arm], { completed: 0, planned: 2 }, arm);
+    }
+    assertEquals(report.failures.length, 1);
+    assert(
+      report.failures[0].message.includes(
+        "no calibration row has a finite MSE",
+      ),
+    );
   });
 });
 

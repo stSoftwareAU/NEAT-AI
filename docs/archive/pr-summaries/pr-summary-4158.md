@@ -119,7 +119,7 @@ Criteria heading.
 
 ## Test Plan
 
-- Added `test/scripts/ProtectedRefinementStudy.ts`, with 23 tests:
+- Added `test/scripts/ProtectedRefinementStudy.ts`, with 26 tests:
   - `classifyMutation` flags a new hidden neuron, a changed squash and an added
     or removed synapse, and does not flag a change to weights and biases alone;
   - `refineRound` keeps the structure, never worsens the sub-sample score,
@@ -139,13 +139,21 @@ Criteria heading.
     descendants per generation;
   - the holdout never guides a run;
   - `pairedComparison` pairs by seed, skipping a seed either arm lacks and
-    ignoring order;
+    ignoring order; it reports the arm's and the baseline's retained fraction
+    separately (1 of 4 against 3 of 6 majors) and reports both as null when no
+    paired run competed a major;
   - `runStudy` completes every arm for every planned seed with four paired
     comparisons, chooses the calibration row with the lowest median train MSE,
     sums the calibration cost from the table, is unmoved in calibration and the
-    chosen R when the holdout changes, and, when a validation seed throws (a
-    seed `createNeatConfig` refuses), lists it in `failures` by arm, seed and
-    message, shows coverage below plan and pairs only the surviving seed;
+    chosen R when the holdout changes, validates with the calibrated depth
+    rather than a supplied default outside the calibration grid (every
+    validation result equals a direct `runArm` at the chosen depth, excluding
+    wall-clock time), and, when a validation seed throws (a seed
+    `createNeatConfig` refuses), lists it in `failures` by arm, seed and the
+    exact message `createNeatConfig` throws, shows coverage below plan and pairs
+    only the surviving seed; with no calibration seeds it reports no chosen
+    depth, no results or comparisons, zero coverage and one failure naming the
+    missing finite calibration MSE;
   - `verdict` returns benefit, harm and no-benefit, including a CI benefit with
     a species ratio under 0.8;
   - `validateSettings` accepts the defaults and names the offending field;
@@ -176,15 +184,3 @@ Criteria heading.
   compute. The page lists them by arm.
 - The fixed pen capacity of 4 and the sub-sample stride of 10 were not
   calibrated; only R was.
-
-## Calibration-depth regression coverage
-
-A deterministic test supplies a default refinement depth outside the calibration
-grid and compares every validation result with a direct run at the chosen depth,
-excluding wall-clock measurements. This verifies the actual validation outcomes,
-not just the manifest.
-
-The test failed when validation was temporarily changed to use the supplied
-default depth; the source was restored. All 67 focused, adjacent, UUID/version
-invariant and public/private documentation checks pass. Formatting and lint
-pass. The full native quality gate was not rerun for this test-only follow-up.
