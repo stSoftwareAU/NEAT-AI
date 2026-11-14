@@ -125,8 +125,8 @@ Criteria heading.
   - `refineRound` keeps the structure, never worsens the sub-sample score,
     charges records and leaves its input unchanged; it adopts an improving
     perturbation as a new creature whose score equals the returned creature's
-    sub-sample score and charges both evaluations; and it returns the original when
-    nothing improves it;
+    sub-sample score and charges both evaluations; and it returns the original
+    when nothing improves it;
   - `runArm` is deterministic per seed and restores the caller's generator;
   - every arm stays within the budget and accounts its phases;
   - each arm spends refinement and pen capacity as designed: `immediate` and
