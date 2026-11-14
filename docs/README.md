@@ -135,6 +135,10 @@ Tuning guides and benchmark research.
   own outcomes (Jin 2011 §5). Off by default; it observes and changes no
   selection. What it measured is in
   [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
+- **[evidence/budget-conditioned-4161.md](evidence/budget-conditioned-4161.md)**
+  — one genome expressed at several connection budgets (Issue #4161): a negative
+  result; it was harmful against independent per-budget searches on unseen
+  budgets.
 - **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
   — initial connectivity and input fan-out as priors (Issue #4160): a negative
   result; no sparse start beat the current initialisation.
