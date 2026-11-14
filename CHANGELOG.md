@@ -322,6 +322,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   evaluations spent re-scoring content its island already held. No default and
   nothing under `src/` changed. See
   [`docs/evidence/island-exchange-4159.md`](./docs/evidence/island-exchange-4159.md).
+- **Issue #4160:** opt-in `deno task connectivity-prior-study` compares sparse,
+  input-reachable initial topologies against the current fully connected one.
+  Result: no cell beat the control and the calibration-chosen cell was harmful,
+  so no prior was added. Self-loops were not swept: the harness runs the
+  forward-only path; see
+  [the evidence page](docs/evidence/connectivity-prior-4160.md).
 - **Issue #4155:** an opt-in `deno task lineage-targeting-study` harness that
   compares ordinary mutation with lineage-informed and stratum-targeted
   offspring at an equal record budget. The 30-seed result is no benefit: every
