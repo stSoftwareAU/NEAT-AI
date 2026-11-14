@@ -487,13 +487,17 @@ const MAX_FILL_ATTEMPTS = 50;
  * exact copy of the parent. That copy would take the parent's content uuid,
  * lose its score and be evaluated again for a result the island already holds.
  * The fill is therefore redrawn until its content uuid differs from the
- * parent's, and `redraws` reports how many draws that took. `mutator` should
- * have a mutation rate of 1; if no draw changes the parent within
+ * parent's, and `redraws` reports how many draws that took. `avoid` widens
+ * that to every content uuid the island has already scored or is about to
+ * (another member, an earlier fill), because two different draws can land on
+ * the same content and the second would be scored again for nothing.
+ * `mutator` should have a mutation rate of 1; if no draw changes the parent within
  * {@link MAX_FILL_ATTEMPTS} the call throws rather than hand back a clone.
  */
 export function makeMutantFill(
   parent: Creature,
   mutator: Mutator,
+  avoid: ReadonlySet<string> = new Set(),
 ): { fill: Creature; redraws: number } {
   const parentUuid = CreatureUtil.makeUUID(parent);
   for (let attempt = 0; attempt < MAX_FILL_ATTEMPTS; attempt++) {
@@ -504,7 +508,8 @@ export function makeMutantFill(
     mutator.mutate([fill]);
     delete fill.score;
     delete fill.uuid;
-    if (CreatureUtil.makeUUID(fill) !== parentUuid) {
+    const fillUuid = CreatureUtil.makeUUID(fill);
+    if (fillUuid !== parentUuid && !avoid.has(fillUuid)) {
       return { fill, redraws: attempt };
     }
   }
@@ -543,6 +548,15 @@ export interface ArmSeedResult {
   mutationFills: number;
   /** Mutation draws rejected because they left the parent's content unchanged. */
   fillRedraws: number;
+  /**
+   * Train evaluations spent on a creature whose content uuid its island had
+   * already scored: budget that bought no new information. Measured at the
+   * scoring site, independently of how fills are made, so a fill that is a
+   * clone of a scored parent shows up here.
+   */
+  rescoredEvaluations: number;
+  /** The part of {@link rescoredEvaluations} spent on a mutation-only fill. */
+  rescoredFills: number;
   generations: GenerationTrace[];
 }
 
@@ -641,15 +655,33 @@ function runArmSeedBody(
     let transportMs = 0;
     let mutationFills = 0;
     let fillRedraws = 0;
+    let rescoredEvaluations = 0;
+    let rescoredFills = 0;
+    const fillCreatures = new WeakSet<Creature>();
+    const scoredUuids: Set<string>[] = islands.map(() => new Set<string>());
     const traces: GenerationTrace[] = [];
     const slots = settings.islandPopulation - settings.elitism;
 
     for (let g = 1; g <= settings.generations; g++) {
       // Migrants keep their train score (same train split), so receiving one
       // costs no evaluation.
-      for (const island of islands) {
+      for (const [index, island] of islands.entries()) {
+        const seen = scoredUuids[index];
+        // Elites and migrants arrive scored; remember them so a later clone of
+        // one is recognised as a re-evaluation.
+        for (const creature of island) {
+          if (creature.score !== undefined) {
+            seen.add(CreatureUtil.makeUUID(creature));
+          }
+        }
         for (const creature of island) {
           if (creature.score !== undefined) continue;
+          const uuid = CreatureUtil.makeUUID(creature);
+          if (seen.has(uuid)) {
+            rescoredEvaluations++;
+            if (fillCreatures.has(creature)) rescoredFills++;
+          }
+          seen.add(uuid);
           const started = clock();
           const scored = scoreCreature(creature, splits.train);
           evaluationMs += clock() - started;
@@ -685,7 +717,7 @@ function runArmSeedBody(
       });
 
       if (g < settings.generations) {
-        islands = islands.map((island) => {
+        islands = islands.map((island, index) => {
           const elites = island.slice(0, settings.elitism);
           const offspring = breedOffspring(island, slots, mutator, config, rng);
           for (
@@ -709,12 +741,17 @@ function runArmSeedBody(
             // cannot cross). Fill with mutation-only copies so every arm
             // spends exactly the same evaluation budget.
             const fills: Creature[] = [];
+            // Content this island already holds or is about to score.
+            const held = new Set<string>(scoredUuids[index]);
+            for (const o of offspring) held.add(CreatureUtil.makeUUID(o));
             for (let f = 0; f < missing; f++) {
               const parent = island[
                 Math.floor(rng.random() * rng.random() * island.length)
               ];
-              const made = makeMutantFill(parent, fillMutator);
+              const made = makeMutantFill(parent, fillMutator, held);
+              held.add(CreatureUtil.makeUUID(made.fill));
               fillRedraws += made.redraws;
+              fillCreatures.add(made.fill);
               fills.push(made.fill);
             }
             offspring.push(...fills);
@@ -747,6 +784,8 @@ function runArmSeedBody(
       collapsed: finalInter < settings.collapseThreshold,
       mutationFills,
       fillRedraws,
+      rescoredEvaluations,
+      rescoredFills,
       generations: traces,
     };
   } finally {
@@ -944,6 +983,8 @@ export interface ArmSummary {
   recordsCharged: number;
   mutationFills: number;
   fillRedraws: number;
+  rescoredEvaluations: number;
+  rescoredFills: number;
 }
 
 /** A comparison of one arm against the control. */
@@ -1050,6 +1091,8 @@ export function runStudy(
       recordsCharged: records,
       mutationFills: mean(rows.map((r) => r.mutationFills)),
       fillRedraws: mean(rows.map((r) => r.fillRedraws)),
+      rescoredEvaluations: mean(rows.map((r) => r.rescoredEvaluations)),
+      rescoredFills: mean(rows.map((r) => r.rescoredFills)),
     };
   });
 

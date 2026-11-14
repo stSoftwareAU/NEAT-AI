@@ -43,6 +43,60 @@ async function gitCommit(): Promise<string> {
   return new TextDecoder().decode(output.stdout).trim();
 }
 
+/**
+ * Files whose content decides what a run measures. Their hash is recorded so a
+ * result names the code that produced it even when that code is not (yet) a
+ * commit.
+ */
+const HARNESS_FILES = [
+  "scripts/island_exchange_study.ts",
+  "scripts/lib/islandExchangeStudy.ts",
+  "scripts/lib/preSelectionAB.ts",
+] as const;
+
+/** SHA-256 over the harness files, in a fixed order, name and content. */
+async function harnessSha256(): Promise<string> {
+  const encoder = new TextEncoder();
+  const contents = await Promise.all(
+    HARNESS_FILES.map((file) => Deno.readFile(file)),
+  );
+  const parts: Uint8Array[] = [];
+  HARNESS_FILES.forEach((file, i) => {
+    parts.push(encoder.encode(`${file}\n`), contents[i], encoder.encode("\n"));
+  });
+  const joined = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const part of parts) {
+    joined.set(part, at);
+    at += part.length;
+  }
+  const digest = await crypto.subtle.digest("SHA-256", joined);
+  return Array.from(
+    new Uint8Array(digest),
+    (b) => b.toString(16).padStart(2, "0"),
+  )
+    .join("");
+}
+
+/**
+ * Whether `scripts/` or `src/` differ from `HEAD`. A recorded `commit` only
+ * names the code that ran when this is false; otherwise `harnessSha256` is the
+ * identity to check.
+ */
+async function dirtyTree(): Promise<boolean> {
+  const output = await new Deno.Command("git", {
+    args: ["status", "--porcelain", "--", "scripts", "src"],
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  if (!output.success) {
+    throw new Error(
+      `git status failed: ${new TextDecoder().decode(output.stderr)}`,
+    );
+  }
+  return new TextDecoder().decode(output.stdout).trim().length > 0;
+}
+
 function describe(c: ArmComparison): string {
   const i = c.interval;
   const range = i === undefined
@@ -80,9 +134,21 @@ if (import.meta.main) {
   );
   const version = JSON.parse(await Deno.readTextFile("deno.json")).version;
   const commit = await gitCommit();
+  const dirty = await dirtyTree();
+  const sourceSha256 = await harnessSha256();
+  if (dirty && !args.includes("--allow-dirty")) {
+    console.error(
+      "scripts/ or src/ has uncommitted changes, so the recorded commit would " +
+        "not name the code that runs. Commit first, or pass --allow-dirty to " +
+        "record `dirty: true` alongside `sourceSha256`.",
+    );
+    Deno.exit(2);
+  }
 
   console.info(
-    `Island exchange study — Issue #4159, version ${version}, commit ${commit}`,
+    `Island exchange study — Issue #4159, version ${version}, commit ${commit}${
+      dirty ? " (dirty)" : ""
+    }, harness sha256 ${sourceSha256}`,
   );
   console.info(
     `Synthetic corpus: this measures the exchange policy, not production-size ` +
@@ -119,7 +185,13 @@ if (import.meta.main) {
   if (jsonPath !== undefined) {
     await Deno.writeTextFile(
       jsonPath,
-      `${JSON.stringify({ version, commit, ...study }, null, 2)}\n`,
+      `${
+        JSON.stringify(
+          { version, commit, dirty, sourceSha256, ...study },
+          null,
+          2,
+        )
+      }\n`,
     );
     console.info(`Wrote ${jsonPath}`);
   }

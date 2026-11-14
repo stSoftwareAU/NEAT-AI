@@ -314,10 +314,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   neighbour-only ring that sends topology-diverse Pareto members, and the
   global-champion broadcast the fleet uses today as the control. Both verdicts
   are **no benefit** against the broadcast. The ring keeps the islands diverse
-  (inter-island distance 0.41 against 0.0004) and its mean held-out error is
+  (inter-island distance 0.42 against 0.004) and its mean held-out error is
   lower, but the interval spans zero. An earlier run, which left unmutated
-  clones among the fills, called both **worse** and is superseded. No default
-  and nothing under `src/` changed. See
+  clones among the fills, called both **worse** and is superseded. The artefact
+  now records `dirty` and `sourceSha256` beside `commit`, the command refuses a
+  dirty `scripts/`/`src/` unless `--allow-dirty`, and each run counts the
+  evaluations spent re-scoring content its island already held. No default and
+  nothing under `src/` changed. See
   [`docs/evidence/island-exchange-4159.md`](./docs/evidence/island-exchange-4159.md).
 - **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
   quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in

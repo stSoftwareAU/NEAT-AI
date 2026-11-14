@@ -364,6 +364,27 @@ Deno.test("island study — a collapsed start is refilled with mutants and still
     const ring = result("ring");
     assert(none.mutationFills > 0, "the clone islands force fills");
     assert(ring.mutationFills > 0);
+    // Not a count the fill path computes for itself: every train evaluation is
+    // checked against what its island had already scored, and the ones that
+    // were a fill are counted apart. The clone start is its own positive
+    // control: the first generation scores islandPopulation identical creatures
+    // per island, so at least islandPopulation - 1 of them are re-scores (a
+    // crossover child can add more, so this is a floor). A fill that came back
+    // as a clone of a parent would show up in `rescoredFills`.
+    const startClones = SMALL.islands * (SMALL.islandPopulation - 1);
+    for (const arm of ["none", "ring", "broadcast"] as const) {
+      const run = result(arm);
+      assert(
+        run.rescoredEvaluations >= startClones,
+        `${arm}: the duplicated start is counted as re-scored`,
+      );
+      assertEquals(run.rescoredFills, 0, `${arm}: no fill is scored twice`);
+      // Distinct starting creatures are never re-scored by any arm.
+      assertEquals(
+        runArmSeed(arm, SMALL, splits, first, counterClock()).rescoredFills,
+        0,
+      );
+    }
     assertEquals(none.recordsCharged, ring.recordsCharged);
     assertEquals(
       none.trainRecordsCharged,

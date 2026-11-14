@@ -1,6 +1,8 @@
 {
   "version": "7.1.18",
-  "commit": "faaa0ad6ca96110245927024e28003dc7cd292b1",
+  "commit": "d474ffe0e9a851a1529782c38b31c2542d8ed908",
+  "dirty": true,
+  "sourceSha256": "ebb9cf08cbea8456877560496d6a5cbe285e923ad82c8ff940ede9b002e5e3a5",
   "settings": {
     "seed": 4159,
     "islands": 6,
@@ -40,22 +42,24 @@
     {
       "arm": "none",
       "seed": 4159,
-      "holdoutMse": 0.01167284959757026,
-      "calibrationMse": 0.011289361803740839,
-      "reportedUuid": "90217713-463a-5b18-a802-ce03e8c055d1",
+      "holdoutMse": 0.014182011460035504,
+      "calibrationMse": 0.013770711622963188,
+      "reportedUuid": "886efc66-3d4f-5871-9636-86ad89b09e9c",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 223.35040800000024,
+      "evaluationMs": 277.66252800000063,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0,
+      "withinIslandDistance": 0.000925925925925926,
       "collapsed": false,
-      "mutationFills": 239,
-      "fillRedraws": 0,
+      "mutationFills": 269,
+      "fillRedraws": 4,
+      "rescoredEvaluations": 126,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -137,67 +141,67 @@
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.08323738547846321,
+          "meanBestTrainScore": -0.08260957212884425,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.07845108846615707,
+          "meanBestTrainScore": -0.08191659983068161,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.07631604585046027,
+          "meanBestTrainScore": -0.07396768261739983,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.0741121392427219,
+          "meanBestTrainScore": -0.07193608249584486,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.07208108714999008,
+          "meanBestTrainScore": -0.0704438347388116,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.07058730451458194,
+          "meanBestTrainScore": -0.0661598343228737,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.06837812516705609,
+          "meanBestTrainScore": -0.06495539188340434,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.06759661774686011,
+          "meanBestTrainScore": -0.060656635730916335,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.06622081184359538,
+          "meanBestTrainScore": -0.06056161588299342,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.060506248251552985,
+          "meanBestTrainScore": -0.05770782522364316,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.059044539867321034,
+          "meanBestTrainScore": -0.055280795293398965,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -206,22 +210,24 @@
     {
       "arm": "ring",
       "seed": 4159,
-      "holdoutMse": 0.009169504951494597,
-      "calibrationMse": 0.008404098545171398,
-      "reportedUuid": "a20bf655-6a9e-5ed8-b696-907362498ed6",
+      "holdoutMse": 0.008122253259316897,
+      "calibrationMse": 0.008524581717662792,
+      "reportedUuid": "dff34310-e106-59f3-9a74-03bd950e5442",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 246.43909100000292,
+      "evaluationMs": 270.5356910000053,
       "transfers": 25,
-      "bytes": 29894,
-      "transportMs": 1.258209000000079,
-      "finalInterIslandDistance": 0.01333333333333333,
-      "meanInterIslandDistance": 0.5394444444444445,
-      "withinIslandDistance": 0.011111111111111112,
-      "collapsed": true,
-      "mutationFills": 143,
-      "fillRedraws": 0,
+      "bytes": 30518,
+      "transportMs": 1.2521209999990788,
+      "finalInterIslandDistance": 0.12666666666666665,
+      "meanInterIslandDistance": 0.5613888888888889,
+      "withinIslandDistance": 0.000925925925925926,
+      "collapsed": false,
+      "mutationFills": 139,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 86,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -333,38 +339,38 @@
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.01489719918170282,
+          "meanBestTrainScore": -0.01492177256727264,
           "interIslandDistance": 0.3466666666666667,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.010907874951758342,
-          "interIslandDistance": 0.02666666666666666,
+          "meanBestTrainScore": -0.010517265224264548,
+          "interIslandDistance": 0.12666666666666665,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.010844537468743516,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.010254790413957784,
+          "interIslandDistance": 0.12666666666666665,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.010774044006489007,
-          "interIslandDistance": 0.01333333333333333,
+          "meanBestTrainScore": -0.009931460710011436,
+          "interIslandDistance": 0.1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.010660509862229939,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.009929339921487227,
+          "interIslandDistance": 0.1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.010567313233415454,
-          "interIslandDistance": 0.01333333333333333,
+          "meanBestTrainScore": -0.009889024408321645,
+          "interIslandDistance": 0.12666666666666665,
           "transfers": 0
         }
       ]
@@ -372,22 +378,24 @@
     {
       "arm": "broadcast",
       "seed": 4159,
-      "holdoutMse": 0.009125118163611917,
-      "calibrationMse": 0.008803515484573836,
-      "reportedUuid": "c4770b74-1d04-5ea9-a9b6-4606eff42687",
+      "holdoutMse": 0.008055498848693216,
+      "calibrationMse": 0.007761997057047257,
+      "reportedUuid": "65b09670-8bee-5ee6-b04c-9ec885c621ff",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 240.66025699999977,
+      "evaluationMs": 225.56157099999382,
       "transfers": 25,
-      "bytes": 36660,
-      "transportMs": 1.095127000000275,
+      "bytes": 34980,
+      "transportMs": 1.006333999997878,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
       "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 199,
-      "fillRedraws": 0,
+      "mutationFills": 196,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 106,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -457,79 +465,79 @@
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.011166449114355251,
+          "meanBestTrainScore": -0.011227977563380863,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.011166449114355251,
+          "meanBestTrainScore": -0.011081831048829783,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.011061876398524665,
+          "meanBestTrainScore": -0.010949542581286753,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.011007793253799218,
+          "meanBestTrainScore": -0.010932914997623956,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.010401607593461926,
+          "meanBestTrainScore": -0.009695374509031275,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.010382611066382478,
+          "meanBestTrainScore": -0.009590241607043184,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.010264486517184911,
+          "meanBestTrainScore": -0.009411602663539796,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.010112106233252012,
+          "meanBestTrainScore": -0.009341842982583582,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.00919299088917862,
+          "meanBestTrainScore": -0.008634494276288622,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.009174694191238458,
+          "meanBestTrainScore": -0.008519468681997976,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.009159638195621154,
+          "meanBestTrainScore": -0.008483428857218337,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.009050700640720985,
+          "meanBestTrainScore": -0.008356854660306582,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.008967941522486178,
+          "meanBestTrainScore": -0.008308486237736293,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -538,22 +546,24 @@
     {
       "arm": "none",
       "seed": 4160,
-      "holdoutMse": 0.011228531366056478,
-      "calibrationMse": 0.010215262396311472,
-      "reportedUuid": "919c5ad6-26d3-5f1a-982c-58e814c312f8",
+      "holdoutMse": 0.009478597270016357,
+      "calibrationMse": 0.008821933625317045,
+      "reportedUuid": "5de30296-abb8-52ad-b108-0902f7a9d5ab",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 200.49822099999915,
+      "evaluationMs": 242.26025299999537,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.004938271604938272,
+      "withinIslandDistance": 0.017839506172839508,
       "collapsed": false,
-      "mutationFills": 307,
-      "fillRedraws": 0,
+      "mutationFills": 309,
+      "fillRedraws": 3,
+      "rescoredEvaluations": 128,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -623,79 +633,79 @@
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.05681088528326691,
+          "meanBestTrainScore": -0.05813102109086835,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.056561302296034906,
+          "meanBestTrainScore": -0.05393428217101673,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.05499685623045087,
+          "meanBestTrainScore": -0.05356245989920358,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.053171777113584916,
+          "meanBestTrainScore": -0.04107218233044559,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.051374601498750345,
+          "meanBestTrainScore": -0.038305617556415074,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.0502305500810383,
+          "meanBestTrainScore": -0.03719261688141741,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.048800468663844694,
+          "meanBestTrainScore": -0.03465515720546024,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.04860534640861513,
+          "meanBestTrainScore": -0.034169199984375793,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.03806332198374923,
+          "meanBestTrainScore": -0.03363748350662249,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.03510201201605414,
+          "meanBestTrainScore": -0.03150442247703029,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.03319726549057276,
+          "meanBestTrainScore": -0.03095492704336877,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.03283688499494453,
+          "meanBestTrainScore": -0.030880889337776635,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.03219654369274535,
+          "meanBestTrainScore": -0.03081567897137991,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -704,22 +714,24 @@
     {
       "arm": "ring",
       "seed": 4160,
-      "holdoutMse": 0.00933349038468106,
-      "calibrationMse": 0.010022463160548637,
-      "reportedUuid": "91cc8bee-0e40-5626-83cf-5dbb120726ab",
+      "holdoutMse": 0.012140339952167007,
+      "calibrationMse": 0.012318547880601709,
+      "reportedUuid": "b19a5bb7-7fce-5443-a8ad-87e9a3fc4235",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 258.4216259999971,
+      "evaluationMs": 262.98804000000837,
       "transfers": 25,
-      "bytes": 35418,
-      "transportMs": 5.770372999999836,
+      "bytes": 33160,
+      "transportMs": 1.2712460000007013,
       "finalInterIslandDistance": 0.3466666666666667,
-      "meanInterIslandDistance": 0.6955555555555554,
-      "withinIslandDistance": 0.0771604938271605,
+      "meanInterIslandDistance": 0.6983333333333333,
+      "withinIslandDistance": 0.0708994708994709,
       "collapsed": false,
-      "mutationFills": 178,
-      "fillRedraws": 0,
+      "mutationFills": 128,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 76,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -759,109 +771,109 @@
         },
         {
           "generation": 7,
-          "meanBestTrainScore": -0.0667799992092912,
+          "meanBestTrainScore": -0.06347773713417648,
           "interIslandDistance": 0.8666666666666667,
           "transfers": 0
         },
         {
           "generation": 8,
-          "meanBestTrainScore": -0.04288451902329291,
+          "meanBestTrainScore": -0.03919275860592122,
           "interIslandDistance": 0.8,
           "transfers": 5
         },
         {
           "generation": 9,
-          "meanBestTrainScore": -0.037746707470749936,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.038756418847730706,
+          "interIslandDistance": 0.8666666666666667,
           "transfers": 0
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.03263920659353838,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.034132820411161405,
+          "interIslandDistance": 0.8666666666666667,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.03138664874653302,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.0335328943550559,
+          "interIslandDistance": 0.8666666666666667,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.01958507979653221,
+          "meanBestTrainScore": -0.024070167688651428,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.019126589845555403,
+          "meanBestTrainScore": -0.023701644499024784,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.017060920597518268,
+          "meanBestTrainScore": -0.023013645649287384,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.01618798987479305,
+          "meanBestTrainScore": -0.021167086750248826,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.014525203039142448,
-          "interIslandDistance": 0.6,
+          "meanBestTrainScore": -0.015148731691196451,
+          "interIslandDistance": 0.5333333333333333,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.0141390220640012,
-          "interIslandDistance": 0.6,
+          "meanBestTrainScore": -0.015082896919733323,
+          "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.013518757009304464,
-          "interIslandDistance": 0.6,
+          "meanBestTrainScore": -0.01491228539979362,
+          "interIslandDistance": 0.5466666666666666,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.013472076832904792,
-          "interIslandDistance": 0.6,
+          "meanBestTrainScore": -0.014311871172917977,
+          "interIslandDistance": 0.5466666666666666,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.012294611400625531,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.013153579649582721,
+          "interIslandDistance": 0.3466666666666667,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.012198740961095389,
+          "meanBestTrainScore": -0.012994201672015133,
           "interIslandDistance": 0.3466666666666667,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.012084077824858505,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.012990222545077252,
+          "interIslandDistance": 0.36000000000000004,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.012066370102313201,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.012890493562851527,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.011768525448549632,
+          "meanBestTrainScore": -0.012862276537767524,
           "interIslandDistance": 0.3466666666666667,
           "transfers": 0
         }
@@ -876,16 +888,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 278.186037999993,
+      "evaluationMs": 279.8616290000059,
       "transfers": 25,
       "bytes": 58350,
-      "transportMs": 5.924542999998266,
+      "transportMs": 4.233248999999887,
       "finalInterIslandDistance": 0.008333333333333333,
       "meanInterIslandDistance": 0.17465277777777785,
       "withinIslandDistance": 0,
       "collapsed": true,
       "mutationFills": 89,
       "fillRedraws": 0,
+      "rescoredEvaluations": 70,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -1036,22 +1050,24 @@
     {
       "arm": "none",
       "seed": 4161,
-      "holdoutMse": 0.013513287195846026,
-      "calibrationMse": 0.011951364837454325,
-      "reportedUuid": "8ee95982-7e9d-54a1-92ff-d73f2dc04e00",
+      "holdoutMse": 0.009988269187915387,
+      "calibrationMse": 0.009574752847197566,
+      "reportedUuid": "47f9794d-2040-5787-98a9-2095f638314c",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 263.2670300000159,
+      "evaluationMs": 273.8788279999844,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
-      "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0,
+      "meanInterIslandDistance": 0.902777777777778,
+      "withinIslandDistance": 0.027777777777777776,
       "collapsed": false,
-      "mutationFills": 264,
-      "fillRedraws": 0,
+      "mutationFills": 298,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 104,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -1133,67 +1149,67 @@
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.07137506331767172,
+          "meanBestTrainScore": -0.07306085469167832,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.07061250532372965,
+          "meanBestTrainScore": -0.07147703032763505,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.07005458741969274,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06708995846952746,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.06923118547506381,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06558225856620044,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.06894671793754947,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06347144232724988,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.06847026225205774,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06313642046671404,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.04821984851635818,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06165550750452075,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.04804331355645297,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06121509243626724,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.04654291140915653,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06078258274240655,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.04619120229720253,
+          "meanBestTrainScore": -0.046555933939706105,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.04612544083988146,
+          "meanBestTrainScore": -0.04603879779997245,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -1202,22 +1218,24 @@
     {
       "arm": "ring",
       "seed": 4161,
-      "holdoutMse": 0.013299160723960519,
-      "calibrationMse": 0.010932051298317006,
-      "reportedUuid": "a6040d21-12a9-5150-87a0-5bc579aed73d",
+      "holdoutMse": 0.014263569429832144,
+      "calibrationMse": 0.011717381631399867,
+      "reportedUuid": "64684ecc-8050-5893-b75a-ec14ccd6f47d",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 252.95867999999973,
+      "evaluationMs": 291.95328699999027,
       "transfers": 25,
       "bytes": 28861,
-      "transportMs": 4.358666000000994,
+      "transportMs": 6.800248999998075,
       "finalInterIslandDistance": 0.6,
       "meanInterIslandDistance": 0.7833333333333337,
       "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 199,
-      "fillRedraws": 0,
+      "mutationFills": 211,
+      "fillRedraws": 3,
+      "rescoredEvaluations": 81,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -1341,25 +1359,25 @@
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.015287020779185095,
+          "meanBestTrainScore": -0.01530891549709387,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.014978186886245422,
+          "meanBestTrainScore": -0.014737133898148853,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.01492301168759047,
+          "meanBestTrainScore": -0.01463568186922136,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.014637538658553642,
+          "meanBestTrainScore": -0.01447881655077332,
           "interIslandDistance": 0.6,
           "transfers": 0
         }
@@ -1368,22 +1386,24 @@
     {
       "arm": "broadcast",
       "seed": 4161,
-      "holdoutMse": 0.01279404861738205,
-      "calibrationMse": 0.012909459539922095,
-      "reportedUuid": "2d87febe-c6df-5911-8cdb-5da5889b5598",
+      "holdoutMse": 0.01242503646653463,
+      "calibrationMse": 0.01230248395677502,
+      "reportedUuid": "052fd1ea-b2dd-5b73-876c-c7315bff43fd",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 258.5256880000006,
+      "evaluationMs": 267.1902890000092,
       "transfers": 25,
-      "bytes": 20130,
-      "transportMs": 3.4695399999991423,
+      "bytes": 20100,
+      "transportMs": 4.798830999999154,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.17500000000000002,
-      "withinIslandDistance": 0,
+      "withinIslandDistance": 0.001851851851851852,
       "collapsed": true,
-      "mutationFills": 377,
-      "fillRedraws": 0,
+      "mutationFills": 357,
+      "fillRedraws": 4,
+      "rescoredEvaluations": 88,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -1477,55 +1497,55 @@
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.01442564111123537,
+          "meanBestTrainScore": -0.01438117598615691,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.014385022427927134,
+          "meanBestTrainScore": -0.01438117598615691,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.014272194335661266,
+          "meanBestTrainScore": -0.01431023737213398,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.014233870218149494,
+          "meanBestTrainScore": -0.01417989097834337,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.013885302527301304,
+          "meanBestTrainScore": -0.01367027604391048,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.013770113672744458,
+          "meanBestTrainScore": -0.013658113517408891,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.013706201198401586,
+          "meanBestTrainScore": -0.013582553871677007,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.013679170760716517,
+          "meanBestTrainScore": -0.013563509707042764,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.013631076101340296,
+          "meanBestTrainScore": -0.013563509707042764,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -1540,16 +1560,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 273.74730699999236,
+      "evaluationMs": 279.558320000001,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
-      "finalInterIslandDistance": 1,
-      "meanInterIslandDistance": 0.6111111111111113,
-      "withinIslandDistance": 0.07592592592592592,
+      "finalInterIslandDistance": 0.4,
+      "meanInterIslandDistance": 0.4611111111111113,
+      "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 439,
-      "fillRedraws": 0,
+      "mutationFills": 472,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 90,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -1649,50 +1671,50 @@
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.03179330130285168,
+          "meanBestTrainScore": -0.031082020998143934,
           "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.030598570056830476,
+          "meanBestTrainScore": -0.030399996196148554,
           "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.030207716922326586,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.030363675860229408,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.029770281586130713,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.029882725027306864,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.02734030757886645,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.029857647145380705,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.026336587105879092,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.0284828127699053,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.0262468387311062,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.028305038109737616,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.026017931801849928,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.02716462653288654,
+          "interIslandDistance": 0.4,
           "transfers": 0
         }
       ]
@@ -1700,22 +1722,24 @@
     {
       "arm": "ring",
       "seed": 4162,
-      "holdoutMse": 0.011407466776879392,
-      "calibrationMse": 0.011921828394807746,
-      "reportedUuid": "1f6b5061-a343-544a-8ae3-f2764c5d64f7",
+      "holdoutMse": 0.011490363137246619,
+      "calibrationMse": 0.009970666964259403,
+      "reportedUuid": "8697bbf1-fa91-54fa-8555-64c58ec4c756",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 263.9797869999975,
+      "evaluationMs": 291.37763599996833,
       "transfers": 25,
       "bytes": 27670,
-      "transportMs": 4.008789999998044,
+      "transportMs": 5.6510020000014265,
       "finalInterIslandDistance": 0.6,
       "meanInterIslandDistance": 0.6638888888888886,
-      "withinIslandDistance": 0.031481481481481485,
+      "withinIslandDistance": 0.0271604938271605,
       "collapsed": false,
-      "mutationFills": 251,
-      "fillRedraws": 0,
+      "mutationFills": 238,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 79,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -1839,25 +1863,25 @@
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.012747693181889059,
+          "meanBestTrainScore": -0.012487838399385567,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.012747693181889059,
+          "meanBestTrainScore": -0.012432217563881567,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.012657427255455935,
+          "meanBestTrainScore": -0.012157233511953311,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.012436045686333379,
+          "meanBestTrainScore": -0.012128466831699871,
           "interIslandDistance": 0.6,
           "transfers": 0
         }
@@ -1872,16 +1896,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 255.71572600001673,
+      "evaluationMs": 272.39949100000376,
       "transfers": 25,
       "bytes": 38005,
-      "transportMs": 6.382040999999845,
+      "transportMs": 7.667413999999553,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.1111111111111111,
-      "withinIslandDistance": 0.001851851851851852,
+      "withinIslandDistance": 0.000925925925925926,
       "collapsed": true,
-      "mutationFills": 180,
-      "fillRedraws": 0,
+      "mutationFills": 179,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 87,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -2005,25 +2031,25 @@
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.01173015941553066,
+          "meanBestTrainScore": -0.011734052293546312,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.011730070416059819,
+          "meanBestTrainScore": -0.011734052293546312,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.011730070416059819,
+          "meanBestTrainScore": -0.01172907688619011,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.011714031905207235,
+          "meanBestTrainScore": -0.01171784979414913,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -2032,22 +2058,24 @@
     {
       "arm": "none",
       "seed": 4163,
-      "holdoutMse": 0.012238864004996595,
-      "calibrationMse": 0.011634445810160031,
-      "reportedUuid": "b0f45f8b-8031-56b0-b85e-72e9bdc1b90f",
+      "holdoutMse": 0.012466214138407662,
+      "calibrationMse": 0.011294546148361211,
+      "reportedUuid": "1b62403a-88ef-5e9e-9deb-c122149b1575",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 245.32133200000044,
+      "evaluationMs": 274.90182300003016,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0,
+      "withinIslandDistance": 0.014814814814814815,
       "collapsed": false,
-      "mutationFills": 301,
-      "fillRedraws": 0,
+      "mutationFills": 296,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 126,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -2147,49 +2175,49 @@
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.04786202319784207,
+          "meanBestTrainScore": -0.047125835767551506,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.039882687167723196,
+          "meanBestTrainScore": -0.04655209823373374,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.03985566812513199,
+          "meanBestTrainScore": -0.042865647487401216,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.038803288071673825,
+          "meanBestTrainScore": -0.04216335742628366,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.032149453945097696,
+          "meanBestTrainScore": -0.04097429351097472,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.03118961482110091,
+          "meanBestTrainScore": -0.04035845090585962,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.030012481319038095,
+          "meanBestTrainScore": -0.03985828406574892,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.0291501682280933,
+          "meanBestTrainScore": -0.03204641569273903,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -2204,16 +2232,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 253.0055830000074,
+      "evaluationMs": 265.1537110000045,
       "transfers": 25,
       "bytes": 21161,
-      "transportMs": 7.5963739999997415,
+      "transportMs": 16.69670799999767,
       "finalInterIslandDistance": 0.3333333333333333,
       "meanInterIslandDistance": 0.61875,
       "withinIslandDistance": 0.028148148148148155,
       "collapsed": false,
       "mutationFills": 210,
       "fillRedraws": 0,
+      "rescoredEvaluations": 76,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -2364,22 +2394,24 @@
     {
       "arm": "broadcast",
       "seed": 4163,
-      "holdoutMse": 0.011309950491793199,
-      "calibrationMse": 0.011267023257125783,
-      "reportedUuid": "eedf60f6-f21f-55c5-8936-98ea441b48df",
+      "holdoutMse": 0.013403129883282029,
+      "calibrationMse": 0.012352211174251887,
+      "reportedUuid": "95f5aeae-d57f-5cb0-8316-a893adaa52c9",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 271.8065859999879,
-      "transfers": 25,
-      "bytes": 15675,
-      "transportMs": 8.965919999998732,
+      "evaluationMs": 267.7317879999464,
+      "transfers": 20,
+      "bytes": 12965,
+      "transportMs": 1.545417000002999,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.1527777777777778,
       "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 284,
-      "fillRedraws": 0,
+      "mutationFills": 303,
+      "fillRedraws": 8,
+      "rescoredEvaluations": 83,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -2491,37 +2523,37 @@
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.010547772415734888,
+          "meanBestTrainScore": -0.010548283969403417,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.010545214647392246,
+          "meanBestTrainScore": -0.010548283969403417,
           "interIslandDistance": 0,
-          "transfers": 5
+          "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.010517319639970817,
+          "meanBestTrainScore": -0.010548283969403417,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.010506669313594527,
+          "meanBestTrainScore": -0.010548283969403417,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.010422666587320543,
+          "meanBestTrainScore": -0.010548283969403417,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.010422666587320543,
+          "meanBestTrainScore": -0.010548283969403417,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -2530,22 +2562,24 @@
     {
       "arm": "none",
       "seed": 4164,
-      "holdoutMse": 0.013301781710352513,
-      "calibrationMse": 0.013225227313845756,
-      "reportedUuid": "6aeda873-4780-57e5-878f-6557df2411a8",
+      "holdoutMse": 0.010122898556799691,
+      "calibrationMse": 0.010558722681725604,
+      "reportedUuid": "7fff3496-cdbe-5e6a-882f-892e84cadb22",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 277.18078599997716,
+      "evaluationMs": 371.4375499999842,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.002777777777777778,
+      "withinIslandDistance": 0.001234567901234568,
       "collapsed": false,
-      "mutationFills": 310,
-      "fillRedraws": 0,
+      "mutationFills": 317,
+      "fillRedraws": 4,
+      "rescoredEvaluations": 130,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -2591,103 +2625,103 @@
         },
         {
           "generation": 8,
-          "meanBestTrainScore": -0.06496529816491398,
+          "meanBestTrainScore": -0.06291012475679594,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 9,
-          "meanBestTrainScore": -0.060626494985590106,
+          "meanBestTrainScore": -0.05717765349057319,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.057587118237984604,
+          "meanBestTrainScore": -0.054258012355341195,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.05515997289579324,
+          "meanBestTrainScore": -0.05076156323143457,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.05440939430348188,
+          "meanBestTrainScore": -0.050474952535357574,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.05239368519897183,
+          "meanBestTrainScore": -0.049697194428322565,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.04865265335193681,
+          "meanBestTrainScore": -0.045808277925152074,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.047221169157043524,
+          "meanBestTrainScore": -0.04454936502291723,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.044075975116509215,
+          "meanBestTrainScore": -0.042694884102908635,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.03977725239135537,
+          "meanBestTrainScore": -0.04195966893732733,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.03426055123927709,
+          "meanBestTrainScore": -0.04173769105815805,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.033405844236111155,
+          "meanBestTrainScore": -0.04127164652607093,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.03318735296781634,
+          "meanBestTrainScore": -0.03981083138997236,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.030056248083556624,
+          "meanBestTrainScore": -0.0395316956103178,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.028983385876280594,
+          "meanBestTrainScore": -0.039270596967873383,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.02820479848249231,
+          "meanBestTrainScore": -0.039270596967873383,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.025786258439699283,
+          "meanBestTrainScore": -0.039039065958984716,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -2696,22 +2730,24 @@
     {
       "arm": "ring",
       "seed": 4164,
-      "holdoutMse": 0.013378533699231969,
-      "calibrationMse": 0.013409730953046891,
-      "reportedUuid": "6b9be709-b4ae-5797-bb87-6463d8512b98",
+      "holdoutMse": 0.009060238341361328,
+      "calibrationMse": 0.008738122216084764,
+      "reportedUuid": "60fd61d6-62ce-5895-a3d1-dde2b3cabeef",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 285.693739999997,
+      "evaluationMs": 341.375039999959,
       "transfers": 25,
-      "bytes": 30910,
-      "transportMs": 7.681039000000965,
-      "finalInterIslandDistance": 0.6333333333333333,
-      "meanInterIslandDistance": 0.7564814814814814,
-      "withinIslandDistance": 0.11957671957671956,
+      "bytes": 29138,
+      "transportMs": 16.0568740000017,
+      "finalInterIslandDistance": 0.6,
+      "meanInterIslandDistance": 0.7291666666666666,
+      "withinIslandDistance": 0.017283950617283952,
       "collapsed": false,
-      "mutationFills": 194,
-      "fillRedraws": 0,
+      "mutationFills": 180,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 83,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -2751,110 +2787,110 @@
         },
         {
           "generation": 7,
-          "meanBestTrainScore": -0.05786050706180457,
+          "meanBestTrainScore": -0.05849530702218839,
           "interIslandDistance": 0.8666666666666667,
           "transfers": 0
         },
         {
           "generation": 8,
-          "meanBestTrainScore": -0.04133244576291326,
+          "meanBestTrainScore": -0.04281739795778091,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 5
         },
         {
           "generation": 9,
-          "meanBestTrainScore": -0.03795735906752775,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.03690632364331493,
+          "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.03385330745274575,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.0362420621727344,
+          "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.031156798565262,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.03448294592241987,
+          "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.02380461548186584,
+          "meanBestTrainScore": -0.029984301842516495,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.023405150795033292,
+          "meanBestTrainScore": -0.025919058380392615,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.022695024741014026,
+          "meanBestTrainScore": -0.025629164082710574,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.02098693533366507,
-          "interIslandDistance": 0.7333333333333333,
+          "meanBestTrainScore": -0.024382846931351298,
+          "interIslandDistance": 0.7666666666666667,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.015994366984077624,
-          "interIslandDistance": 0.6,
-          "transfers": 5
-        },
-        {
-          "generation": 17,
-          "meanBestTrainScore": -0.015620569505208593,
-          "interIslandDistance": 0.6,
-          "transfers": 0
-        },
-        {
-          "generation": 18,
-          "meanBestTrainScore": -0.015261141731084558,
-          "interIslandDistance": 0.6666666666666666,
-          "transfers": 0
-        },
-        {
-          "generation": 19,
-          "meanBestTrainScore": -0.015249219824077113,
-          "interIslandDistance": 0.6666666666666666,
-          "transfers": 0
-        },
-        {
-          "generation": 20,
-          "meanBestTrainScore": -0.01379824738619708,
+          "meanBestTrainScore": -0.01738516895952796,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 5
         },
         {
+          "generation": 17,
+          "meanBestTrainScore": -0.016286927890459334,
+          "interIslandDistance": 0.5333333333333333,
+          "transfers": 0
+        },
+        {
+          "generation": 18,
+          "meanBestTrainScore": -0.01600881740613813,
+          "interIslandDistance": 0.5333333333333333,
+          "transfers": 0
+        },
+        {
+          "generation": 19,
+          "meanBestTrainScore": -0.015700171263087256,
+          "interIslandDistance": 0.5333333333333333,
+          "transfers": 0
+        },
+        {
+          "generation": 20,
+          "meanBestTrainScore": -0.013207602135557196,
+          "interIslandDistance": 0.6,
+          "transfers": 5
+        },
+        {
           "generation": 21,
-          "meanBestTrainScore": -0.013790927362215497,
-          "interIslandDistance": 0.6333333333333333,
+          "meanBestTrainScore": -0.013203755560467675,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.01373656797117092,
-          "interIslandDistance": 0.6444444444444445,
+          "meanBestTrainScore": -0.012942879927649894,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.01373656797117092,
-          "interIslandDistance": 0.6444444444444445,
+          "meanBestTrainScore": -0.01288934774895377,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.013425703285992484,
-          "interIslandDistance": 0.6333333333333333,
+          "meanBestTrainScore": -0.012514241542667564,
+          "interIslandDistance": 0.6,
           "transfers": 0
         }
       ]
@@ -2862,22 +2898,24 @@
     {
       "arm": "broadcast",
       "seed": 4164,
-      "holdoutMse": 0.012035087222306947,
-      "calibrationMse": 0.012046077777794529,
-      "reportedUuid": "66319a24-3a54-5d4e-b1fb-412617ccb350",
+      "holdoutMse": 0.012427482015163815,
+      "calibrationMse": 0.012193512668513122,
+      "reportedUuid": "fbbe2344-9662-52fc-b1b4-6d5af7e86ca1",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 286.1048259999516,
+      "evaluationMs": 333.35272699995585,
       "transfers": 25,
-      "bytes": 42490,
-      "transportMs": 9.174373999996533,
+      "bytes": 36295,
+      "transportMs": 5.119081999999253,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
       "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 173,
-      "fillRedraws": 0,
+      "mutationFills": 177,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 107,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -2941,85 +2979,85 @@
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.016303369678221054,
+          "meanBestTrainScore": -0.016577535407281314,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.014815392113772816,
+          "meanBestTrainScore": -0.014254198030336685,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.01468437710868205,
+          "meanBestTrainScore": -0.014254198030336685,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.014441925796510284,
+          "meanBestTrainScore": -0.014124469914459594,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.014441229761313241,
+          "meanBestTrainScore": -0.013937066084639715,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.013553988545128034,
+          "meanBestTrainScore": -0.013505198442651108,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.013526294449191734,
+          "meanBestTrainScore": -0.013343852403921446,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.013519598355075177,
+          "meanBestTrainScore": -0.013245783650988142,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.013483295458593251,
+          "meanBestTrainScore": -0.013205735694225408,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.01301953750155666,
+          "meanBestTrainScore": -0.013039019508716372,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.01298977382383403,
+          "meanBestTrainScore": -0.012989376064637065,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.012985420715203524,
+          "meanBestTrainScore": -0.012948224343429217,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.012790975962621803,
+          "meanBestTrainScore": -0.0129228129280678,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.012581616443821067,
+          "meanBestTrainScore": -0.012917089054219226,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -3028,22 +3066,24 @@
     {
       "arm": "none",
       "seed": 4165,
-      "holdoutMse": 0.008577075853379619,
-      "calibrationMse": 0.009081778834764782,
-      "reportedUuid": "4892fc78-8efb-5607-b782-c0fe2fa26b17",
+      "holdoutMse": 0.010207519871336092,
+      "calibrationMse": 0.009966609058671978,
+      "reportedUuid": "0cd701b0-ae8c-5fa6-9a18-c39c5d9387d7",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 277.55064200002016,
+      "evaluationMs": 325.8149850000427,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.007407407407407408,
+      "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 231,
-      "fillRedraws": 0,
+      "mutationFills": 300,
+      "fillRedraws": 3,
+      "rescoredEvaluations": 126,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -3095,97 +3135,97 @@
         },
         {
           "generation": 9,
-          "meanBestTrainScore": -0.08228823524155865,
+          "meanBestTrainScore": -0.08235232972474343,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.07793452389382209,
+          "meanBestTrainScore": -0.07696326754782291,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.07619420799622077,
+          "meanBestTrainScore": -0.07159376952309561,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.07588072551212734,
+          "meanBestTrainScore": -0.07144842693705766,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.07050713644443334,
+          "meanBestTrainScore": -0.06493362531556247,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.06978494153402165,
+          "meanBestTrainScore": -0.06012052615420919,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.06683382859542587,
+          "meanBestTrainScore": -0.057234938661879564,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.06323297485277894,
+          "meanBestTrainScore": -0.05522125671260008,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.06157409760563445,
+          "meanBestTrainScore": -0.05432583306501013,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.05952004110342931,
+          "meanBestTrainScore": -0.05350511452121964,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.05681712075588815,
+          "meanBestTrainScore": -0.048133268782526384,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.05154682425699673,
+          "meanBestTrainScore": -0.0479373108897132,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.048123445100534984,
+          "meanBestTrainScore": -0.0471762794681869,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.04656371729151337,
+          "meanBestTrainScore": -0.045752392664676296,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.03812962556444082,
+          "meanBestTrainScore": -0.04499904784130896,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.03749459420875411,
+          "meanBestTrainScore": -0.04474385428737527,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -3200,16 +3240,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 280.83371500003886,
+      "evaluationMs": 366.7117940000426,
       "transfers": 25,
       "bytes": 30808,
-      "transportMs": 8.018581999998787,
+      "transportMs": 5.561710999998468,
       "finalInterIslandDistance": 0.02666666666666667,
       "meanInterIslandDistance": 0.5372222222222223,
       "withinIslandDistance": 0.09537037037037037,
       "collapsed": true,
       "mutationFills": 163,
       "fillRedraws": 0,
+      "rescoredEvaluations": 82,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -3366,16 +3408,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 286.2722969999668,
+      "evaluationMs": 308.36547699999755,
       "transfers": 25,
       "bytes": 34885,
-      "transportMs": 7.337661999999909,
+      "transportMs": 1.7997080000041024,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
       "withinIslandDistance": 0,
       "collapsed": true,
       "mutationFills": 205,
       "fillRedraws": 0,
+      "rescoredEvaluations": 99,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -3526,22 +3570,24 @@
     {
       "arm": "none",
       "seed": 4166,
-      "holdoutMse": 0.015889862468941092,
-      "calibrationMse": 0.016039387806667235,
-      "reportedUuid": "cdfd1e16-b8fa-52c6-a391-6ef55d32b99c",
+      "holdoutMse": 0.016475428316918752,
+      "calibrationMse": 0.01607577415682562,
+      "reportedUuid": "fb99d96a-62f2-5f85-ad24-195df2679906",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 304.4377709999899,
+      "evaluationMs": 300.8976950000106,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0,
+      "withinIslandDistance": 0.011111111111111113,
       "collapsed": false,
-      "mutationFills": 220,
-      "fillRedraws": 0,
+      "mutationFills": 176,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 114,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -3599,91 +3645,91 @@
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.07158017824225585,
+          "meanBestTrainScore": -0.07135553220582525,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.06726438917960269,
+          "meanBestTrainScore": -0.06774014761503402,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.05931355948320315,
+          "meanBestTrainScore": -0.06579545413576816,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.05814003280216704,
+          "meanBestTrainScore": -0.06423032580735667,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.05741065396696022,
+          "meanBestTrainScore": -0.06276403836440562,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.05623835017952745,
+          "meanBestTrainScore": -0.05676474874703041,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.05165387667236251,
+          "meanBestTrainScore": -0.0528834156136068,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.048258895888241095,
+          "meanBestTrainScore": -0.05014074428196702,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.048029511133187576,
+          "meanBestTrainScore": -0.049171619077532785,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.04678214764155444,
+          "meanBestTrainScore": -0.04724744412117821,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.04429760603900872,
+          "meanBestTrainScore": -0.04715159352901984,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.0421717752631403,
+          "meanBestTrainScore": -0.039988953326181124,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.04065456327171321,
+          "meanBestTrainScore": -0.03961410942550415,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.04065257297571876,
+          "meanBestTrainScore": -0.03872679946321116,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.03957436322697781,
+          "meanBestTrainScore": -0.0386149350095424,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -3692,22 +3738,24 @@
     {
       "arm": "ring",
       "seed": 4166,
-      "holdoutMse": 0.012860758588433377,
-      "calibrationMse": 0.01339430176179814,
-      "reportedUuid": "d582cfed-974a-5ea9-97eb-0df210e505ce",
+      "holdoutMse": 0.01292509762224542,
+      "calibrationMse": 0.013332679068073233,
+      "reportedUuid": "36398534-328d-5926-91ba-5ac21494f420",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 305.46837799998684,
+      "evaluationMs": 305.07237299995904,
       "transfers": 25,
-      "bytes": 30970,
-      "transportMs": 7.4459139999962645,
+      "bytes": 31612,
+      "transportMs": 8.701373999998395,
       "finalInterIslandDistance": 0.6,
       "meanInterIslandDistance": 0.8006944444444449,
-      "withinIslandDistance": 0.1576543209876543,
+      "withinIslandDistance": 0.008333333333333333,
       "collapsed": false,
-      "mutationFills": 181,
-      "fillRedraws": 0,
+      "mutationFills": 174,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 78,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -3795,61 +3843,61 @@
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.017713238442130567,
+          "meanBestTrainScore": -0.017308727974929817,
           "interIslandDistance": 0.8166666666666667,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.014271654668167474,
+          "meanBestTrainScore": -0.014198678853281138,
           "interIslandDistance": 0.7666666666666667,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.01388276153050143,
+          "meanBestTrainScore": -0.014182961830462254,
           "interIslandDistance": 0.7666666666666667,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.0138430335742007,
+          "meanBestTrainScore": -0.013555575481539286,
           "interIslandDistance": 0.7666666666666667,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.013723675077050886,
+          "meanBestTrainScore": -0.012863117354457996,
           "interIslandDistance": 0.7666666666666667,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.012455515645692328,
+          "meanBestTrainScore": -0.012221625204288896,
           "interIslandDistance": 0.6,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.012338194147358298,
+          "meanBestTrainScore": -0.012182013766393189,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.012338194147358298,
+          "meanBestTrainScore": -0.01215817555695428,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.012255641196771687,
+          "meanBestTrainScore": -0.012054881157687559,
           "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.012253971968605941,
+          "meanBestTrainScore": -0.012037863693190591,
           "interIslandDistance": 0.6,
           "transfers": 0
         }
@@ -3864,16 +3912,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 307.67316900000696,
+      "evaluationMs": 284.7438929999844,
       "transfers": 25,
       "bytes": 29380,
-      "transportMs": 5.722463999996762,
+      "transportMs": 7.778166000009151,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
       "withinIslandDistance": 0.001234567901234568,
       "collapsed": true,
       "mutationFills": 171,
       "fillRedraws": 0,
+      "rescoredEvaluations": 84,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -4024,22 +4074,24 @@
     {
       "arm": "none",
       "seed": 4167,
-      "holdoutMse": 0.01240466707214245,
-      "calibrationMse": 0.013215019716511171,
-      "reportedUuid": "e22f4a1f-f338-5836-9241-0d0a8928063a",
+      "holdoutMse": 0.013229851195827178,
+      "calibrationMse": 0.011685067476646757,
+      "reportedUuid": "60c3e049-2288-5e33-bfd7-eeedeb85aae3",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 302.4684380000108,
+      "evaluationMs": 282.6523390000184,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.001234567901234568,
+      "withinIslandDistance": 0.011111111111111113,
       "collapsed": false,
-      "mutationFills": 267,
-      "fillRedraws": 0,
+      "mutationFills": 235,
+      "fillRedraws": 3,
+      "rescoredEvaluations": 121,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -4103,85 +4155,85 @@
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.07783033699134323,
+          "meanBestTrainScore": -0.07484088565961071,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.07220150615655531,
+          "meanBestTrainScore": -0.07173905583519334,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.06682758413777011,
+          "meanBestTrainScore": -0.06720747203559821,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.06446250147141565,
+          "meanBestTrainScore": -0.0667881930095356,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.05707799489608231,
+          "meanBestTrainScore": -0.06388659265676751,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.05361821074576604,
+          "meanBestTrainScore": -0.06058645064712242,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.051320119702264654,
+          "meanBestTrainScore": -0.059989732177446166,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.050874585175402144,
+          "meanBestTrainScore": -0.0594619976860939,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.049977489593115355,
+          "meanBestTrainScore": -0.05937938962769823,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.04967303633864318,
+          "meanBestTrainScore": -0.05895611087607525,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.04894640406348686,
+          "meanBestTrainScore": -0.058230461474752006,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.04852701328391221,
+          "meanBestTrainScore": -0.057778702478383535,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.048336067002304146,
+          "meanBestTrainScore": -0.055839343523402175,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.0482795713903695,
+          "meanBestTrainScore": -0.05384260094539162,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -4190,22 +4242,24 @@
     {
       "arm": "ring",
       "seed": 4167,
-      "holdoutMse": 0.011028095370947422,
-      "calibrationMse": 0.009515863918838255,
-      "reportedUuid": "0f9df01c-b0ac-5a85-82c8-a52254a5ee59",
+      "holdoutMse": 0.01067688627622451,
+      "calibrationMse": 0.009751814062267937,
+      "reportedUuid": "4d80ad76-974e-54a2-839e-217c1a0449f3",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 301.52454299999226,
+      "evaluationMs": 318.76084600010654,
       "transfers": 25,
-      "bytes": 34039,
-      "transportMs": 2.9219150000062655,
+      "bytes": 33336,
+      "transportMs": 16.01412799999889,
       "finalInterIslandDistance": 0.3333333333333333,
       "meanInterIslandDistance": 0.6833333333333332,
-      "withinIslandDistance": 0.003086419753086419,
+      "withinIslandDistance": 0.005679012345679013,
       "collapsed": false,
-      "mutationFills": 157,
-      "fillRedraws": 0,
+      "mutationFills": 200,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 103,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -4269,85 +4323,85 @@
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.04479059766134255,
+          "meanBestTrainScore": -0.04165826928646076,
           "interIslandDistance": 0.8,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.032628223723780804,
+          "meanBestTrainScore": -0.032791822762810424,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.032607257127013185,
+          "meanBestTrainScore": -0.03122997212374558,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.032537380930216055,
+          "meanBestTrainScore": -0.03085451715781849,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.03235392116348511,
+          "meanBestTrainScore": -0.0308527607087835,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.026306292365284246,
+          "meanBestTrainScore": -0.02564117792618215,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.02592563122864223,
+          "meanBestTrainScore": -0.025601427257382143,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.025864496844495363,
+          "meanBestTrainScore": -0.025517474316980635,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.025792884745256383,
+          "meanBestTrainScore": -0.025469757277852518,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.018753797891300106,
+          "meanBestTrainScore": -0.018695687797799055,
           "interIslandDistance": 0.3333333333333333,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.01869134521156396,
+          "meanBestTrainScore": -0.018523115580272243,
           "interIslandDistance": 0.3333333333333333,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.01851289096163505,
+          "meanBestTrainScore": -0.018414118594422796,
           "interIslandDistance": 0.3333333333333333,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.018376446255811103,
+          "meanBestTrainScore": -0.018406833700148995,
           "interIslandDistance": 0.3333333333333333,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.018305258161297654,
+          "meanBestTrainScore": -0.018404157512775816,
           "interIslandDistance": 0.3333333333333333,
           "transfers": 0
         }
@@ -4362,16 +4416,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 315.9789589999855,
+      "evaluationMs": 227.9202999998779,
       "transfers": 25,
       "bytes": 43800,
-      "transportMs": 10.951457999997729,
+      "transportMs": 5.882290999990801,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
       "withinIslandDistance": 0.0029629629629629624,
       "collapsed": true,
       "mutationFills": 150,
       "fillRedraws": 0,
+      "rescoredEvaluations": 105,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -4522,22 +4578,24 @@
     {
       "arm": "none",
       "seed": 4168,
-      "holdoutMse": 0.012787022198927406,
-      "calibrationMse": 0.012041307892553324,
-      "reportedUuid": "c43c379c-d322-5a0d-9573-184947b9b18b",
+      "holdoutMse": 0.012225802938676205,
+      "calibrationMse": 0.01296476691042357,
+      "reportedUuid": "0409cd8f-97d2-5a80-a41c-6fd6d2c5e730",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 270.66684399998667,
+      "evaluationMs": 242.94766599992363,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
-      "finalInterIslandDistance": 0.6666666666666666,
-      "meanInterIslandDistance": 0.7083333333333331,
+      "finalInterIslandDistance": 1,
+      "meanInterIslandDistance": 0.7916666666666665,
       "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 395,
-      "fillRedraws": 0,
+      "mutationFills": 361,
+      "fillRedraws": 3,
+      "rescoredEvaluations": 94,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -4625,62 +4683,62 @@
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.0830502021841215,
+          "meanBestTrainScore": -0.08198877439607488,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.07809115213599119,
+          "meanBestTrainScore": -0.0736702969705193,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.07434107290158513,
+          "meanBestTrainScore": -0.06326265947831046,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.07212470818509702,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.06218113773666307,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.05376361554509657,
+          "meanBestTrainScore": -0.05929505963653458,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.05333622024079995,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.053460096015712326,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.05240130208351207,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.05178770666852504,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.05027479288050529,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.051376228214513715,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.049810139560155085,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.05052804816060549,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.04917749115765393,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.0501726841305421,
+          "interIslandDistance": 1,
           "transfers": 0
         }
       ]
@@ -4688,22 +4746,24 @@
     {
       "arm": "ring",
       "seed": 4168,
-      "holdoutMse": 0.010199382646483655,
-      "calibrationMse": 0.010084839968356105,
-      "reportedUuid": "3cd4eef8-9e07-5edf-b546-332297637ae0",
+      "holdoutMse": 0.009135478363873616,
+      "calibrationMse": 0.008719729742586384,
+      "reportedUuid": "0e501696-4763-5fc1-9241-6a50d6743921",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 318.67441900003723,
+      "evaluationMs": 315.0397679999842,
       "transfers": 25,
-      "bytes": 20778,
-      "transportMs": 9.631125000001703,
-      "finalInterIslandDistance": 0.3333333333333333,
-      "meanInterIslandDistance": 0.5055555555555556,
+      "bytes": 20726,
+      "transportMs": 3.336497000003874,
+      "finalInterIslandDistance": 0.5333333333333333,
+      "meanInterIslandDistance": 0.5472222222222222,
       "withinIslandDistance": 0.03333333333333333,
       "collapsed": false,
-      "mutationFills": 320,
-      "fillRedraws": 3,
+      "mutationFills": 342,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 75,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -4773,80 +4833,80 @@
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.04176909564476746,
+          "meanBestTrainScore": -0.04201174454599236,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.040183681249478076,
+          "meanBestTrainScore": -0.03854213739567629,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.03550150003387867,
+          "meanBestTrainScore": -0.03801665925094167,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.03499381093197284,
+          "meanBestTrainScore": -0.028163047592655168,
           "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.027671204619739903,
+          "meanBestTrainScore": -0.01960007496361497,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.025005822117018156,
+          "meanBestTrainScore": -0.01954497448792905,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.024107341708357013,
+          "meanBestTrainScore": -0.01910528325993684,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.022888270903531478,
+          "meanBestTrainScore": -0.018204109807136062,
           "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.017217007241873764,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.012437546298224834,
+          "interIslandDistance": 0.5333333333333333,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.017217007241873764,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.012177964632201922,
+          "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.017179057976296586,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.011712829132456368,
+          "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.017179057976296586,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.011705806893146467,
+          "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.017178821834683115,
-          "interIslandDistance": 0.3333333333333333,
+          "meanBestTrainScore": -0.011423330794304987,
+          "interIslandDistance": 0.5333333333333333,
           "transfers": 0
         }
       ]
@@ -4854,22 +4914,24 @@
     {
       "arm": "broadcast",
       "seed": 4168,
-      "holdoutMse": 0.01153824214785095,
-      "calibrationMse": 0.011656297527576263,
-      "reportedUuid": "c18ffbb9-4de7-556b-b444-ea043f84cd7c",
+      "holdoutMse": 0.009555134931992795,
+      "calibrationMse": 0.008388802821477217,
+      "reportedUuid": "bc0371d0-404c-5047-934a-6d9956acf903",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 318.60905499997716,
+      "evaluationMs": 304.1076199999188,
       "transfers": 25,
-      "bytes": 33030,
-      "transportMs": 8.88000199999442,
+      "bytes": 29825,
+      "transportMs": 16.316663000005065,
       "finalInterIslandDistance": 0,
-      "meanInterIslandDistance": 0.125,
-      "withinIslandDistance": 0.000925925925925926,
+      "meanInterIslandDistance": 0.13374999999999998,
+      "withinIslandDistance": 0.012962962962962963,
       "collapsed": true,
-      "mutationFills": 170,
-      "fillRedraws": 0,
+      "mutationFills": 162,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 96,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -4897,121 +4959,121 @@
         },
         {
           "generation": 5,
-          "meanBestTrainScore": -0.07400621788319285,
+          "meanBestTrainScore": -0.07237521175549916,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 6,
-          "meanBestTrainScore": -0.07262167352288752,
+          "meanBestTrainScore": -0.07107451687012789,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 7,
-          "meanBestTrainScore": -0.06937731316827263,
+          "meanBestTrainScore": -0.06588534436120926,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 8,
-          "meanBestTrainScore": -0.024146086109956333,
+          "meanBestTrainScore": -0.04122486385008741,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 9,
-          "meanBestTrainScore": -0.01879209060634256,
+          "meanBestTrainScore": -0.034131897225535036,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.018160115415166093,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.029750390480332012,
+          "interIslandDistance": 0.022222222222222223,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.018009743991685524,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.02742301475046896,
+          "interIslandDistance": 0.022222222222222223,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.013681496606292006,
+          "meanBestTrainScore": -0.01597267068369523,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.01350892255723512,
+          "meanBestTrainScore": -0.01597267068369523,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.013351541858406049,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.015579597776143247,
+          "interIslandDistance": 0.022222222222222223,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.012948021648521964,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.014524674432538997,
+          "interIslandDistance": 0.022222222222222223,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.011277525918693078,
+          "meanBestTrainScore": -0.012151730832040854,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.011277525918693078,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.011144496816987677,
+          "interIslandDistance": 0.01333333333333333,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.011277525918693078,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.010620999881965068,
+          "interIslandDistance": 0.01333333333333333,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.011277525918693078,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.00971457485277041,
+          "interIslandDistance": 0.09444444444444447,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.011253696366566287,
+          "meanBestTrainScore": -0.008314397005408543,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.011253696366566287,
+          "meanBestTrainScore": -0.008308644553367078,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.011253696366566287,
+          "meanBestTrainScore": -0.008307011183977465,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.011225596404053179,
+          "meanBestTrainScore": -0.00830603641412333,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.011222836902706571,
+          "meanBestTrainScore": -0.00825048010927361,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -5020,22 +5082,24 @@
     {
       "arm": "none",
       "seed": 4169,
-      "holdoutMse": 0.018303741120354926,
-      "calibrationMse": 0.02122776447274917,
-      "reportedUuid": "9c3eca76-1cd1-5c5a-a3bf-76439c3fd196",
+      "holdoutMse": 0.011426750411058454,
+      "calibrationMse": 0.010974918337400894,
+      "reportedUuid": "c92987d7-4b14-5015-bef8-49a26b24099f",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 296.9217550000212,
+      "evaluationMs": 270.92076200003794,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
-      "finalInterIslandDistance": 0.6666666666666666,
-      "meanInterIslandDistance": 0.7388888888888888,
-      "withinIslandDistance": 0,
+      "finalInterIslandDistance": 0.4,
+      "meanInterIslandDistance": 0.5388888888888886,
+      "withinIslandDistance": 0.05555555555555555,
       "collapsed": false,
-      "mutationFills": 408,
-      "fillRedraws": 0,
+      "mutationFills": 512,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 78,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -5081,104 +5145,104 @@
         },
         {
           "generation": 8,
-          "meanBestTrainScore": -0.12307630009089605,
+          "meanBestTrainScore": -0.11857833427615246,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 9,
-          "meanBestTrainScore": -0.12177378232263175,
+          "meanBestTrainScore": -0.10908232624369785,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.11074453189422284,
+          "meanBestTrainScore": -0.10429949247090743,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.10752100544404554,
+          "meanBestTrainScore": -0.1029296959202788,
           "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.1053594117424953,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.0962870651826168,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.09874914999973777,
+          "meanBestTrainScore": -0.09214773723225429,
           "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.09492108343022325,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.08939845186563639,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.0917871571828175,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.08626721275577948,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.08918696429262434,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.07426272629721505,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.08608751525661705,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.07245823946017303,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.08495051516398594,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.07129703218208319,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.08431070352461796,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.07013558570018184,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.08263727593319999,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.06930972263399526,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.08005050332111172,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.06817025386186626,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.07945772431647445,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.06765429241914324,
+          "interIslandDistance": 0.2,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.07933510272573095,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.06762588355299956,
+          "interIslandDistance": 0.4,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.07833672112176845,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.06729076916445165,
+          "interIslandDistance": 0.4,
           "transfers": 0
         }
       ]
@@ -5192,16 +5256,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 328.00867500005916,
+      "evaluationMs": 268.2231279999214,
       "transfers": 25,
       "bytes": 22919,
-      "transportMs": 16.450833999981114,
+      "transportMs": 4.275335999998788,
       "finalInterIslandDistance": 0.5777777777777778,
       "meanInterIslandDistance": 0.7453703703703703,
       "withinIslandDistance": 0.006481481481481481,
       "collapsed": false,
       "mutationFills": 187,
       "fillRedraws": 0,
+      "rescoredEvaluations": 103,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -5352,22 +5418,24 @@
     {
       "arm": "broadcast",
       "seed": 4169,
-      "holdoutMse": 0.010453944884544375,
-      "calibrationMse": 0.010283470244786836,
-      "reportedUuid": "55867de9-9114-5d74-8c23-57ccc325264d",
+      "holdoutMse": 0.01097665461363346,
+      "calibrationMse": 0.011635351872239887,
+      "reportedUuid": "220ead0a-94d5-5e01-962d-d24667c746be",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 303.0724500000033,
+      "evaluationMs": 316.90448400002424,
       "transfers": 25,
-      "bytes": 15150,
-      "transportMs": 7.427960000000894,
+      "bytes": 14850,
+      "transportMs": 6.943042000006244,
       "finalInterIslandDistance": 0,
-      "meanInterIslandDistance": 0.15833333333333333,
-      "withinIslandDistance": 0.04876543209876544,
+      "meanInterIslandDistance": 0.1388888888888889,
+      "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 298,
-      "fillRedraws": 0,
+      "mutationFills": 356,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 109,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -5431,85 +5499,85 @@
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.0480691753701574,
+          "meanBestTrainScore": -0.04833953787596887,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.023029887289977458,
+          "meanBestTrainScore": -0.02305128865664292,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.019017680623030674,
+          "meanBestTrainScore": -0.020252297224678063,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.01861430573416911,
+          "meanBestTrainScore": -0.0198560232739607,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.01643371977006021,
-          "interIslandDistance": 0.36666666666666664,
+          "meanBestTrainScore": -0.018719488459636908,
+          "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.01238260500765269,
+          "meanBestTrainScore": -0.01216326680738083,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.012216602102968948,
-          "interIslandDistance": 0.03333333333333333,
+          "meanBestTrainScore": -0.012093087790835665,
+          "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.01220774840590885,
-          "interIslandDistance": 0.03333333333333333,
+          "meanBestTrainScore": -0.012093087790835665,
+          "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.012173055755455894,
-          "interIslandDistance": 0.03333333333333333,
+          "meanBestTrainScore": -0.012074711750177734,
+          "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.011694911191604472,
+          "meanBestTrainScore": -0.011946705740253303,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.011694911191604472,
+          "meanBestTrainScore": -0.011946705740253303,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.011694911191604472,
+          "meanBestTrainScore": -0.01193320265956229,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.011692464470592355,
+          "meanBestTrainScore": -0.01193320265956229,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.011686014681870248,
+          "meanBestTrainScore": -0.01193320265956229,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -5518,22 +5586,24 @@
     {
       "arm": "none",
       "seed": 4170,
-      "holdoutMse": 0.010936944534583526,
-      "calibrationMse": 0.009489536122719631,
-      "reportedUuid": "8766854f-28ce-54d4-8dcd-fb8e19b9f159",
+      "holdoutMse": 0.010458290163775938,
+      "calibrationMse": 0.009487517329209211,
+      "reportedUuid": "99d2c70d-520e-5848-9f58-7e9197bc35ac",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 318.06382599996505,
+      "evaluationMs": 296.0751649999693,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 0.986111111111111,
-      "withinIslandDistance": 0.008518518518518517,
+      "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 268,
-      "fillRedraws": 0,
+      "mutationFills": 236,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 137,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -5615,67 +5685,67 @@
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.06656996844456091,
+          "meanBestTrainScore": -0.06641092507375389,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.06245318177597841,
+          "meanBestTrainScore": -0.061577002903894666,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.05889759109015033,
+          "meanBestTrainScore": -0.059254730938962864,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.05699807829206696,
+          "meanBestTrainScore": -0.057714609848618814,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.04884804927833223,
+          "meanBestTrainScore": -0.05662480845288623,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.04433191950818366,
+          "meanBestTrainScore": -0.05329020324812813,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.04333342320663835,
+          "meanBestTrainScore": -0.05149997197351313,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.041941838337793656,
+          "meanBestTrainScore": -0.05060661474800487,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.04158061121197498,
+          "meanBestTrainScore": -0.04702297557406709,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.04040613604696378,
+          "meanBestTrainScore": -0.046561814149215196,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.03991891328534508,
+          "meanBestTrainScore": -0.04627475822739469,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -5690,16 +5760,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 319.1595590000434,
+      "evaluationMs": 281.70718799989845,
       "transfers": 25,
       "bytes": 32110,
-      "transportMs": 9.991245999997773,
+      "transportMs": 15.024082999996608,
       "finalInterIslandDistance": 0.6000000000000001,
       "meanInterIslandDistance": 0.7527777777777778,
       "withinIslandDistance": 0.17962962962962967,
       "collapsed": false,
       "mutationFills": 139,
       "fillRedraws": 0,
+      "rescoredEvaluations": 69,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -5850,22 +5922,24 @@
     {
       "arm": "broadcast",
       "seed": 4170,
-      "holdoutMse": 0.007112467201057697,
-      "calibrationMse": 0.006563311708945323,
-      "reportedUuid": "b18ed519-102d-5f48-8173-9082f6c329ec",
+      "holdoutMse": 0.011897201886515475,
+      "calibrationMse": 0.010445112978783042,
+      "reportedUuid": "739f3a7a-3749-54f1-9fd3-47e1872a4541",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 261.9089819999317,
+      "evaluationMs": 265.0432430000037,
       "transfers": 25,
-      "bytes": 35790,
-      "transportMs": 0.9124560000018391,
-      "finalInterIslandDistance": 0,
-      "meanInterIslandDistance": 0.1111111111111111,
-      "withinIslandDistance": 0.004629629629629629,
+      "bytes": 35030,
+      "transportMs": 6.2193329999972775,
+      "finalInterIslandDistance": 0.016666666666666666,
+      "meanInterIslandDistance": 0.11249999999999999,
+      "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 124,
-      "fillRedraws": 0,
+      "mutationFills": 150,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 91,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -5923,92 +5997,92 @@
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.028776830369360986,
+          "meanBestTrainScore": -0.02610591649900823,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.027165853011791526,
+          "meanBestTrainScore": -0.02513722203620887,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.011803213225754327,
+          "meanBestTrainScore": -0.011986237672790404,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.011507970474862525,
+          "meanBestTrainScore": -0.011986237672790404,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.011392717550987495,
+          "meanBestTrainScore": -0.011773658730971,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.011214176013281424,
+          "meanBestTrainScore": -0.011380334664673688,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.008430181385852532,
+          "meanBestTrainScore": -0.010334858381574422,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.00842175752308351,
+          "meanBestTrainScore": -0.010248470388192581,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.008230644257947584,
+          "meanBestTrainScore": -0.010201279986878732,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.008198999805529449,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.009846156317746256,
+          "interIslandDistance": 0.016666666666666666,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.005804208576880275,
+          "meanBestTrainScore": -0.00958432914007419,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.005768245446432416,
+          "meanBestTrainScore": -0.009568305220476456,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.005744313086944533,
+          "meanBestTrainScore": -0.009429863923452485,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.005737186488585695,
+          "meanBestTrainScore": -0.009341161425508462,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.005737186488585695,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.009304691465743508,
+          "interIslandDistance": 0.016666666666666666,
           "transfers": 0
         }
       ]
@@ -6016,22 +6090,24 @@
     {
       "arm": "none",
       "seed": 4171,
-      "holdoutMse": 0.012654588206654353,
-      "calibrationMse": 0.013335132559228635,
-      "reportedUuid": "0fef0398-b50d-5692-a3be-68d22bf05624",
+      "holdoutMse": 0.012967182042832932,
+      "calibrationMse": 0.013191870168094276,
+      "reportedUuid": "4c180b2c-791f-5322-acf5-1200b97693df",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 292.6862409999303,
+      "evaluationMs": 401.2203309999895,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.002469135802469136,
+      "withinIslandDistance": 0.001851851851851852,
       "collapsed": false,
-      "mutationFills": 278,
-      "fillRedraws": 0,
+      "mutationFills": 290,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 130,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -6113,67 +6189,67 @@
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.07026742393121586,
+          "meanBestTrainScore": -0.06893813339076328,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.06835980827825804,
+          "meanBestTrainScore": -0.06225220776383472,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.06421661700566605,
+          "meanBestTrainScore": -0.0573215976717108,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.05651116703675831,
+          "meanBestTrainScore": -0.055822340249476333,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.05371436661650625,
+          "meanBestTrainScore": -0.04682663037833931,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.05154917855260425,
+          "meanBestTrainScore": -0.04509721731653658,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.04254968673005894,
+          "meanBestTrainScore": -0.044446697508692505,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.038879954071119785,
+          "meanBestTrainScore": -0.043722090581422506,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.03564382619061316,
+          "meanBestTrainScore": -0.037519861789306885,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.033393053014490685,
+          "meanBestTrainScore": -0.03657974688483584,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.03141013032611752,
+          "meanBestTrainScore": -0.03610652495174812,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -6188,16 +6264,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 252.22432800002207,
+      "evaluationMs": 360.1321220000427,
       "transfers": 25,
       "bytes": 18205,
-      "transportMs": 12.988458000003448,
+      "transportMs": 3.9119579999933194,
       "finalInterIslandDistance": 0.6,
       "meanInterIslandDistance": 0.7472222222222223,
       "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 250,
-      "fillRedraws": 0,
+      "mutationFills": 249,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 78,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -6339,7 +6417,7 @@
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.013525980516511354,
+          "meanBestTrainScore": -0.013439665649384418,
           "interIslandDistance": 0.6,
           "transfers": 0
         }
@@ -6348,22 +6426,24 @@
     {
       "arm": "broadcast",
       "seed": 4171,
-      "holdoutMse": 0.013109948432243834,
-      "calibrationMse": 0.013884961835098941,
-      "reportedUuid": "c081225b-8087-5a4c-bab6-d7f6dd6828f9",
+      "holdoutMse": 0.01285265278265943,
+      "calibrationMse": 0.013759214213480725,
+      "reportedUuid": "452746bb-ba4d-5711-a3a6-c25cce216c23",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 260.0909600000741,
+      "evaluationMs": 323.8717519999518,
       "transfers": 25,
-      "bytes": 17040,
-      "transportMs": 1.4860020000051009,
+      "bytes": 14660,
+      "transportMs": 6.600251999992906,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
-      "withinIslandDistance": 0.002469135802469136,
+      "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 322,
-      "fillRedraws": 0,
+      "mutationFills": 321,
+      "fillRedraws": 4,
+      "rescoredEvaluations": 96,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -6427,7 +6507,7 @@
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.014581750379732033,
+          "meanBestTrainScore": -0.014894958495467486,
           "interIslandDistance": 0,
           "transfers": 0
         },
@@ -6439,73 +6519,73 @@
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.012028059837210536,
+          "meanBestTrainScore": -0.012022861423472019,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.012028059837210536,
+          "meanBestTrainScore": -0.012017030571857034,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.011936587800974221,
+          "meanBestTrainScore": -0.01199634285937277,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.011484543151603558,
+          "meanBestTrainScore": -0.011889114410369071,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.011484543151603558,
+          "meanBestTrainScore": -0.011878421795065139,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.011483157569238837,
+          "meanBestTrainScore": -0.011782203815076811,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.011477137840809622,
+          "meanBestTrainScore": -0.011767783846173656,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.01144842478102827,
+          "meanBestTrainScore": -0.011672046230144938,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.011447330563013539,
+          "meanBestTrainScore": -0.01164272870449542,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.011440862723496667,
+          "meanBestTrainScore": -0.011598243622132373,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.011440862723496667,
+          "meanBestTrainScore": -0.011598243622132373,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.011429750554207538,
+          "meanBestTrainScore": -0.01157089314310072,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -6520,7 +6600,7 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 278.89765799998713,
+      "evaluationMs": 295.8410470000381,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
@@ -6530,6 +6610,8 @@
       "collapsed": false,
       "mutationFills": 283,
       "fillRedraws": 0,
+      "rescoredEvaluations": 138,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -6686,16 +6768,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 318.1277559999762,
+      "evaluationMs": 389.65811400005987,
       "transfers": 25,
       "bytes": 37404,
-      "transportMs": 6.394248999997217,
+      "transportMs": 5.230333999999857,
       "finalInterIslandDistance": 0.35,
       "meanInterIslandDistance": 0.6249999999999999,
       "withinIslandDistance": 0.01164021164021164,
       "collapsed": false,
       "mutationFills": 188,
       "fillRedraws": 0,
+      "rescoredEvaluations": 104,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -6852,16 +6936,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 296.8870650000208,
+      "evaluationMs": 435.88871400001517,
       "transfers": 25,
       "bytes": 53835,
-      "transportMs": 12.179584999998042,
+      "transportMs": 10.98275200000353,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
       "withinIslandDistance": 0,
       "collapsed": true,
       "mutationFills": 129,
       "fillRedraws": 0,
+      "rescoredEvaluations": 100,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -7012,22 +7098,24 @@
     {
       "arm": "none",
       "seed": 4173,
-      "holdoutMse": 0.011189898702889828,
-      "calibrationMse": 0.013455342580295111,
-      "reportedUuid": "c400b70d-e10b-524b-8a28-63216c7d0608",
+      "holdoutMse": 0.0112478997702614,
+      "calibrationMse": 0.013170520411312467,
+      "reportedUuid": "9dba0fee-a2bb-5fb7-a628-cdc12af91124",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 265.6607340000264,
+      "evaluationMs": 379.6180760000425,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0,
+      "withinIslandDistance": 0.001234567901234568,
       "collapsed": false,
       "mutationFills": 253,
-      "fillRedraws": 0,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 133,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -7133,43 +7221,43 @@
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.06654756241199482,
+          "meanBestTrainScore": -0.06641174954577551,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.06401285717994724,
+          "meanBestTrainScore": -0.06290357676765679,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.06282282993451828,
+          "meanBestTrainScore": -0.0622803078225751,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.061578658412073974,
+          "meanBestTrainScore": -0.060653289898865224,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.06077670718418868,
+          "meanBestTrainScore": -0.057492768727897436,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.06041470088276069,
+          "meanBestTrainScore": -0.0574644865867184,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.059965151905825194,
+          "meanBestTrainScore": -0.056905211801266016,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -7184,16 +7272,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 265.3199469999563,
+      "evaluationMs": 340.5442550000189,
       "transfers": 25,
       "bytes": 21158,
-      "transportMs": 4.785836000010022,
+      "transportMs": 22.28637600000002,
       "finalInterIslandDistance": 0.6,
       "meanInterIslandDistance": 0.763888888888889,
       "withinIslandDistance": 0.02962962962962963,
       "collapsed": false,
       "mutationFills": 184,
       "fillRedraws": 0,
+      "rescoredEvaluations": 81,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -7344,22 +7434,24 @@
     {
       "arm": "broadcast",
       "seed": 4173,
-      "holdoutMse": 0.010914997307129866,
-      "calibrationMse": 0.012947019312296863,
-      "reportedUuid": "1fb1b856-80a7-59b3-a568-29ef6418c671",
+      "holdoutMse": 0.010979121392782891,
+      "calibrationMse": 0.012923432016288957,
+      "reportedUuid": "94b85047-919e-5221-afdd-36099fef8a11",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 271.4448539999976,
+      "evaluationMs": 366.2281959999964,
       "transfers": 25,
       "bytes": 14800,
-      "transportMs": 7.394459000006464,
+      "transportMs": 16.072291000000405,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
-      "withinIslandDistance": 0.001851851851851852,
+      "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 332,
-      "fillRedraws": 0,
+      "mutationFills": 348,
+      "fillRedraws": 5,
+      "rescoredEvaluations": 111,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -7471,37 +7563,37 @@
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.013071969862335999,
+          "meanBestTrainScore": -0.013067104105495253,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.013015281924481698,
+          "meanBestTrainScore": -0.012901859971819979,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.013000860803296849,
+          "meanBestTrainScore": -0.012901023928320125,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.012771161650242294,
+          "meanBestTrainScore": -0.012900840392780557,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.012731789440996006,
+          "meanBestTrainScore": -0.012828301863917611,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.012679830823817816,
+          "meanBestTrainScore": -0.0127539353241038,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -7510,22 +7602,24 @@
     {
       "arm": "none",
       "seed": 4174,
-      "holdoutMse": 0.01668876479483735,
-      "calibrationMse": 0.015978538809404603,
-      "reportedUuid": "b95d6241-8854-5702-86b0-afd93e6396b6",
+      "holdoutMse": 0.014269935595713388,
+      "calibrationMse": 0.0135408547695849,
+      "reportedUuid": "9a8249b2-a9be-5f31-bd3d-d77e8bd21783",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 239.8646150000277,
+      "evaluationMs": 327.3346759999331,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
-      "finalInterIslandDistance": 1,
-      "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.004938271604938271,
+      "finalInterIslandDistance": 0.6666666666666666,
+      "meanInterIslandDistance": 0.8055555555555555,
+      "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 308,
-      "fillRedraws": 0,
+      "mutationFills": 362,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 100,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -7583,92 +7677,92 @@
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.05311665870714701,
+          "meanBestTrainScore": -0.05601758424075481,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.05020194108652798,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.045234448163437836,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.0491355621437495,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.039744744414709904,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.045299631818359394,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.03397698183919188,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.03839233812712468,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.030662145659298257,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.03578706858799768,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.027533239141383337,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.03555438914020851,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.025986651918966503,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.03126800898841269,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.025446573144163574,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.029023650563648404,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.022478489983212172,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.02893088803791707,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.02236074097910092,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.027910494507919784,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.021742168401725492,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.02672339123296008,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.020210109462921833,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.02594208664241707,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.019093853917169595,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.02273534726025077,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.018848465777237863,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.021857807727733547,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.018529650396633107,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         }
       ]
@@ -7682,16 +7776,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 319.24382900007186,
+      "evaluationMs": 306.6662579999647,
       "transfers": 25,
       "bytes": 31160,
-      "transportMs": 18.210832000000664,
+      "transportMs": 14.081043000005593,
       "finalInterIslandDistance": 0.35,
       "meanInterIslandDistance": 0.7000000000000002,
       "withinIslandDistance": 0.017107583774250437,
       "collapsed": false,
       "mutationFills": 133,
       "fillRedraws": 0,
+      "rescoredEvaluations": 67,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -7848,16 +7944,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 295.91270300003816,
+      "evaluationMs": 334.70050400000764,
       "transfers": 25,
       "bytes": 24870,
-      "transportMs": 11.514206000010745,
+      "transportMs": 16.988579999997455,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.1259259259259259,
       "withinIslandDistance": 0,
       "collapsed": true,
       "mutationFills": 207,
       "fillRedraws": 0,
+      "rescoredEvaluations": 90,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -8008,22 +8106,24 @@
     {
       "arm": "none",
       "seed": 4175,
-      "holdoutMse": 0.011802562763245615,
-      "calibrationMse": 0.011387217087609005,
-      "reportedUuid": "931779fc-8c6e-58dc-9fcb-9ab34e0ef0d3",
+      "holdoutMse": 0.013259456782721996,
+      "calibrationMse": 0.011542352406159008,
+      "reportedUuid": "9ad9522a-352c-5a87-960a-f8177b39abe4",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 279.76451399998405,
+      "evaluationMs": 328.48708300008,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
-      "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.013888888888888886,
+      "meanInterIslandDistance": 0.9722222222222222,
+      "withinIslandDistance": 0.011111111111111112,
       "collapsed": false,
-      "mutationFills": 194,
-      "fillRedraws": 0,
+      "mutationFills": 226,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 132,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -8087,85 +8187,85 @@
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.08824061022263478,
+          "meanBestTrainScore": -0.08659236215020233,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.08717995097838066,
+          "meanBestTrainScore": -0.07495027280074211,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.07559842606512407,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06462405305850406,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.07333910623721117,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.0629669617349808,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.06479793709259159,
+          "meanBestTrainScore": -0.05862066363572662,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.06014140815273786,
+          "meanBestTrainScore": -0.057599598294007744,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.05557803949764903,
+          "meanBestTrainScore": -0.056381813061990776,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.054171790927082596,
+          "meanBestTrainScore": -0.054231267520241516,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.04770331797502058,
+          "meanBestTrainScore": -0.0529441062331264,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.047425309142584755,
+          "meanBestTrainScore": -0.05004056790112151,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.04122736784789153,
+          "meanBestTrainScore": -0.0453043664338488,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.04001842257997277,
+          "meanBestTrainScore": -0.043064763075654454,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.03932801602970499,
+          "meanBestTrainScore": -0.042813126383356846,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.03722214314089157,
+          "meanBestTrainScore": -0.04184353110341999,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -8180,16 +8280,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 299.7225739999776,
+      "evaluationMs": 373.143621000032,
       "transfers": 25,
       "bytes": 38033,
-      "transportMs": 6.142290000014327,
+      "transportMs": 22.94996500000707,
       "finalInterIslandDistance": 0.3466666666666667,
       "meanInterIslandDistance": 0.728888888888889,
       "withinIslandDistance": 0.0014814814814814812,
       "collapsed": false,
       "mutationFills": 121,
       "fillRedraws": 0,
+      "rescoredEvaluations": 61,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -8340,22 +8442,24 @@
     {
       "arm": "broadcast",
       "seed": 4175,
-      "holdoutMse": 0.011800896635854562,
-      "calibrationMse": 0.010353880943908485,
-      "reportedUuid": "937f9e2f-243b-575c-aa92-19f5070f9a1b",
+      "holdoutMse": 0.011228340770523397,
+      "calibrationMse": 0.009762414189394513,
+      "reportedUuid": "98750ba9-3e1d-5363-a11f-3a9d5c2982a2",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 285.566528000003,
+      "evaluationMs": 353.4151849999398,
       "transfers": 25,
       "bytes": 46345,
-      "transportMs": 3.9917090000126336,
+      "transportMs": 1.798043000002508,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.1527777777777778,
-      "withinIslandDistance": 0.01037037037037037,
+      "withinIslandDistance": 0,
       "collapsed": true,
       "mutationFills": 107,
-      "fillRedraws": 0,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 77,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -8461,43 +8565,43 @@
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.01488018910882609,
+          "meanBestTrainScore": -0.015111488604341805,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.014871973534151003,
+          "meanBestTrainScore": -0.015033168404550717,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.013740335090895119,
+          "meanBestTrainScore": -0.013815904617341656,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.01373410070693219,
+          "meanBestTrainScore": -0.013722137059655361,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.013696752848787531,
+          "meanBestTrainScore": -0.013705066399684754,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.013688941242475376,
+          "meanBestTrainScore": -0.013632710102746755,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.0136886972005447,
+          "meanBestTrainScore": -0.01331535164317318,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -8506,22 +8610,24 @@
     {
       "arm": "none",
       "seed": 4176,
-      "holdoutMse": 0.007925070621918467,
-      "calibrationMse": 0.009463740355707358,
-      "reportedUuid": "7c78007d-a60f-5ac5-a61b-e98289969fe4",
+      "holdoutMse": 0.008430911452539932,
+      "calibrationMse": 0.01077805096458875,
+      "reportedUuid": "3f32ac07-d192-5a6f-8cc6-9830f37f0ef6",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 259.3412200000748,
+      "evaluationMs": 310.6990939999232,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
-      "finalInterIslandDistance": 0.6666666666666666,
-      "meanInterIslandDistance": 0.8750000000000003,
+      "finalInterIslandDistance": 1,
+      "meanInterIslandDistance": 1,
       "withinIslandDistance": 0,
       "collapsed": false,
-      "mutationFills": 323,
-      "fillRedraws": 0,
+      "mutationFills": 310,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 116,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -8579,92 +8685,92 @@
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.10275335697468102,
+          "meanBestTrainScore": -0.10326416434296659,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.09850553963612685,
+          "meanBestTrainScore": -0.10284126159660874,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.095843529864118,
+          "meanBestTrainScore": -0.099004933738434,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.09152933545902532,
+          "meanBestTrainScore": -0.08007511332521101,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.08892373565771443,
+          "meanBestTrainScore": -0.0773560539132596,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.08423485286030008,
+          "meanBestTrainScore": -0.07429304472135682,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.07469757979464632,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.057622561464442446,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.07078527644172866,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.05430846268858397,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.0527412458697973,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.05104637316137212,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.0441437812648617,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.04859139326921088,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.03894465692714108,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.04749936962606449,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.03894465692714108,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.04227324026093763,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.036074327313948024,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.037525723650112315,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.03386285167892881,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.03645653759451886,
+          "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.03317553711772995,
-          "interIslandDistance": 0.6666666666666666,
+          "meanBestTrainScore": -0.03438346967242517,
+          "interIslandDistance": 1,
           "transfers": 0
         }
       ]
@@ -8672,22 +8778,24 @@
     {
       "arm": "ring",
       "seed": 4176,
-      "holdoutMse": 0.0075803978628463265,
-      "calibrationMse": 0.009425180409668305,
-      "reportedUuid": "8a7400fb-766d-5a84-a418-a7ca18191037",
+      "holdoutMse": 0.007977376984854713,
+      "calibrationMse": 0.010595062680062278,
+      "reportedUuid": "2450ab61-bdff-5a7c-b760-841e252cadef",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 295.99912199999017,
+      "evaluationMs": 348.06899599997996,
       "transfers": 25,
-      "bytes": 30353,
-      "transportMs": 4.094331999996939,
-      "finalInterIslandDistance": 0.36666666666666664,
-      "meanInterIslandDistance": 0.7041666666666667,
-      "withinIslandDistance": 0.09753086419753086,
+      "bytes": 30910,
+      "transportMs": 16.56966700002522,
+      "finalInterIslandDistance": 0.43333333333333335,
+      "meanInterIslandDistance": 0.7208333333333333,
+      "withinIslandDistance": 0.004444444444444444,
       "collapsed": false,
-      "mutationFills": 176,
-      "fillRedraws": 0,
+      "mutationFills": 155,
+      "fillRedraws": 1,
+      "rescoredEvaluations": 90,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -8793,44 +8901,44 @@
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.01105401798228277,
-          "interIslandDistance": 0.5666666666666667,
+          "meanBestTrainScore": -0.01127808287877248,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.010583333119748671,
-          "interIslandDistance": 0.5666666666666667,
+          "meanBestTrainScore": -0.011152574477551754,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.00921410282759278,
-          "interIslandDistance": 0.36666666666666664,
+          "meanBestTrainScore": -0.00970434082055995,
+          "interIslandDistance": 0.43333333333333335,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.009164644444006416,
-          "interIslandDistance": 0.36666666666666664,
+          "meanBestTrainScore": -0.00929376083922275,
+          "interIslandDistance": 0.43333333333333335,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.009155930704021153,
-          "interIslandDistance": 0.36666666666666664,
+          "meanBestTrainScore": -0.00923955405724671,
+          "interIslandDistance": 0.43333333333333335,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.009064077390867583,
-          "interIslandDistance": 0.36666666666666664,
+          "meanBestTrainScore": -0.009216975289284201,
+          "interIslandDistance": 0.43333333333333335,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.009052529518765715,
-          "interIslandDistance": 0.36666666666666664,
+          "meanBestTrainScore": -0.009069786694544179,
+          "interIslandDistance": 0.43333333333333335,
           "transfers": 0
         }
       ]
@@ -8844,16 +8952,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 269.6582429999653,
+      "evaluationMs": 385.66245599989634,
       "transfers": 25,
       "bytes": 41125,
-      "transportMs": 3.1422940000011295,
+      "transportMs": 23.7850879999678,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.12638888888888888,
       "withinIslandDistance": 0.003703703703703704,
       "collapsed": true,
       "mutationFills": 180,
       "fillRedraws": 0,
+      "rescoredEvaluations": 136,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -9004,22 +9114,24 @@
     {
       "arm": "none",
       "seed": 4177,
-      "holdoutMse": 0.015916646657783494,
-      "calibrationMse": 0.012990606823531788,
-      "reportedUuid": "638da2e3-82bf-527d-aed0-2d1222cdb2e2",
+      "holdoutMse": 0.015093454470831318,
+      "calibrationMse": 0.012609111174886743,
+      "reportedUuid": "7cceb795-321a-5537-b2a9-45bd084efd1e",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 275.2404229999447,
+      "evaluationMs": 352.2136380001757,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
-      "finalInterIslandDistance": 1,
-      "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0,
+      "finalInterIslandDistance": 0.6666666666666666,
+      "meanInterIslandDistance": 0.9305555555555558,
+      "withinIslandDistance": 0.007407407407407408,
       "collapsed": false,
-      "mutationFills": 282,
-      "fillRedraws": 1,
+      "mutationFills": 268,
+      "fillRedraws": 5,
+      "rescoredEvaluations": 127,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -9131,38 +9243,38 @@
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.07462231983219901,
+          "meanBestTrainScore": -0.07111289094483268,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.07427970292614539,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06906488113213469,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.06686183885904083,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.0681051465329668,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.06632781058809435,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06731353133155407,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.05680240431924475,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06337710644309019,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.05324616427525541,
-          "interIslandDistance": 1,
+          "meanBestTrainScore": -0.06324345309669359,
+          "interIslandDistance": 0.6666666666666666,
           "transfers": 0
         }
       ]
@@ -9176,16 +9288,18 @@
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 286.97418799999286,
+      "evaluationMs": 335.29719599993405,
       "transfers": 25,
       "bytes": 26853,
-      "transportMs": 12.194415000001754,
+      "transportMs": 16.99200199999177,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.4027777777777777,
       "withinIslandDistance": 0.0049382716049382715,
       "collapsed": true,
       "mutationFills": 374,
       "fillRedraws": 0,
+      "rescoredEvaluations": 63,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -9336,22 +9450,24 @@
     {
       "arm": "broadcast",
       "seed": 4177,
-      "holdoutMse": 0.0349943101060921,
-      "calibrationMse": 0.03043974471246708,
-      "reportedUuid": "a414f145-7815-5808-b514-676c5cb41de9",
+      "holdoutMse": 0.04662661520667546,
+      "calibrationMse": 0.037628976566038856,
+      "reportedUuid": "912a939f-818a-559d-8506-bc77bd3f0ded",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 263.5425860000105,
+      "evaluationMs": 364.4286940000966,
       "transfers": 25,
-      "bytes": 33370,
-      "transportMs": 5.911249000007956,
-      "finalInterIslandDistance": 0,
-      "meanInterIslandDistance": 0.125,
-      "withinIslandDistance": 0.005555555555555556,
-      "collapsed": true,
-      "mutationFills": 154,
-      "fillRedraws": 0,
+      "bytes": 35200,
+      "transportMs": 15.76162499999191,
+      "finalInterIslandDistance": 0.05,
+      "meanInterIslandDistance": 0.13194444444444445,
+      "withinIslandDistance": 0.02148148148148148,
+      "collapsed": false,
+      "mutationFills": 146,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 97,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -9439,62 +9555,62 @@
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.07001773089343416,
+          "meanBestTrainScore": -0.07030800583455235,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.06883229339753827,
+          "meanBestTrainScore": -0.06093658574281289,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.06882093761960341,
+          "meanBestTrainScore": -0.05381342125229847,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.06880103987881699,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.04853646370948328,
+          "interIslandDistance": 0.016666666666666666,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.06880101673040746,
+          "meanBestTrainScore": -0.0467194747479679,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.050868976296632555,
+          "meanBestTrainScore": -0.03920373928461359,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.048976127591351136,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.03901027852075296,
+          "interIslandDistance": 0.06666666666666667,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.04775937986140943,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.03877089536019652,
+          "interIslandDistance": 0.03333333333333333,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.045743710676105186,
+          "meanBestTrainScore": -0.03871304364351754,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.04536004131222272,
-          "interIslandDistance": 0,
+          "meanBestTrainScore": -0.038672657790985304,
+          "interIslandDistance": 0.05,
           "transfers": 0
         }
       ]
@@ -9502,22 +9618,24 @@
     {
       "arm": "none",
       "seed": 4178,
-      "holdoutMse": 0.008272354473636707,
-      "calibrationMse": 0.008794002753834178,
-      "reportedUuid": "af9982b5-0e8d-5ed6-9366-51cf398a6e58",
+      "holdoutMse": 0.01069673925319461,
+      "calibrationMse": 0.011408678474241853,
+      "reportedUuid": "55f105b3-322a-5795-8ee3-ee242858f927",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 268.2397410000631,
+      "evaluationMs": 358.2546389999334,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "finalInterIslandDistance": 1,
       "meanInterIslandDistance": 1,
-      "withinIslandDistance": 0.003703703703703704,
+      "withinIslandDistance": 0.0074074074074074086,
       "collapsed": false,
-      "mutationFills": 261,
-      "fillRedraws": 0,
+      "mutationFills": 265,
+      "fillRedraws": 5,
+      "rescoredEvaluations": 134,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -9557,109 +9675,109 @@
         },
         {
           "generation": 7,
-          "meanBestTrainScore": -0.07633903946496616,
+          "meanBestTrainScore": -0.07531634352123778,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 8,
-          "meanBestTrainScore": -0.06993721273851765,
+          "meanBestTrainScore": -0.07217852926721602,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 9,
-          "meanBestTrainScore": -0.06161418094040417,
+          "meanBestTrainScore": -0.05900214566738463,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.05633631365837125,
+          "meanBestTrainScore": -0.054311505660667,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.05450984942029366,
+          "meanBestTrainScore": -0.05384341705284792,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.05254885976161017,
+          "meanBestTrainScore": -0.04839039841435514,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.04997129168697901,
+          "meanBestTrainScore": -0.040794466168447376,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.04940141587721971,
+          "meanBestTrainScore": -0.0401188635289459,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.044953204917349866,
+          "meanBestTrainScore": -0.03815565687953788,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.044812940295161,
+          "meanBestTrainScore": -0.033127021774440914,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.04249961918695009,
+          "meanBestTrainScore": -0.03206524225169242,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.038781273533165454,
+          "meanBestTrainScore": -0.030771171454354318,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.035262020333957,
+          "meanBestTrainScore": -0.0292883043806588,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.03228263939896143,
+          "meanBestTrainScore": -0.029201610694036168,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.03168345758354316,
+          "meanBestTrainScore": -0.028505300635042672,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.02968462310799136,
+          "meanBestTrainScore": -0.02848576588475199,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.029139922910919172,
+          "meanBestTrainScore": -0.027429622216659566,
           "interIslandDistance": 1,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.02912945404756111,
+          "meanBestTrainScore": -0.027302458878440156,
           "interIslandDistance": 1,
           "transfers": 0
         }
@@ -9668,22 +9786,24 @@
     {
       "arm": "ring",
       "seed": 4178,
-      "holdoutMse": 0.008040614359635599,
-      "calibrationMse": 0.0082025484074384,
-      "reportedUuid": "121fa7c3-48c0-5993-a6de-d7696309b8c7",
+      "holdoutMse": 0.008137736789836708,
+      "calibrationMse": 0.009617731987988124,
+      "reportedUuid": "2eb1a1f9-eab6-5224-8a05-3c5fa285862d",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 281.1142780000664,
+      "evaluationMs": 347.9882340000768,
       "transfers": 25,
-      "bytes": 24934,
-      "transportMs": 17.65295999999944,
-      "finalInterIslandDistance": 0.48888888888888893,
-      "meanInterIslandDistance": 0.7731481481481479,
-      "withinIslandDistance": 0.13271604938271606,
+      "bytes": 25001,
+      "transportMs": 17.278002000013657,
+      "finalInterIslandDistance": 0.4,
+      "meanInterIslandDistance": 0.722222222222222,
+      "withinIslandDistance": 0.08333333333333333,
       "collapsed": false,
-      "mutationFills": 187,
-      "fillRedraws": 0,
+      "mutationFills": 151,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 81,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -9741,92 +9861,92 @@
         },
         {
           "generation": 10,
-          "meanBestTrainScore": -0.04719432823573939,
+          "meanBestTrainScore": -0.04601179628171692,
           "interIslandDistance": 0.8666666666666667,
           "transfers": 0
         },
         {
           "generation": 11,
-          "meanBestTrainScore": -0.04670240775193269,
+          "meanBestTrainScore": -0.04492592461920474,
           "interIslandDistance": 0.8666666666666667,
           "transfers": 0
         },
         {
           "generation": 12,
-          "meanBestTrainScore": -0.03574338550889298,
+          "meanBestTrainScore": -0.032207904607810055,
           "interIslandDistance": 0.8,
           "transfers": 5
         },
         {
           "generation": 13,
-          "meanBestTrainScore": -0.03524676618645379,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.031236711675346914,
+          "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 14,
-          "meanBestTrainScore": -0.034282423561717325,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.030209970117199312,
+          "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 15,
-          "meanBestTrainScore": -0.031399722541991214,
-          "interIslandDistance": 0.8,
+          "meanBestTrainScore": -0.02467641668739121,
+          "interIslandDistance": 0.7333333333333333,
           "transfers": 0
         },
         {
           "generation": 16,
-          "meanBestTrainScore": -0.0207296366921321,
-          "interIslandDistance": 0.7,
+          "meanBestTrainScore": -0.014037187945631831,
+          "interIslandDistance": 0.6,
           "transfers": 5
         },
         {
           "generation": 17,
-          "meanBestTrainScore": -0.020439392033816308,
-          "interIslandDistance": 0.7,
+          "meanBestTrainScore": -0.013989259602247952,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 18,
-          "meanBestTrainScore": -0.020428968802127846,
-          "interIslandDistance": 0.7,
+          "meanBestTrainScore": -0.013192230264639506,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.019895513059970307,
-          "interIslandDistance": 0.7,
+          "meanBestTrainScore": -0.013089651686003583,
+          "interIslandDistance": 0.6,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.013370402752513005,
-          "interIslandDistance": 0.4666666666666667,
+          "meanBestTrainScore": -0.012160327186646322,
+          "interIslandDistance": 0.3333333333333333,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.013308360240391266,
-          "interIslandDistance": 0.48888888888888893,
+          "meanBestTrainScore": -0.012107258645314723,
+          "interIslandDistance": 0.35555555555555557,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.013308360240391266,
-          "interIslandDistance": 0.48888888888888893,
+          "meanBestTrainScore": -0.012077773630731157,
+          "interIslandDistance": 0.35555555555555557,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.01310220101932569,
-          "interIslandDistance": 0.48888888888888893,
+          "meanBestTrainScore": -0.012026236514442656,
+          "interIslandDistance": 0.35555555555555557,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.012456683941592482,
-          "interIslandDistance": 0.48888888888888893,
+          "meanBestTrainScore": -0.011795789496364756,
+          "interIslandDistance": 0.4,
           "transfers": 0
         }
       ]
@@ -9834,22 +9954,24 @@
     {
       "arm": "broadcast",
       "seed": 4178,
-      "holdoutMse": 0.0102622335781499,
-      "calibrationMse": 0.010773373204536234,
-      "reportedUuid": "0ca87596-5c14-5fa9-9ec9-1e4152c9c091",
+      "holdoutMse": 0.010373690585343917,
+      "calibrationMse": 0.010999525132556285,
+      "reportedUuid": "4e1fbcf7-2adb-58f8-aa24-26d089eb3e9f",
       "recordsCharged": 350100,
       "trainRecordsCharged": 349200,
       "calibrationRecordsCharged": 900,
-      "evaluationMs": 253.7431620000425,
+      "evaluationMs": 312.34694100003253,
       "transfers": 25,
-      "bytes": 23110,
-      "transportMs": 5.312708000004932,
+      "bytes": 23095,
+      "transportMs": 5.613416000000143,
       "finalInterIslandDistance": 0,
       "meanInterIslandDistance": 0.125,
       "withinIslandDistance": 0,
       "collapsed": true,
-      "mutationFills": 258,
-      "fillRedraws": 0,
+      "mutationFills": 212,
+      "fillRedraws": 2,
+      "rescoredEvaluations": 102,
+      "rescoredFills": 0,
       "generations": [
         {
           "generation": 1,
@@ -9961,37 +10083,37 @@
         },
         {
           "generation": 19,
-          "meanBestTrainScore": -0.009260742495476608,
+          "meanBestTrainScore": -0.009263905524235496,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 20,
-          "meanBestTrainScore": -0.009245192358611903,
+          "meanBestTrainScore": -0.009152578638774696,
           "interIslandDistance": 0,
           "transfers": 5
         },
         {
           "generation": 21,
-          "meanBestTrainScore": -0.009227697486374932,
+          "meanBestTrainScore": -0.009152203669808361,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 22,
-          "meanBestTrainScore": -0.009227697486374932,
+          "meanBestTrainScore": -0.009152203669808361,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 23,
-          "meanBestTrainScore": -0.009227697486374932,
+          "meanBestTrainScore": -0.009152203669808361,
           "interIslandDistance": 0,
           "transfers": 0
         },
         {
           "generation": 24,
-          "meanBestTrainScore": -0.009217902972706344,
+          "meanBestTrainScore": -0.009151795728558856,
           "interIslandDistance": 0,
           "transfers": 0
         }
@@ -10104,53 +10226,59 @@
     {
       "arm": "none",
       "seeds": 20,
-      "holdoutMse": 0.012428958584688229,
-      "improvement": 0.07312019024096189,
-      "improvementPerEvaluationHour": 972.5639833583365,
-      "improvementPerMillionRecords": 0.2088551563580745,
-      "finalInterIslandDistance": 0.95,
-      "withinIslandDistance": 0.006398148148148148,
+      "holdoutMse": 0.011975093561425532,
+      "improvement": 0.07357405526422461,
+      "improvementPerEvaluationHour": 855.4188129696283,
+      "improvementPerMillionRecords": 0.21015154317116427,
+      "finalInterIslandDistance": 0.9066666666666668,
+      "withinIslandDistance": 0.008577160493827162,
       "collapseRate": 0,
       "transfers": 0,
       "bytes": 0,
       "transportMs": 0,
       "recordsCharged": 350100,
-      "mutationFills": 291.55,
-      "fillRedraws": 0.05
+      "mutationFills": 301.9,
+      "fillRedraws": 2.3,
+      "rescoredEvaluations": 119.2,
+      "rescoredFills": 0
     },
     {
       "arm": "ring",
       "seeds": 20,
-      "holdoutMse": 0.011160527166588958,
-      "improvement": 0.07438862165906115,
-      "improvementPerEvaluationHour": 934.2543102116467,
-      "improvementPerMillionRecords": 0.21247821096561312,
-      "finalInterIslandDistance": 0.4049999999999999,
-      "withinIslandDistance": 0.05190388007054676,
-      "collapseRate": 0.15,
+      "holdoutMse": 0.011042123906207207,
+      "improvement": 0.07450702491944292,
+      "improvementPerEvaluationHour": 840.7792718302173,
+      "improvementPerMillionRecords": 0.21281640936716056,
+      "finalInterIslandDistance": 0.41788888888888887,
+      "withinIslandDistance": 0.0312910052910053,
+      "collapseRate": 0.1,
       "transfers": 25,
-      "bytes": 28681.9,
-      "transportMs": 8.379821950000268,
+      "bytes": 28537.15,
+      "transportMs": 10.997033800001509,
       "recordsCharged": 350100,
-      "mutationFills": 196.75,
-      "fillRedraws": 0.15
+      "mutationFills": 193.3,
+      "fillRedraws": 0.85,
+      "rescoredEvaluations": 80.8,
+      "rescoredFills": 0
     },
     {
       "arm": "broadcast",
       "seeds": 20,
-      "holdoutMse": 0.012243890061320787,
-      "improvement": 0.07330525876432933,
-      "improvementPerEvaluationHour": 945.6438044339494,
-      "improvementPerMillionRecords": 0.20938377253450252,
-      "finalInterIslandDistance": 0.00041666666666666664,
-      "withinIslandDistance": 0.004216049382716049,
-      "collapseRate": 1,
-      "transfers": 25,
-      "bytes": 32892,
-      "transportMs": 6.358787950001568,
+      "holdoutMse": 0.013011355791109944,
+      "improvement": 0.07253779303454018,
+      "improvementPerEvaluationHour": 838.3550055662987,
+      "improvementPerMillionRecords": 0.20719163963022044,
+      "finalInterIslandDistance": 0.0037500000000000007,
+      "withinIslandDistance": 0.0022561728395061728,
+      "collapseRate": 0.95,
+      "transfers": 24.75,
+      "bytes": 32119.75,
+      "transportMs": 8.3455788499984,
       "recordsCharged": 350100,
-      "mutationFills": 205.45,
-      "fillRedraws": 0
+      "mutationFills": 207.25,
+      "fillRedraws": 1.8,
+      "rescoredEvaluations": 96.7,
+      "rescoredFills": 0
     }
   ],
   "comparisons": {
@@ -10180,38 +10308,38 @@
         4178
       ],
       "diffs": [
-        0.00004438678788267966,
-        -0.001689527313023029,
-        0.0005051121065784685,
-        -0.00011540879091702198,
-        0.0014756844374146354,
-        0.001343446476925022,
+        0.00006675441062368136,
+        0.0011173222544629182,
+        0.0018385329632975133,
+        -0.000032512430549795635,
+        -0.0006174949540741943,
+        -0.0033672436738024867,
         -0.0009592345983697069,
-        -0.0058199358211767,
-        0.0007862497162252763,
-        -0.0013388595013672944,
-        -0.00040357068592834604,
-        0.0003371425289384229,
-        -0.0005542294475583184,
+        -0.005755596787364656,
+        0.0004350406215023646,
+        -0.0004196565681191793,
+        -0.0009262804150174317,
+        -0.004447592156519355,
+        -0.0002969337979739136,
         0.0006489669511574661,
-        0.0006156302881435913,
+        0.0005515062024905662,
         0.0004871910765683416,
-        0.0018176137747093705,
-        0.001255382337488807,
-        -0.017881678999813945,
-        -0.0022216192185143015
+        0.0023901696400405355,
+        0.0016523614594971935,
+        -0.0295139841003973,
+        -0.0022359537955072093
       ],
-      "armCollapseRate": 0.15,
-      "controlCollapseRate": 1,
-      "bytesRatio": 0.8720023105922413,
+      "armCollapseRate": 0.1,
+      "controlCollapseRate": 0.95,
+      "bytesRatio": 0.8884611492928806,
       "verdict": "no-benefit",
       "interval": {
-        "mean": -0.001083362894731829,
-        "lower": -0.003316972830451491,
-        "upper": 0.00029469634361046256,
+        "mean": -0.0019692318849027324,
+        "lower": -0.005415464076848221,
+        "upper": 0.00011645654435784298,
         "resamples": 2000
       },
-      "wins": 9,
+      "wins": 11,
       "n": 20
     },
     "noneVsBroadcast": {
@@ -10240,38 +10368,38 @@
         4178
       ],
       "diffs": [
-        0.0025477314339583425,
-        0.00020551366835238997,
-        0.0007192385784639752,
+        0.006126512611342288,
+        -0.001544420427687732,
+        -0.0024367672786192434,
         -0.00009826503519457137,
-        0.0009289135132033964,
-        0.0012666944880455663,
-        0.0031848981043861198,
-        -0.0027908319406689842,
-        0.0021628214174203037,
-        0.001248780051076457,
-        0.00784979623581055,
-        0.0038244773335258282,
-        -0.00045536022558948126,
+        -0.000936915744874367,
+        -0.0023045834583641234,
+        0.004815342122342593,
+        -0.0022052660926913242,
+        0.0029880055411050325,
+        0.00267066800668341,
+        0.0004500957974249934,
+        -0.0014389117227395377,
+        0.0001145292601735029,
         0.000616185136504627,
-        0.00027490139575996227,
-        0.0016816976411641316,
-        0.0000016661273910534291,
-        0.001600055096560948,
-        -0.019077663448308607,
-        -0.001989879104513193
+        0.0002687783774785093,
+        -0.0007371315579598314,
+        0.0020311160121985992,
+        0.0021058959271824124,
+        -0.03153316073584414,
+        0.00032304866785069254
       ],
       "armCollapseRate": 0,
-      "controlCollapseRate": 1,
+      "controlCollapseRate": 0.95,
       "bytesRatio": 0,
       "verdict": "no-benefit",
       "interval": {
-        "mean": 0.00018506852336744057,
-        "lower": -0.0024005982317859033,
-        "upper": 0.0019097287145613067,
+        "mean": -0.0010362622296844106,
+        "lower": -0.004806581275816376,
+        "upper": 0.0013287058344545108,
         "resamples": 2000
       },
-      "wins": 5,
+      "wins": 9,
       "n": 20
     }
   },
