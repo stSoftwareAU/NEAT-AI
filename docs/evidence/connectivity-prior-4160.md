@@ -22,8 +22,9 @@ prior is added; the harness stays only so the finding can be reproduced.
   in-degree 4 and input fan-out 8.
 - **Grid** is 3 × 3: hidden mean in-degree {1.5, 2, 3} × input fan-out {1, 2,
   3}. Each creature is built so every hidden neuron is reachable from an input
-  and reaches the output. All arms are forward-only, with `TANH` hidden and
-  `IDENTITY` output neurons.
+  and reaches the output. The grid and control are forward-only, with `TANH`
+  hidden and `IDENTITY` output neurons. Two further recurrent arms test
+  self-loops (see [Self-loops](#self-loops)).
 - **Budget** is the same in every arm: 60,000 charged train records, population
   20, (μ+λ) truncation, with the real `Offspring.breed` and `Mutator`.
 
@@ -95,8 +96,9 @@ control's.
 
 ### Calibration cost and coverage
 
-Calibration consumed 2,400,000 charged records. Coverage was complete: 240
-expected runs, 240 completed, 0 failures.
+Calibration consumed 2,400,000 charged records. The recurrent phase cost a
+further 2,400,000 records (40 runs). Coverage was complete: 280 expected runs,
+280 completed, 0 failures (240 forward-only and 40 recurrent).
 
 ### Search economics
 
@@ -108,11 +110,41 @@ holdout (0.07496 against 0.04695). Starting sparse did not buy a cheaper search.
 
 ### Self-loops
 
-Not swept. This harness runs only the forward-only path (the production
-default); recurrent self-loops were not tested. A recurrent arm was tried and
-withdrawn: the harness's breeding path strips self-loops from every lineage
-after the first generation, so it could not test them through the search without
-changing engine code.
+Self-loops are tested on the already-supported recurrent execution path, as an
+exploratory paired comparison. Two recurrent arms share the control topology
+(`forwardOnly: false`):
+
+- `recurrent-control` has no self-loops.
+- `recurrent-selfloop` is the same, plus one self-loop per hidden neuron. The
+  self-loop weights come from a separate seeded stream, so the forward weights
+  are identical per seed.
+
+Both arms use `feedbackLoop: true` and `disableRandomSamples: true`, and are
+scored with `activate(input, true)` over the records in order from a cleared
+state (train and holdout). The search is mutation-only with the default `FFW`
+mutation set; neither arm has a self-loop operator. `Offspring.breed` cannot
+carry a self-loop, because `Offspring.sortNeurons` topologically sorts every
+inward synapse and so rejects a parent with a self-loop. The budget is the same
+60,000 records, on validation seeds 4160–4179 only; they were never calibration
+candidates. The verdict rule is the same, against `recurrent-control`.
+
+**Result: no-benefit.** Mean difference (self-loop − recurrent-control holdout
+MSE) +0.001095, 95% CI [-0.02372, +0.01908], W/L 9/11.
+
+| Arm                  | n  | Median holdout | Upper-quartile holdout | Threshold reached | Median records to threshold |
+| -------------------- | -- | -------------- | ---------------------- | ----------------- | --------------------------- |
+| `recurrent-control`  | 20 | 0.09504        | 0.1354                 | 4/20              | 48,000                      |
+| `recurrent-selfloop` | 20 | 0.1065         | 0.1513                 | 5/20              | 54,000                      |
+
+Self-loops survived the search: the best creature kept a mean of 7.7 of 8 (min
+6). `meanInitialInDegree` reads 5 for the self-loop arm because a self-loop
+counts as an inward synapse.
+
+Caveat: both recurrent arms are far worse than the forward-only control (median
+holdout 0.09504 against 0.03729). They differ from the forward arms in both the
+search (mutation only) and the execution path, and the study does not separate
+the two, so the recurrent arms are compared only with each other, never with the
+forward arms.
 
 ## Limitations
 
@@ -128,7 +160,7 @@ changing engine code.
 ## Reproduce
 
 ```bash
-deno task connectivity-prior-study --code-version=b345b837 \
+deno task connectivity-prior-study --code-version=f1eac480 \
   --json=docs/evidence/connectivity-prior-4160.json
 ```
 
