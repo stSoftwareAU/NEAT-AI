@@ -115,7 +115,7 @@ Criteria heading.
 
 ## Test Plan
 
-- Added `test/scripts/CensusRestartStudy.ts`, with 21 tests:
+- Added `test/scripts/CensusRestartStudy.ts`, with 22 tests:
   - `censusKey` merges weight differences below half a step and nothing else: a
     different topology or a finer step separates them;
   - `censusKey` leaves the creature unchanged;
@@ -135,6 +135,12 @@ Criteria heading.
     which gives a positive and a negative control;
   - the census arm holds each restart back for the cooldown, with the same
     long-versus-short contrast on one seed;
+  - the census arm's restart delay is signed: with eager census settings and an
+    8-generation plateau window the census restarts at 1,200 records and the
+    plateau signal fires at 12,660, so the delay is -11,460, equal to the first
+    restart minus the first signal and strictly negative, and the first restart
+    equals the first traced `restarted` entry. Reversing the subtraction fails
+    it;
   - `behaviouralDiversity` is the mean pairwise RMS output difference, with
     hand-computed values (identical creatures give 0, constants 0 and 3 give 3,
     three constants give 2, a half-probe difference gives √2);
@@ -159,10 +165,10 @@ Criteria heading.
   `ok | 10341 passed (5 steps) | 0 failed | 50 ignored (9m2s)`. Later commits
   change only the spelling of one manifest string in
   `scripts/census_restart_study.ts`, the regenerated JSON (identical results),
-  docs, and the review follow-up that adds six tests to
+  docs, and the review follow-up that adds seven tests to
   `test/scripts/CensusRestartStudy.ts`. The follow-up was checked with
   `deno fmt --check`, `deno lint`, `deno check` and
-  `deno test -A test/scripts/CensusRestartStudy.ts` (21 passed, 0 failed).
+  `deno test -A test/scripts/CensusRestartStudy.ts` (22 passed, 0 failed).
   Removing the `cooledDown` check from `scripts/lib/censusRestartStudy.ts` makes
   the two cooldown tests fail, and the file was restored afterwards.
 - cspell was not run locally, because it runs only in the `spellcheck.yaml`

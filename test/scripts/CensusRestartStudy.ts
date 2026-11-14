@@ -314,6 +314,43 @@ Deno.test("the census trigger restarts at a threshold near 1 and never at a tiny
   });
 });
 
+Deno.test("the census arm's restart delay is signed: negative when it restarts before the plateau signal", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    // Eager census settings restart within a couple of generations, while a
+    // long plateau window cannot signal until it has filled, so the two
+    // operands of the delay differ.
+    const result = await runArm(
+      arm("census"),
+      {
+        ...SMALL,
+        censusQuantisation: 100,
+        censusUnseenThreshold: 0.999,
+        censusWindowGenerations: 2,
+        plateauWindow: 8,
+      },
+      5,
+      splits,
+    );
+    const firstRestartEntry = result.trace.find((e) => e.restarted);
+    assert(firstRestartEntry !== undefined, "expected a census restart");
+    assertEquals(result.firstRestartRecords, firstRestartEntry.recordsCharged);
+    assert(
+      result.firstStagnationSignalRecords !== null,
+      "positive control: the plateau signal must eventually fire",
+    );
+    assert(
+      result.firstStagnationSignalRecords > result.firstRestartRecords!,
+      "the census restart must come before any plateau signal",
+    );
+    assert(result.restartDelayRecords! < 0);
+    assertEquals(
+      result.restartDelayRecords,
+      result.firstRestartRecords! - result.firstStagnationSignalRecords,
+    );
+  });
+});
+
 /** Generations at which a run restarted, in order. */
 function restartGenerations(result: ArmResult): number[] {
   return result.trace.filter((e) => e.restarted).map((e) => e.generation);
