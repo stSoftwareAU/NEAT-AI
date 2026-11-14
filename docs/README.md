@@ -140,6 +140,10 @@ Tuning guides and benchmark research.
   contraction (Issue #4156): a 2×2 at equal records over 30 seeds. The result is
   negative on a synthetic objective, and nothing in `src/` changes. The paper's
   method was not read, so it is untested against it and the issue stays open.
+- **[evidence/lineage-targeting-4155.md](evidence/lineage-targeting-4155.md)** —
+  the 30-seed study of lineage-informed and stratum-targeted offspring against
+  ordinary mutation at an equal record budget (Issue #4155): no benefit, and
+  lower behavioural diversity.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
