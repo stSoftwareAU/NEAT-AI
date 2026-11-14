@@ -196,24 +196,18 @@ export function buildCorpus(settings: ABSettings): ABRecord[] {
  * @param creature - The creature to score.
  * @param corpus - The corpus.
  * @param stride - `1` scores every record; `n` scores every nth.
- * @param feedbackLoop - `false` (the default) activates statelessly: a
- *   non-forward-only creature has its state reset before every record, so a
- *   self-loop contributes nothing. `true` activates on the recurrent path,
- *   carrying state from one record to the next in corpus order; the caller
- *   clears state first so a score depends on the creature alone.
  * @returns `-MSE`, so higher is better, and the records it cost.
  */
 export function scoreCreature(
   creature: Creature,
   corpus: readonly ABRecord[],
   stride = 1,
-  feedbackLoop = false,
 ): { score: number; records: number } {
   let sum = 0;
   let count = 0;
   for (let r = 0; r < corpus.length; r += stride) {
     const record = corpus[r];
-    const output = creature.activate(record.input, feedbackLoop);
+    const output = creature.activate(record.input, false);
     const delta = output[0] - record.target;
     sum += delta * delta;
     count++;
@@ -443,7 +437,6 @@ export function breedOffspring(
   mutator: Mutator,
   config: ReturnType<typeof createNeatConfig>,
   rng: RandomNumberGenerator,
-  forwardOnly = true,
 ): Creature[] {
   const offspring: Creature[] = [];
   for (let i = 0; i < count; i++) {
@@ -458,7 +451,7 @@ export function breedOffspring(
     const child = Offspring.breed(mum, dad, {
       geneticCompatibilityThreshold: config.geneticCompatibilityThreshold,
       interSpeciesCrossoverThreshold: config.interSpeciesCrossoverThreshold,
-      forwardOnly,
+      forwardOnly: true,
     });
     if (child === undefined) continue;
     delete child.score;

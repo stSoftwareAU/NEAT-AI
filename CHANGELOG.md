@@ -311,9 +311,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 - **Issue #4160:** opt-in `deno task connectivity-prior-study` compares sparse,
   input-reachable initial topologies against the current fully connected one.
   Result: no cell beat the control and the calibration-chosen cell was harmful,
-  so no prior was added. A self-loop arm, trained and scored on the recurrent
-  path (`feedbackLoop: true`), was `no-benefit` and evolution removed every
-  self-loop; see [the evidence page](docs/evidence/connectivity-prior-4160.md).
+  so no prior was added. Self-loops were not swept: the harness runs the
+  forward-only path; see
+  [the evidence page](docs/evidence/connectivity-prior-4160.md).
 
 - **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
   quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in

@@ -11,7 +11,6 @@ import {
   assertNotEquals,
   assertThrows,
 } from "@std/assert";
-import { Creature } from "@creature";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
 import {
@@ -19,17 +18,13 @@ import {
   ARMS,
   buildControlCreature,
   buildPriorCreature,
-  buildSelfLoopCreature,
   buildStudyCorpus,
   chooseCell,
   compareToControl,
   connectivityStats,
-  countSelfLoops,
   DEFAULT_SETTINGS,
   pairedBootstrapCi,
   runArm,
-  scoreRecurrentAware,
-  SELF_LOOP_ARM,
   type StudySettings,
   validateCell,
   verdict,
@@ -158,7 +153,6 @@ const run = (arm: string, seed: number, trainMse: number, h = 1): ArmRun => ({
   stalled: false,
   initial: { meanHiddenInDegree: 0, meanInputFanOut: 0, reachable: true },
   final: { meanHiddenInDegree: 0, meanInputFanOut: 0, reachable: true },
-  selfLoops: { initial: 0, final: 0 },
 });
 
 Deno.test("chooseCell picks the lowest median train MSE, ties to ARMS order", () => {
@@ -198,7 +192,7 @@ Deno.test("pairedBootstrapCi is deterministic and ordered", () => {
 
 Deno.test("every grid cell builds with exact connectivity for several seeds", () => {
   for (const arm of ARMS) {
-    if (arm.kind !== "prior") continue;
+    if (arm.kind === "control") continue;
     for (const seed of [1, 2, 3, 4, 5]) {
       const stats = connectivityStats(
         buildPriorCreature(
@@ -213,84 +207,4 @@ Deno.test("every grid cell builds with exact connectivity for several seeds", ()
       assert(stats.reachable, arm.arm);
     }
   }
-});
-
-Deno.test("buildSelfLoopCreature is the control plus one self-loop per hidden neuron", () => {
-  const creature = buildSelfLoopCreature(createSeededRng(3));
-  assertEquals(creature.forwardOnly, false);
-  assertEquals(countSelfLoops(creature), 8);
-  const hidden = new Set(
-    creature.neurons.filter((n) => n.type === "hidden").map((n) => n.index),
-  );
-  for (const s of creature.synapses) {
-    if (s.from === s.to) assert(hidden.has(s.from), "self-loop on hidden only");
-    else assert(s.from < s.to, "every other synapse is forward");
-  }
-  const stats = connectivityStats(creature);
-  // The self-loop counts as an inward synapse: 4 inputs plus itself.
-  assertEquals(stats.meanHiddenInDegree, 5);
-  assertEquals(stats.meanInputFanOut, 8);
-  assert(stats.reachable);
-});
-
-Deno.test("the control carries no self-loops", () => {
-  assertEquals(countSelfLoops(buildControlCreature(createSeededRng(3))), 0);
-});
-
-Deno.test("the self-loop arm runs on the recurrent path and is reproducible", async () => {
-  await withRngTestLock(() => {
-    const corpus = buildStudyCorpus(4160, 60, 60);
-    const a = runArm(CELL(SELF_LOOP_ARM), 11, SMALL, corpus);
-    const b = runArm(CELL(SELF_LOOP_ARM), 11, SMALL, corpus);
-    assertEquals(a, b);
-    assertEquals(a.selfLoops.initial, 8);
-    assert(Number.isFinite(a.trainMse));
-    assert(Number.isFinite(a.holdoutMse));
-    assert(a.recordsScored > 0 && a.recordsScored <= SMALL.budgetRecords);
-    const control = runArm(CELL("control"), 11, SMALL, corpus);
-    assertEquals(control.selfLoops.initial, 0);
-  });
-});
-
-Deno.test("the self-loop arm is never a calibration candidate", () => {
-  const runs = [
-    run(SELF_LOOP_ARM, 1, 0.01),
-    run("d2-f2", 1, 0.5),
-  ];
-  assertEquals(chooseCell(runs), "d2-f2");
-  assertThrows(() => chooseCell([run(SELF_LOOP_ARM, 1, 0.01)]));
-});
-
-Deno.test("self-loops change the score on the recurrent path and are inert statelessly", () => {
-  const corpus = buildStudyCorpus(4160, 60, 60).train;
-  const withLoops = buildSelfLoopCreature(createSeededRng(3));
-  const exported = withLoops.exportJSON();
-  const without = () =>
-    Creature.fromJSON({
-      ...exported,
-      synapses: exported.synapses.filter((s) => s.fromUUID !== s.toUUID),
-    });
-  assertEquals(countSelfLoops(without()), 0);
-  assert(countSelfLoops(withLoops) > 0);
-
-  const recurrentWith = scoreRecurrentAware(withLoops, corpus, true);
-  const recurrentWithout = scoreRecurrentAware(without(), corpus, true);
-  assert(Number.isFinite(recurrentWith) && Number.isFinite(recurrentWithout));
-  assertNotEquals(recurrentWith, recurrentWithout);
-
-  // The stateless path zeroes the state before every record, so it cannot
-  // see a self-loop: this is why the arm must not be scored that way.
-  assertEquals(
-    scoreRecurrentAware(withLoops, corpus, false),
-    scoreRecurrentAware(without(), corpus, false),
-  );
-});
-
-Deno.test("the forward-only control scores the same in either mode", () => {
-  const corpus = buildStudyCorpus(4160, 60, 60).train;
-  const control = buildControlCreature(createSeededRng(3));
-  assertEquals(
-    scoreRecurrentAware(control, corpus, true),
-    scoreRecurrentAware(control, corpus, false),
-  );
 });

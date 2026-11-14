@@ -1,8 +1,8 @@
 {
   "manifest": {
     "issue": 4160,
-    "codeVersion": "1b7e0f57-working-tree",
-    "neatAiVersion": "7.1.18",
+    "codeVersion": "b345b837",
+    "neatAiVersion": "7.1.17",
     "denoVersion": "2.9.8",
     "corpusSeed": 4160,
     "inputs": 4,
@@ -60,10 +60,8 @@
     },
     "criteria": "benefit iff the paired-bootstrap 95% CI of (arm - control) holdout MSE lies below 0, the median holdout MSE is lower, and the upper-quartile (lower-quartile performance) holdout MSE is lower; harm iff the CI lies above 0; otherwise no-benefit. Confirmatory test: the one cell chosen on calibration seeds. All other cells are exploratory.",
     "selfLoops": {
-      "status": "swept",
-      "arm": "control-selfloop",
-      "path": "recurrent: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with feedbackLoop true over the records in order, state cleared once per score",
-      "reason": "the grid cells run on the forward-only path (the production default); self-loops are tested only on the already-supported recurrent path, as one exploratory arm: the control topology plus a self-loop on every hidden neuron"
+      "status": "unavailable",
+      "reason": "this harness evaluates through the forward-only path (forwardOnly: true, the production default); self-loops were not swept"
     },
     "paper": "arXiv 2610.33498 not read; the method is this repository's reading of the issue"
   },
@@ -87,10 +85,6 @@
           "meanHiddenInDegree": 4.125,
           "meanInputFanOut": 7.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -111,10 +105,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 7,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -135,10 +125,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 7,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -159,10 +145,6 @@
           "meanHiddenInDegree": 3.7777777777777777,
           "meanInputFanOut": 8.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -183,10 +165,6 @@
           "meanHiddenInDegree": 1.6923076923076923,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -207,10 +185,6 @@
           "meanHiddenInDegree": 1.3333333333333333,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -231,10 +205,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -255,10 +225,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -279,10 +245,6 @@
           "meanHiddenInDegree": 1.3636363636363635,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -303,10 +265,6 @@
           "meanHiddenInDegree": 1.625,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -327,10 +285,6 @@
           "meanHiddenInDegree": 1.3125,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -351,10 +305,6 @@
           "meanHiddenInDegree": 1.7777777777777777,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -375,10 +325,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 5.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -399,10 +345,6 @@
           "meanHiddenInDegree": 2.875,
           "meanInputFanOut": 5.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -423,10 +365,6 @@
           "meanHiddenInDegree": 3.375,
           "meanInputFanOut": 6.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -447,10 +385,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -471,10 +405,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -495,10 +425,6 @@
           "meanHiddenInDegree": 1.8571428571428572,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -519,10 +445,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -543,10 +465,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -567,10 +485,6 @@
           "meanHiddenInDegree": 1.8571428571428572,
           "meanInputFanOut": 2,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -591,10 +505,6 @@
           "meanHiddenInDegree": 2.111111111111111,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -615,10 +525,6 @@
           "meanHiddenInDegree": 2.4,
           "meanInputFanOut": 3.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -639,10 +545,6 @@
           "meanHiddenInDegree": 3.4285714285714284,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -663,10 +565,6 @@
           "meanHiddenInDegree": 2.375,
           "meanInputFanOut": 3.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -687,10 +585,6 @@
           "meanHiddenInDegree": 1.7857142857142858,
           "meanInputFanOut": 4.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -711,10 +605,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -735,10 +625,6 @@
           "meanHiddenInDegree": 2.0833333333333335,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -759,10 +645,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -783,10 +665,6 @@
           "meanHiddenInDegree": 2.7,
           "meanInputFanOut": 1.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -807,10 +685,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -831,10 +705,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -855,10 +725,6 @@
           "meanHiddenInDegree": 3.25,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -879,10 +745,6 @@
           "meanHiddenInDegree": 3.25,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -903,10 +765,6 @@
           "meanHiddenInDegree": 3.625,
           "meanInputFanOut": 3.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -927,10 +785,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -951,10 +805,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -975,10 +825,6 @@
           "meanHiddenInDegree": 2.857142857142857,
           "meanInputFanOut": 5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -999,10 +845,6 @@
           "meanHiddenInDegree": 4.75,
           "meanInputFanOut": 6.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1023,112 +865,12 @@
           "meanHiddenInDegree": 4.25,
           "meanInputFanOut": 5.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 94160,
-        "trainMse": 0.03676167932052484,
-        "holdoutMse": 0.04476889183035497,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 94161,
-        "trainMse": 0.04961017106119394,
-        "holdoutMse": 0.047296915109227754,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 94162,
-        "trainMse": 0.025195326680561892,
-        "holdoutMse": 0.028707222249841322,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 94163,
-        "trainMse": 0.0273439058338145,
-        "holdoutMse": 0.02564145994045564,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
         }
       }
     ],
     "chosenCell": "d3-f1",
     "threshold": 0.06356185196437622,
-    "records": 2640000
+    "records": 2400000
   },
   "validation": {
     "runs": [
@@ -1150,10 +892,6 @@
           "meanHiddenInDegree": 3.875,
           "meanInputFanOut": 7.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1174,10 +912,6 @@
           "meanHiddenInDegree": 3.9,
           "meanInputFanOut": 9.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1198,10 +932,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1222,10 +952,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1246,10 +972,6 @@
           "meanHiddenInDegree": 3.875,
           "meanInputFanOut": 7.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1270,10 +992,6 @@
           "meanHiddenInDegree": 3.6666666666666665,
           "meanInputFanOut": 7.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1294,10 +1012,6 @@
           "meanHiddenInDegree": 3.875,
           "meanInputFanOut": 7.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1318,10 +1032,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1342,10 +1052,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1366,10 +1072,6 @@
           "meanHiddenInDegree": 4.125,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1390,10 +1092,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1414,10 +1112,6 @@
           "meanHiddenInDegree": 3.875,
           "meanInputFanOut": 7.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1438,10 +1132,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1462,10 +1152,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1486,10 +1172,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 7,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1510,10 +1192,6 @@
           "meanHiddenInDegree": 4.125,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1534,10 +1212,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 7,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1558,10 +1232,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 7,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1582,10 +1252,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 7,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1606,10 +1272,6 @@
           "meanHiddenInDegree": 3.888888888888889,
           "meanInputFanOut": 8.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1630,10 +1292,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1654,10 +1312,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1678,10 +1332,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1702,10 +1352,6 @@
           "meanHiddenInDegree": 1.25,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1726,10 +1372,6 @@
           "meanHiddenInDegree": 1.5555555555555556,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1750,10 +1392,6 @@
           "meanHiddenInDegree": 1.3846153846153846,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1774,10 +1412,6 @@
           "meanHiddenInDegree": 1.4166666666666667,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1798,10 +1432,6 @@
           "meanHiddenInDegree": 1.3333333333333333,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1822,10 +1452,6 @@
           "meanHiddenInDegree": 1.3333333333333333,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1846,10 +1472,6 @@
           "meanHiddenInDegree": 1.3157894736842106,
           "meanInputFanOut": 1.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1870,10 +1492,6 @@
           "meanHiddenInDegree": 1.625,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1894,10 +1512,6 @@
           "meanHiddenInDegree": 1.4285714285714286,
           "meanInputFanOut": 0.75,
           "reachable": false
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1918,10 +1532,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1942,10 +1552,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1966,10 +1572,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -1990,10 +1592,6 @@
           "meanHiddenInDegree": 1.6363636363636365,
           "meanInputFanOut": 1.25,
           "reachable": false
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2014,10 +1612,6 @@
           "meanHiddenInDegree": 1.588235294117647,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2038,10 +1632,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2062,10 +1652,6 @@
           "meanHiddenInDegree": 1.5454545454545454,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2086,10 +1672,6 @@
           "meanHiddenInDegree": 1.625,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2110,10 +1692,6 @@
           "meanHiddenInDegree": 1.5454545454545454,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2134,10 +1712,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2158,10 +1732,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 3.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2182,10 +1752,6 @@
           "meanHiddenInDegree": 1.3333333333333333,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2206,10 +1772,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2230,10 +1792,6 @@
           "meanHiddenInDegree": 1.7272727272727273,
           "meanInputFanOut": 3.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2254,10 +1812,6 @@
           "meanHiddenInDegree": 1.625,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2278,10 +1832,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2302,10 +1852,6 @@
           "meanHiddenInDegree": 1.6,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2326,10 +1872,6 @@
           "meanHiddenInDegree": 1.5,
           "meanInputFanOut": 2,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2350,10 +1892,6 @@
           "meanHiddenInDegree": 1.625,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2374,10 +1912,6 @@
           "meanHiddenInDegree": 1.6153846153846154,
           "meanInputFanOut": 3.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2398,10 +1932,6 @@
           "meanHiddenInDegree": 1.625,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2422,10 +1952,6 @@
           "meanHiddenInDegree": 1.875,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2446,10 +1972,6 @@
           "meanHiddenInDegree": 1.625,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2470,10 +1992,6 @@
           "meanHiddenInDegree": 1.7777777777777777,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2494,10 +2012,6 @@
           "meanHiddenInDegree": 1.75,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2518,10 +2032,6 @@
           "meanHiddenInDegree": 1.4545454545454546,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2542,10 +2052,6 @@
           "meanHiddenInDegree": 1.75,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2566,10 +2072,6 @@
           "meanHiddenInDegree": 1.4545454545454546,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2590,10 +2092,6 @@
           "meanHiddenInDegree": 1.75,
           "meanInputFanOut": 3.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2614,10 +2112,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 6.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2638,10 +2132,6 @@
           "meanHiddenInDegree": 2.4285714285714284,
           "meanInputFanOut": 4.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2662,10 +2152,6 @@
           "meanHiddenInDegree": 3.25,
           "meanInputFanOut": 6.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2686,10 +2172,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 6,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2710,10 +2192,6 @@
           "meanHiddenInDegree": 2.375,
           "meanInputFanOut": 4.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2734,10 +2212,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2758,10 +2232,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2782,10 +2252,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 6,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2806,10 +2272,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2830,10 +2292,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2854,10 +2312,6 @@
           "meanHiddenInDegree": 2.75,
           "meanInputFanOut": 5.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2878,10 +2332,6 @@
           "meanHiddenInDegree": 2.75,
           "meanInputFanOut": 5.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2902,10 +2352,6 @@
           "meanHiddenInDegree": 2.875,
           "meanInputFanOut": 5.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2926,10 +2372,6 @@
           "meanHiddenInDegree": 3.375,
           "meanInputFanOut": 6.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2950,10 +2392,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2974,10 +2412,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 6.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -2998,10 +2432,6 @@
           "meanHiddenInDegree": 2.875,
           "meanInputFanOut": 5.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3022,10 +2452,6 @@
           "meanHiddenInDegree": 1.6666666666666667,
           "meanInputFanOut": 3.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3046,10 +2472,6 @@
           "meanHiddenInDegree": 2.4285714285714284,
           "meanInputFanOut": 4.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3070,10 +2492,6 @@
           "meanHiddenInDegree": 1.6666666666666667,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3094,10 +2512,6 @@
           "meanHiddenInDegree": 1.8571428571428572,
           "meanInputFanOut": 0.75,
           "reachable": false
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3118,10 +2532,6 @@
           "meanHiddenInDegree": 1.6923076923076923,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3142,10 +2552,6 @@
           "meanHiddenInDegree": 2.111111111111111,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3166,10 +2572,6 @@
           "meanHiddenInDegree": 1.9166666666666667,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3190,10 +2592,6 @@
           "meanHiddenInDegree": 1.8461538461538463,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3214,10 +2612,6 @@
           "meanHiddenInDegree": 2.142857142857143,
           "meanInputFanOut": 0.75,
           "reachable": false
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3238,10 +2632,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3262,10 +2652,6 @@
           "meanHiddenInDegree": 1.75,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3286,10 +2672,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3310,10 +2692,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3334,10 +2712,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3358,10 +2732,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3382,10 +2752,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3406,10 +2772,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3430,10 +2792,6 @@
           "meanHiddenInDegree": 1.7692307692307692,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3454,10 +2812,6 @@
           "meanHiddenInDegree": 2.125,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3478,10 +2832,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3502,10 +2852,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 0.75,
           "reachable": false
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3526,10 +2872,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3550,10 +2892,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3574,10 +2912,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3598,10 +2932,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3622,10 +2952,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3646,10 +2972,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3670,10 +2992,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 2,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3694,10 +3012,6 @@
           "meanHiddenInDegree": 1.736842105263158,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3718,10 +3032,6 @@
           "meanHiddenInDegree": 2.125,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3742,10 +3052,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3766,10 +3072,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3790,10 +3092,6 @@
           "meanHiddenInDegree": 2.0833333333333335,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3814,10 +3112,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3838,10 +3132,6 @@
           "meanHiddenInDegree": 2.125,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3862,10 +3152,6 @@
           "meanHiddenInDegree": 2.125,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3886,10 +3172,6 @@
           "meanHiddenInDegree": 2.6666666666666665,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3910,10 +3192,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3934,10 +3212,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3958,10 +3232,6 @@
           "meanHiddenInDegree": 2,
           "meanInputFanOut": 2,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -3982,10 +3252,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4006,10 +3272,6 @@
           "meanHiddenInDegree": 2.625,
           "meanInputFanOut": 3.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4030,10 +3292,6 @@
           "meanHiddenInDegree": 2.272727272727273,
           "meanInputFanOut": 4.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4054,10 +3312,6 @@
           "meanHiddenInDegree": 2.909090909090909,
           "meanInputFanOut": 6.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4078,10 +3332,6 @@
           "meanHiddenInDegree": 2.75,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4102,10 +3352,6 @@
           "meanHiddenInDegree": 4.5,
           "meanInputFanOut": 8,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4126,10 +3372,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 3.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4150,10 +3392,6 @@
           "meanHiddenInDegree": 2.875,
           "meanInputFanOut": 4.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4174,10 +3412,6 @@
           "meanHiddenInDegree": 1.6470588235294117,
           "meanInputFanOut": 4.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4198,10 +3432,6 @@
           "meanHiddenInDegree": 2.6923076923076925,
           "meanInputFanOut": 6.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4222,10 +3452,6 @@
           "meanHiddenInDegree": 2.7,
           "meanInputFanOut": 5.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4246,10 +3472,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 3.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4270,10 +3492,6 @@
           "meanHiddenInDegree": 2.6363636363636362,
           "meanInputFanOut": 6,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4294,10 +3512,6 @@
           "meanHiddenInDegree": 2.7777777777777777,
           "meanInputFanOut": 5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4318,10 +3532,6 @@
           "meanHiddenInDegree": 3.3,
           "meanInputFanOut": 6.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4342,10 +3552,6 @@
           "meanHiddenInDegree": 2.857142857142857,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4366,10 +3572,6 @@
           "meanHiddenInDegree": 2.25,
           "meanInputFanOut": 3.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4390,10 +3592,6 @@
           "meanHiddenInDegree": 2.375,
           "meanInputFanOut": 3.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4414,10 +3612,6 @@
           "meanHiddenInDegree": 2.7142857142857144,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4438,10 +3632,6 @@
           "meanHiddenInDegree": 2.625,
           "meanInputFanOut": 4.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4462,10 +3652,6 @@
           "meanHiddenInDegree": 2.75,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4486,10 +3672,6 @@
           "meanHiddenInDegree": 2.5,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4510,10 +3692,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4534,10 +3712,6 @@
           "meanHiddenInDegree": 3.375,
           "meanInputFanOut": 1.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4558,10 +3732,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4582,10 +3752,6 @@
           "meanHiddenInDegree": 2.888888888888889,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4606,10 +3772,6 @@
           "meanHiddenInDegree": 2.7777777777777777,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4630,10 +3792,6 @@
           "meanHiddenInDegree": 2.6923076923076925,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4654,10 +3812,6 @@
           "meanHiddenInDegree": 2.6153846153846154,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4678,10 +3832,6 @@
           "meanHiddenInDegree": 2.5714285714285716,
           "meanInputFanOut": 0.75,
           "reachable": false
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4702,10 +3852,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4726,10 +3872,6 @@
           "meanHiddenInDegree": 3.25,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4750,10 +3892,6 @@
           "meanHiddenInDegree": 2.6666666666666665,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4774,10 +3912,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4798,10 +3932,6 @@
           "meanHiddenInDegree": 2.6153846153846154,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4822,10 +3952,6 @@
           "meanHiddenInDegree": 3.2857142857142856,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4846,10 +3972,6 @@
           "meanHiddenInDegree": 2.75,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4870,10 +3992,6 @@
           "meanHiddenInDegree": 2.411764705882353,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4894,10 +4012,6 @@
           "meanHiddenInDegree": 2.388888888888889,
           "meanInputFanOut": 1.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4918,10 +4032,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4942,10 +4052,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 1.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4966,10 +4072,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 1,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -4990,10 +4092,6 @@
           "meanHiddenInDegree": 3.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5014,10 +4112,6 @@
           "meanHiddenInDegree": 3.375,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5038,10 +4132,6 @@
           "meanHiddenInDegree": 2.75,
           "meanInputFanOut": 1.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5062,10 +4152,6 @@
           "meanHiddenInDegree": 3.375,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5086,10 +4172,6 @@
           "meanHiddenInDegree": 3.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5110,10 +4192,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5134,10 +4212,6 @@
           "meanHiddenInDegree": 3.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5158,10 +4232,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5182,10 +4252,6 @@
           "meanHiddenInDegree": 2.6153846153846154,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5206,10 +4272,6 @@
           "meanHiddenInDegree": 3.125,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5230,10 +4292,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 2.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5254,10 +4312,6 @@
           "meanHiddenInDegree": 3.7142857142857144,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5278,10 +4332,6 @@
           "meanHiddenInDegree": 3.375,
           "meanInputFanOut": 2.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5302,10 +4352,6 @@
           "meanHiddenInDegree": 3.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5326,10 +4372,6 @@
           "meanHiddenInDegree": 3.4444444444444446,
           "meanInputFanOut": 3.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5350,10 +4392,6 @@
           "meanHiddenInDegree": 2.5833333333333335,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5374,10 +4412,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 2,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5398,10 +4432,6 @@
           "meanHiddenInDegree": 3.5,
           "meanInputFanOut": 3,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5422,10 +4452,6 @@
           "meanHiddenInDegree": 3.4444444444444446,
           "meanInputFanOut": 3.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5446,10 +4472,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 2.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5470,10 +4492,6 @@
           "meanHiddenInDegree": 4.125,
           "meanInputFanOut": 5.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5494,10 +4512,6 @@
           "meanHiddenInDegree": 4.375,
           "meanInputFanOut": 5.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5518,10 +4532,6 @@
           "meanHiddenInDegree": 4.125,
           "meanInputFanOut": 5.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5542,10 +4552,6 @@
           "meanHiddenInDegree": 4.25,
           "meanInputFanOut": 5.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5566,10 +4572,6 @@
           "meanHiddenInDegree": 3.8461538461538463,
           "meanInputFanOut": 7.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5590,10 +4592,6 @@
           "meanHiddenInDegree": 4.875,
           "meanInputFanOut": 6.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5614,10 +4612,6 @@
           "meanHiddenInDegree": 3.75,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5638,10 +4632,6 @@
           "meanHiddenInDegree": 4.625,
           "meanInputFanOut": 6.25,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5662,10 +4652,6 @@
           "meanHiddenInDegree": 3.857142857142857,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5686,10 +4672,6 @@
           "meanHiddenInDegree": 3.75,
           "meanInputFanOut": 4.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5710,10 +4692,6 @@
           "meanHiddenInDegree": 4.375,
           "meanInputFanOut": 5.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5734,10 +4712,6 @@
           "meanHiddenInDegree": 3.875,
           "meanInputFanOut": 4.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5758,10 +4732,6 @@
           "meanHiddenInDegree": 4,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5782,10 +4752,6 @@
           "meanHiddenInDegree": 4.5,
           "meanInputFanOut": 6,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5806,10 +4772,6 @@
           "meanHiddenInDegree": 4.25,
           "meanInputFanOut": 5.5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5830,10 +4792,6 @@
           "meanHiddenInDegree": 5,
           "meanInputFanOut": 7,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5854,10 +4812,6 @@
           "meanHiddenInDegree": 3.5,
           "meanInputFanOut": 4,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5878,10 +4832,6 @@
           "meanHiddenInDegree": 3.1538461538461537,
           "meanInputFanOut": 5.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5902,10 +4852,6 @@
           "meanHiddenInDegree": 4.875,
           "meanInputFanOut": 6.75,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
         }
       },
       {
@@ -5926,490 +4872,6 @@
           "meanHiddenInDegree": 3,
           "meanInputFanOut": 5,
           "reachable": true
-        },
-        "selfLoops": {
-          "initial": 0,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4160,
-        "trainMse": 0.02373175018026566,
-        "holdoutMse": 0.02786031978649426,
-        "recordsScored": 60000,
-        "recordsToThreshold": 15300,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 3.7777777777777777,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4161,
-        "trainMse": 0.04050332025244593,
-        "holdoutMse": 0.04241082311988628,
-        "recordsScored": 60000,
-        "recordsToThreshold": 33600,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4162,
-        "trainMse": 0.0738750156132904,
-        "holdoutMse": 0.07823489623492244,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4163,
-        "trainMse": 0.04580640753674714,
-        "holdoutMse": 0.048694470261342035,
-        "recordsScored": 60000,
-        "recordsToThreshold": 46200,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4164,
-        "trainMse": 0.07193766277602275,
-        "holdoutMse": 0.0781436086215457,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 13,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4165,
-        "trainMse": 0.026000933127001184,
-        "holdoutMse": 0.025660874515628294,
-        "recordsScored": 60000,
-        "recordsToThreshold": 30300,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4166,
-        "trainMse": 0.030971868490354607,
-        "holdoutMse": 0.03899251690202923,
-        "recordsScored": 60000,
-        "recordsToThreshold": 38400,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4167,
-        "trainMse": 0.06156314814973829,
-        "holdoutMse": 0.06094024080363947,
-        "recordsScored": 60000,
-        "recordsToThreshold": 60000,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4168,
-        "trainMse": 0.062333010068725006,
-        "holdoutMse": 0.06634648673122247,
-        "recordsScored": 60000,
-        "recordsToThreshold": 58500,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4169,
-        "trainMse": 0.10760086207520676,
-        "holdoutMse": 0.12819905423560302,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4170,
-        "trainMse": 0.025247800204603946,
-        "holdoutMse": 0.027563523751237173,
-        "recordsScored": 60000,
-        "recordsToThreshold": 14400,
-        "generations": 13,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4171,
-        "trainMse": 0.03998835484733277,
-        "holdoutMse": 0.04734008154161623,
-        "recordsScored": 60000,
-        "recordsToThreshold": 44400,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 7,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4172,
-        "trainMse": 0.03469773385552584,
-        "holdoutMse": 0.0348828377886469,
-        "recordsScored": 60000,
-        "recordsToThreshold": 41700,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4173,
-        "trainMse": 0.028313903014863466,
-        "holdoutMse": 0.02923512099117777,
-        "recordsScored": 60000,
-        "recordsToThreshold": 28800,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 3.7777777777777777,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4174,
-        "trainMse": 0.053655722904833676,
-        "holdoutMse": 0.06246581935159901,
-        "recordsScored": 60000,
-        "recordsToThreshold": 38700,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 7,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4175,
-        "trainMse": 0.025319227641119237,
-        "holdoutMse": 0.02964862237101844,
-        "recordsScored": 60000,
-        "recordsToThreshold": 22500,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 7,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4176,
-        "trainMse": 0.03755169126007781,
-        "holdoutMse": 0.03522725056320508,
-        "recordsScored": 60000,
-        "recordsToThreshold": 37500,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4.125,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4177,
-        "trainMse": 0.06201719424020948,
-        "holdoutMse": 0.06473406046196424,
-        "recordsScored": 60000,
-        "recordsToThreshold": 57900,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4.125,
-          "meanInputFanOut": 7.75,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4178,
-        "trainMse": 0.0345208621774216,
-        "holdoutMse": 0.035712700847506704,
-        "recordsScored": 60000,
-        "recordsToThreshold": 21900,
-        "generations": 12,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4,
-          "meanInputFanOut": 7.75,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
-        }
-      },
-      {
-        "arm": "control-selfloop",
-        "seed": 4179,
-        "trainMse": 0.08597957604435878,
-        "holdoutMse": 0.09843377122487389,
-        "recordsScored": 60000,
-        "recordsToThreshold": null,
-        "generations": 11,
-        "stalled": false,
-        "initial": {
-          "meanHiddenInDegree": 5,
-          "meanInputFanOut": 8,
-          "reachable": true
-        },
-        "final": {
-          "meanHiddenInDegree": 4.111111111111111,
-          "meanInputFanOut": 9,
-          "reachable": true
-        },
-        "selfLoops": {
-          "initial": 8,
-          "final": 0
         }
       }
     ]
@@ -6596,24 +5058,6 @@
       }
     }
   ],
-  "selfLoop": {
-    "arm": "control-selfloop",
-    "comparison": {
-      "meanDiff": 0.012128638114482875,
-      "ci": {
-        "mean": 0.012128638114482875,
-        "low": -0.0019133140540499782,
-        "high": 0.027706032980496474
-      },
-      "wins": 9,
-      "losses": 11,
-      "medianArm": 0.044875452330751256,
-      "medianControl": 0.03728672003589549,
-      "upperQuartileArm": 0.0651371670292788,
-      "upperQuartileControl": 0.04695182701099358,
-      "verdict": "no-benefit"
-    }
-  },
   "perArm": [
     {
       "arm": "control",
@@ -6734,23 +5178,11 @@
       "stalled": 0,
       "meanInitialInDegree": 3,
       "meanInitialFanOut": 3
-    },
-    {
-      "arm": "control-selfloop",
-      "n": 20,
-      "medianHoldout": 0.044875452330751256,
-      "upperQuartileHoldout": 0.0651371670292788,
-      "medianTrain": 0.04024583754988935,
-      "medianRecordsToThreshold": 37950,
-      "reachedThreshold": 16,
-      "stalled": 0,
-      "meanInitialInDegree": 5,
-      "meanInitialFanOut": 8
     }
   ],
   "coverage": {
-    "expectedRuns": 264,
-    "completedRuns": 264,
+    "expectedRuns": 240,
+    "completedRuns": 240,
     "failures": []
   }
 }
