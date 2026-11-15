@@ -146,7 +146,12 @@ whose corpus and seeding are reused).
     and train figures unchanged while the holdout figures move.
   - `ruleOutcome` where the cheap and train shapes disagree: `selected` follows
     the cheap shape while `confirmedTrain` and `precisionTrain` follow the train
-    shape, and `comparePrecision` selects from the cheap sample too.
+    shape.
+  - `comparePrecision` selects from the cheap sample: on a fixture where
+    `median-paired` and `single-draw` disagree on cheap but agree on train, the
+    observed holdout precision difference is `3/7 - 3/9`, where selecting on
+    train would give 0. Reading `"train"` instead of `"cheap"` in
+    `comparePrecision` fails this test.
   - `distribution` (now exported) by hand on the same fixture: histogram,
     `fractionConsistent`, `fractionLuckOnly` and the median, plus the empty
     case.

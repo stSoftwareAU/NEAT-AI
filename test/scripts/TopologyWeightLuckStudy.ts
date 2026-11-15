@@ -360,6 +360,23 @@ Deno.test("ruleOutcome selects on the cheap sample and confirms on the train set
   );
   // single-draw selects the same 7 (first draw wins on cheap) so no difference.
   assertEquals(cmp.observed, 0);
+
+  // Two more mutations that look lucky on the cheap sample (single-draw
+  // selects them, median-paired does not) but BAD on train, and fail the
+  // holdout. On cheap: median-paired 3/7, single-draw 3/9. Selecting on train
+  // would leave both rules with the same 6 records (2/6 each) and give 0.
+  const withLucky = [
+    ...records,
+    ...many(2, () => shaped(LUCKY, false, BAD)),
+  ];
+  const split = comparePrecision(
+    withLucky,
+    rule("median-paired"),
+    rule("single-draw"),
+    50,
+    1,
+  );
+  assertAlmostEquals(split.observed!, 3 / 7 - 3 / 9);
 });
 
 Deno.test("distribution gives the histogram and fractions by hand", () => {
