@@ -82,16 +82,22 @@ paper's method.
   shippable creatures that were not the population's best). The seeds and
   records charged of the pilot and the first full run were not recorded and
   cannot be recovered; the bound is 240,000 records per run, so at most
-  5,760,000 and 57,600,000 records. The first full run probably used the CLI
-  default, which was 4156–4185, so those seeds were not untouched. The reported
-  validation was therefore re-run on a fresh range, **14156–14185**, that no
-  earlier run used. The manifest (`preparation`) and the evidence page record
-  all of this. The claim is enforced, not asserted: the CLI refuses a validation
-  range that overlaps 4156–4185 (`USED_SEED_RANGES`), exactly as it refuses one
-  that overlaps the calibration range, and the manifest's
-  `preparation.validationSeedsUntouched` is computed from the seeds actually
-  run. The pilot's seeds were never recorded, so they cannot be listed and are
-  covered only by the bound above.
+  5,760,000 for the pilot (plus up to 1,200,000 if it ran a calibration phase,
+  which is not known) and 57,600,000 for the first full run plus the 1,200,000
+  calibration phase the CLI has run since its first commit (58,800,000). The
+  second full run's cost is recorded in this PR's earlier artefact at commit
+  `eccc6792`: 57,594,400 validation plus 1,200,000 calibration, 58,794,400. The
+  reported validation charged 57,596,400 records (the sum of `recordsCharged`
+  over its 240 runs), not the 57,600,000 budget. The first full run probably
+  used the CLI default, which was 4156–4185, so those seeds were not untouched.
+  The reported validation was therefore re-run on a fresh range,
+  **14156–14185**, that no earlier run used. The manifest (`preparation`) and
+  the evidence page record all of this. The claim is enforced, not asserted: the
+  CLI refuses a validation range that overlaps 4156–4185 (`USED_SEED_RANGES`),
+  exactly as it refuses one that overlaps the calibration range, and the
+  manifest's `preparation.validationSeedsUntouched` is computed from the seeds
+  actually run. The pilot's seeds were never recorded, so they cannot be listed
+  and are covered only by the bound above.
 
 ## Evidence
 
@@ -244,11 +250,15 @@ No independent reviewers were dispatched.
   arms); `docs/evidence/differential-weight-4156.md` contrasts table.
 - **met** — Opt-in only; no change under `src/`, no default change — evidence:
   nothing under `src/` is touched and nothing imports the harness.
-- **met** — Predeclare controls, seeds, sample size, compute limits and
+- **partial** — Predeclare controls, seeds, sample size, compute limits and
   success/failure criteria; separate calibration from untouched validation and
-  count preparation cost — evidence: manifest `criteria`, `settings`,
-  `calibrationSeeds`, `validationSeeds` and `preparation`; overlap with the
-  calibration range and with the earlier-run range 4156–4185 is refused;
+  count preparation cost — reason: the pilot's and the first full run's seeds
+  and records charged were not recorded when they were made, so their cost is
+  bounded (at most 5,760,000 and 58,800,000 records), not counted. Predeclared
+  criteria, seeds and the calibration/validation separation are met: manifest
+  `criteria`, `settings`, `calibrationSeeds`, `validationSeeds` and
+  `preparation`; overlap with the calibration range and with the earlier-run
+  range 4156–4185 is refused;
   `test/scripts/DifferentialWeightStudy.ts::a validation range inside or touching a used range is reported`.
 - **met** — Deterministic positive/negative correctness tests — evidence:
   `test/scripts/DifferentialWeightStudy.ts` (21 tests).
@@ -272,7 +282,7 @@ No independent reviewers were dispatched.
   untested against the paper's method.
 - The pilot's and the first full run's seeds and records were not recorded; the
   validation was re-run on a fresh range to compensate, and their cost is
-  bounded, not measured.
+  bounded, not measured (the second full run's cost is recorded exactly).
 - Wall-clock was measured, not held equal (see Essential Design Decisions).
 - The contraction arms use non-default diversity thresholds. Under the
   production defaults the rule never contracted in this setting.

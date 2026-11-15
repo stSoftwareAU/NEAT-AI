@@ -66,7 +66,7 @@ const PREPARATION_RUNS = [
     seeds: "not recorded",
     arms: "not recorded",
     recordsCharged:
-      "not recorded; at most 3 seeds x 8 arms x 240,000 = 5,760,000",
+      "not recorded; at most 3 seeds x 8 arms x 240,000 = 5,760,000, plus up to 1,200,000 for a calibration phase if it ran through this CLI (not known)",
   },
   {
     what:
@@ -74,14 +74,15 @@ const PREPARATION_RUNS = [
     seeds: "not recorded; the CLI default then was 4156-4185",
     arms: "8 arms",
     recordsCharged:
-      "not recorded; at most 30 seeds x 8 arms x 240,000 = 57,600,000",
+      "not recorded; at most 30 seeds x 8 arms x 240,000 = 57,600,000, plus 1,200,000 for the calibration phase the CLI has run since its first commit = 58,800,000",
   },
   {
     what:
       "second full run on 4156-4185 after the top-up, discarded because time-to-target ignored creatures that can ship but are not the population's best (review of PR 4165)",
     seeds: "4156-4185 (30)",
     arms: "8 arms",
-    recordsCharged: "at most 30 seeds x 8 arms x 240,000 = 57,600,000",
+    recordsCharged:
+      "recorded in the artefact at commit eccc6792: 57,594,400 validation + 1,200,000 calibration = 58,794,400",
   },
 ];
 

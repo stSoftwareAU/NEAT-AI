@@ -197,16 +197,23 @@ scored members.
 ## Preparation and search cost
 
 The validation arms are not the only records the study spent. The manifest
-(`preparation` in the JSON) records the rest, with the most each run could have
-charged (240,000 records per run is the cap):
+(`preparation` in the JSON) records the rest. Where a run's cost was written
+down it is given exactly; where it was not, the most it could have charged is
+given (240,000 records per run is the cap). The CLI has run the five-seed
+calibration phase (1,200,000 records) since its first commit, so every full run
+through it paid that phase as well.
 
-| Run                                                                                                                              | Seeds                                                | Records charged                                                  |
-| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Calibration (reported)                                                                                                           | 94156–94160                                          | 1,200,000                                                        |
-| Pilot that set `contractionHighDiversityThreshold` to 0                                                                          | **not recorded**                                     | **not recorded**; at most 3 seeds × 8 arms × 240,000 = 5,760,000 |
-| First full run, discarded: ordinary breeding left slots empty, so the top-up retry was added                                     | **not recorded**; the CLI default then was 4156–4185 | **not recorded**; at most 30 × 8 × 240,000 = 57,600,000          |
-| Second full run on 4156–4185, discarded: time to target ignored shippable creatures that were not the population's best (review) | 4156–4185                                            | at most 30 × 8 × 240,000 = 57,600,000                            |
-| Reported validation                                                                                                              | 14156–14185                                          | 30 × 8 × 240,000 = 57,600,000                                    |
+| Run                                                                                                                              | Seeds                                                | Records charged                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Calibration (reported)                                                                                                           | 94156–94160                                          | 1,200,000                                                                                                                                 |
+| Pilot that set `contractionHighDiversityThreshold` to 0                                                                          | **not recorded**                                     | **not recorded**; at most 3 × 8 × 240,000 = 5,760,000, plus up to 1,200,000 for a calibration phase if it ran through the CLI (not known) |
+| First full run, discarded: ordinary breeding left slots empty, so the top-up retry was added                                     | **not recorded**; the CLI default then was 4156–4185 | **not recorded**; at most 30 × 8 × 240,000 = 57,600,000, plus 1,200,000 calibration = 58,800,000                                          |
+| Second full run on 4156–4185, discarded: time to target ignored shippable creatures that were not the population's best (review) | 4156–4185                                            | **recorded** (artefact at commit `eccc6792`): 57,594,400 validation + 1,200,000 calibration = 58,794,400                                  |
+| Reported validation                                                                                                              | 14156–14185                                          | 57,596,400 (the sum of `recordsCharged` over the 240 runs; the budget was 30 × 8 × 240,000 = 57,600,000)                                  |
+
+So the preparation cost is **not fully counted**: the second full run and the
+calibration are exact, but the pilot's and the first full run's costs are
+bounded, not measured.
 
 The pilot's and the first full run's seeds and records were not written down
 when they were made, and cannot be recovered. The honest reading is that the
