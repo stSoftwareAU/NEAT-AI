@@ -40,7 +40,7 @@ console.info(
   "Issue #4162 topology gains versus weight-placement luck (synthetic 4-input regression)",
 );
 console.info(
-  "\nrule           selected  precTrain  precHoldout  meanHoldoutGain  costRecords",
+  "\nprecision on: train and holdout\nrule           selected  train      holdout      meanHoldoutGain  costRecords",
 );
 for (const row of study.rules) {
   console.info(
