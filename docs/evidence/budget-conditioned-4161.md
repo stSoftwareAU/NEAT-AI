@@ -29,6 +29,42 @@ at 100% (0.08455), both of which it was trained on.
 No genome format, default or `src/` behaviour changes. The harness stays only so
 the finding can be reproduced.
 
+## Source method (pinned)
+
+The cited paper is arXiv [2611.06895](https://arxiv.org/abs/2611.06895) v1,
+_Learning Time-Varying Connectomes for Stable Behavior Across Development_
+(Christof Fehrman, Jacob J. Morra, Eva A. Naumann; submitted 2026-11-04;
+q-bio.NC, cross-listed cs.NE). It was read on 2026-11-15 through search-indexed
+excerpts of the abstract page and the
+[HTML full text](https://arxiv.org/html/2611.06895). This host's proxy refused a
+direct fetch of arxiv.org. The same pin is in the JSON as `manifest.paper`.
+
+| Paper (as read)                                                                                                                                           | This study                                                                                                  | Fidelity |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------- |
+| One HyperNEAT CPPN takes developmental time as an extra input and generates age-specific recurrent connectivity                                           | One genome with an evolved priority gene; a budget keeps the top-k synapses. The genome has no budget input | departs  |
+| The substrate (neuron birth, position, sensory organisation, time constants) is prescribed per age                                                        | One fixed candidate topology; the budget sets how many of its 44 synapses are expressed                     | analogue |
+| Aware conditions optimise mean fitness over 3, 5 or 15 evenly spaced snapshots                                                                            | Mean calibration MSE over 3 budgets: 25%, 50%, 100% (not evenly spaced)                                     | analogue |
+| Evaluated over the whole interval, at trained and unseen ages, on 20 test trials with unseen start states and stimuli                                     | Validation MSE at trained budgets and at unseen 37.5% and 75%                                               | analogue |
+| Controls: HyperNEAT at the initial substrate only (T=0) and "Reverse" HyperNEAT at the mature substrate only (T=1), time input held at its training value | Independent per-budget searches (including the unseen budgets) and a magnitude-pruned full-size search      | analogue |
+| Five runs per condition, populations of 100 genomes, 200 generations                                                                                      | 20 seeds per arm, stopped by an equal charged-record budget                                                 | departs  |
+| Two substrates (Fish, Ring), two closed-loop visuomotor tasks (optomotor response, phototaxis)                                                            | One synthetic 4-input regression                                                                            | departs  |
+
+The paper reports that single-age controllers generally failed at other ages,
+and that optimising at only three snapshots was often enough across the
+interval.
+
+**What the excerpts do not pin:** the CPPN's other inputs, its output activation
+and connection threshold (the paper cites HyperNEAT-LEO, but whether it uses a
+link-expression output was not confirmed), the NEAT settings beyond population
+size and generation count, the task fitness definitions, and the exact unseen
+ages. None of these is guessed here.
+
+**What this means for the verdict.** The paper's core mechanism is a generator
+that takes the condition as an input. This study does not reproduce that
+mechanism. It tests a simpler idea: a nested, gene-ordered expression of one
+genome. The negative result below is about that idea and is not evidence against
+the paper's generator.
+
 ## What was compared
 
 All three arms share one candidate topology: 4 inputs, 8 hidden neurons and 1
@@ -125,21 +161,27 @@ verdict, and are excluded from the reproducibility comparison.
 ## Reproducibility
 
 ```bash
-deno task budget-conditioned-study --code-version=f6c60651 \
+deno task budget-conditioned-study --code-version=429f66b9 \
   --json=docs/evidence/budget-conditioned-4161.json
 ```
 
 The run takes about 19 s of wall time (indicative). It was run twice at the same
 commit and the two JSON files were identical apart from the latency fields.
-Versions, from the manifest: NEAT-AI 7.1.19, Deno 2.9.8, code commit `f6c60651`.
+Versions, from the manifest: NEAT-AI 7.1.19, Deno 2.9.8, code commit `429f66b9`.
+Since `f6c60651`, the code changes only add the pinned source method to the
+manifest. Its results match the first run, at `f6c60651`, exactly, ignoring
+latency, `codeVersion` and `paper`.
 
 ## Limitations
 
 - A synthetic 4-input regression with tiny networks.
 - The genome and the (μ+λ) search are harness-level, not NEAT-AI's
   `Offspring.breed` or `Mutator`.
-- arXiv 2611.06895 was not read: there was no network access in this run. The
-  method is this repository's reading of the issue.
+- arXiv 2611.06895 was read from search-indexed excerpts, not a direct download;
+  the unpinned details are listed under
+  [Source method (pinned)](#source-method-pinned).
+- The paper's generator, which takes the condition as an input, is not
+  reproduced; see the departures in that table.
 - A single host, and no production corpus.
 
 ---

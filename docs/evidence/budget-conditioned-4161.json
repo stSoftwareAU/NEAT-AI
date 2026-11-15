@@ -1,7 +1,7 @@
 {
   "manifest": {
     "issue": 4161,
-    "codeVersion": "f6c60651",
+    "codeVersion": "429f66b9",
     "neatAiVersion": "7.1.19",
     "denoVersion": "2.9.8",
     "corpusSeed": 4161,
@@ -81,7 +81,67 @@
       "seed": 4161
     },
     "criteria": "Primary metric: per-seed mean validation MSE over the unseen budgets (37.5%, 75%). benefit iff the paired-bootstrap 95% CI of (conditioned - control) lies below 0, harm iff it lies above 0, insufficient-data when fewer than 5 paired seeds, otherwise no-benefit. Success iff benefit against both independent and pruned controls and the full-size (100%) validation MSE against pruned is not harm. Per-budget comparisons are exploratory.",
-    "paper": "arXiv 2611.06895 not read; the method is this repository's reading of the issue",
+    "paper": {
+      "arxivId": "2611.06895",
+      "version": "v1",
+      "submitted": "2026-11-04",
+      "doi": "10.48550/arXiv.2611.06895",
+      "title": "Learning Time-Varying Connectomes for Stable Behavior Across Development",
+      "authors": [
+        "Christof Fehrman",
+        "Jacob J. Morra",
+        "Eva A. Naumann"
+      ],
+      "categories": [
+        "q-bio.NC",
+        "cs.NE"
+      ],
+      "readOn": "2026-11-15",
+      "readVia": "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895; direct fetch refused by the host proxy",
+      "elements": [
+        {
+          "paper": "One compact generative encoding: a HyperNEAT CPPN that takes developmental time as an extra input and emits age-specific connectivity for a recurrent controller.",
+          "study": "One genome of weights, biases and an evolved expression-priority gene; a budget keeps the top-k candidate synapses by priority. The genome has no budget input.",
+          "fidelity": "departs"
+        },
+        {
+          "paper": "The substrate (neuron birth, position, sensory organisation, intrinsic time constants) is prescribed per age; only connectivity is generated.",
+          "study": "One fixed candidate topology (4 inputs, 8 hidden, 1 output, 44 candidate synapses); the budget sets how many candidates are expressed.",
+          "fidelity": "analogue"
+        },
+        {
+          "paper": "Developmentally aware conditions optimise mean fitness across 3, 5 or 15 evenly spaced developmental snapshots.",
+          "study": "The conditioned arm optimises mean calibration MSE across 3 budgets: 25%, 50% and 100% (not evenly spaced).",
+          "fidelity": "analogue"
+        },
+        {
+          "paper": "Performance is measured over the whole developmental interval, at trained and at unseen ages, on 20 test trials whose starting states and stimulus sequences were not seen during optimisation.",
+          "study": "Validation MSE at the trained budgets and at the unseen 37.5% and 75%, on a validation split no search reads.",
+          "fidelity": "analogue"
+        },
+        {
+          "paper": "Controls: standard HyperNEAT optimised at the initial substrate only (T=0) and 'Reverse' HyperNEAT at the mature substrate only (T=1), with the CPPN time input held at its training value during testing (five conditions in all).",
+          "study": "Controls: independent per-budget searches (including the unseen budgets, which is stronger than single-snapshot training) and a full-size search pruned by frozen-weight magnitude, all at an equal charged-record budget.",
+          "fidelity": "analogue"
+        },
+        {
+          "paper": "Five independent evolutionary runs per condition for each substrate-task pair, populations of 100 genomes evolved for 200 generations.",
+          "study": "20 seeds per arm, stopped by an equal charged-calibration-record budget rather than a generation count.",
+          "fidelity": "departs"
+        },
+        {
+          "paper": "Two substrates (Fish, Ring) and two closed-loop visuomotor tasks (optomotor response, phototaxis).",
+          "study": "One synthetic 4-input regression scored in-process.",
+          "fidelity": "departs"
+        }
+      ],
+      "unpinned": [
+        "CPPN inputs beyond developmental time, its output activation and how connections are thresholded (the paper cites HyperNEAT-LEO; whether it uses a link-expression output was not confirmed)",
+        "the NEAT settings of the CPPN search beyond population size and generation count",
+        "the fitness definitions for the optomotor and phototaxis tasks",
+        "the exact ages evaluated as unseen"
+      ]
+    },
     "ockham": "Unlike NEAT-AI-Ockham's frozen-weight pruning, the expression order here is an evolved, heritable gene; the pruned control ranks a finished network's frozen weights by magnitude."
   },
   "runs": [
@@ -100,7 +160,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04341975883560489,
           "validationMse": 0.04540852609893271,
-          "latencyMicros": 0.4991666666666106
+          "latencyMicros": 0.5245833333333394
         },
         {
           "budget": 0.375,
@@ -111,7 +171,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04474770663140053,
           "validationMse": 0.04424622423468676,
-          "latencyMicros": 0.42027666666664726
+          "latencyMicros": 0.4443066666666103
         },
         {
           "budget": 0.5,
@@ -122,7 +182,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08631543598575081,
           "validationMse": 0.08669661550123059,
-          "latencyMicros": 0.4409733333333558
+          "latencyMicros": 0.48708333333327875
         },
         {
           "budget": 0.75,
@@ -133,7 +193,7 @@
           "invalidReason": null,
           "calibrationMse": 0.29783409355465873,
           "validationMse": 0.3006288137252933,
-          "latencyMicros": 0.5348633333333433
+          "latencyMicros": 0.6026399999999891
         },
         {
           "budget": 1,
@@ -144,7 +204,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06391693433509978,
           "validationMse": 0.06908017966619252,
-          "latencyMicros": 0.5650000000000924
+          "latencyMicros": 0.5891666666667561
         }
       ]
     },
@@ -163,7 +223,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03367354779081177,
           "validationMse": 0.0352858693090485,
-          "latencyMicros": 0.36583333333320905
+          "latencyMicros": 0.365276666666432
         },
         {
           "budget": 0.375,
@@ -174,7 +234,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05022569920330951,
           "validationMse": 0.05014975872349228,
-          "latencyMicros": 0.41680666666669214
+          "latencyMicros": 0.43375000000006975
         },
         {
           "budget": 0.5,
@@ -185,7 +245,7 @@
           "invalidReason": null,
           "calibrationMse": 0.045267710347200917,
           "validationMse": 0.047064185048505694,
-          "latencyMicros": 0.4455533333331611
+          "latencyMicros": 0.4379166666664484
         },
         {
           "budget": 0.75,
@@ -196,7 +256,7 @@
           "invalidReason": null,
           "calibrationMse": 0.191066319550659,
           "validationMse": 0.18100211565567328,
-          "latencyMicros": 0.5845833333334364
+          "latencyMicros": 0.5587499999997666
         },
         {
           "budget": 1,
@@ -207,7 +267,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04084537861788614,
           "validationMse": 0.042193041599962754,
-          "latencyMicros": 0.5949999999999515
+          "latencyMicros": 0.6020833333332121
         }
       ]
     },
@@ -226,7 +286,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05134281983169428,
           "validationMse": 0.051235084434925235,
-          "latencyMicros": 0.4172233333334437
+          "latencyMicros": 0.7470833333335728
         },
         {
           "budget": 0.375,
@@ -237,7 +297,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0961337982225103,
           "validationMse": 0.10107015720099106,
-          "latencyMicros": 0.5034699999998793
+          "latencyMicros": 0.47278000000005704
         },
         {
           "budget": 0.5,
@@ -248,7 +308,7 @@
           "invalidReason": null,
           "calibrationMse": 0.051330717337792875,
           "validationMse": 0.04398072276384942,
-          "latencyMicros": 0.56555666666668
+          "latencyMicros": 0.5443066666665194
         },
         {
           "budget": 0.75,
@@ -259,7 +319,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15998787707097287,
           "validationMse": 0.1755943510126918,
-          "latencyMicros": 0.6802766666665624
+          "latencyMicros": 0.6633333333335637
         },
         {
           "budget": 1,
@@ -270,7 +330,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15821272716300358,
           "validationMse": 0.12752541122265448,
-          "latencyMicros": 0.5770833333334243
+          "latencyMicros": 0.5623600000001261
         }
       ]
     },
@@ -289,7 +349,7 @@
           "invalidReason": null,
           "calibrationMse": 0.17026103644450777,
           "validationMse": 0.1588834259013394,
-          "latencyMicros": 0.38222333333275554
+          "latencyMicros": 0.38236000000021403
         },
         {
           "budget": 0.375,
@@ -300,7 +360,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05239353510659469,
           "validationMse": 0.053952703503750934,
-          "latencyMicros": 0.4401399999998527
+          "latencyMicros": 0.438610000000305
         },
         {
           "budget": 0.5,
@@ -311,7 +371,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05919940256679586,
           "validationMse": 0.060971886746124006,
-          "latencyMicros": 0.4431933333330562
+          "latencyMicros": 0.4573599999995774
         },
         {
           "budget": 0.75,
@@ -322,7 +382,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06978838372765343,
           "validationMse": 0.07174855400309603,
-          "latencyMicros": 0.46014000000013766
+          "latencyMicros": 0.45999999999973323
         },
         {
           "budget": 1,
@@ -333,7 +393,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11586444514240561,
           "validationMse": 0.11077092913468564,
-          "latencyMicros": 0.5644433333335049
+          "latencyMicros": 0.5579166666674004
         }
       ]
     },
@@ -352,7 +412,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05772875698279941,
           "validationMse": 0.05802185716904786,
-          "latencyMicros": 0.3518066666667134
+          "latencyMicros": 0.37638666666680365
         },
         {
           "budget": 0.375,
@@ -363,7 +423,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06501934709108133,
           "validationMse": 0.06376389498209246,
-          "latencyMicros": 0.40263999999979205
+          "latencyMicros": 0.4412499999997029
         },
         {
           "budget": 0.5,
@@ -374,7 +434,7 @@
           "invalidReason": null,
           "calibrationMse": 0.035994469003428606,
           "validationMse": 0.03779188031475218,
-          "latencyMicros": 0.4631933333333412
+          "latencyMicros": 0.4695833333327452
         },
         {
           "budget": 0.75,
@@ -385,7 +445,7 @@
           "invalidReason": null,
           "calibrationMse": 0.42281622258811724,
           "validationMse": 0.4271554237292132,
-          "latencyMicros": 0.5798600000002807
+          "latencyMicros": 0.5955566666663495
         },
         {
           "budget": 1,
@@ -396,7 +456,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06898508164574524,
           "validationMse": 0.06834505188699136,
-          "latencyMicros": 0.5813899999998284
+          "latencyMicros": 0.5965266666673111
         }
       ]
     },
@@ -415,7 +475,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03483059188637002,
           "validationMse": 0.037917932931628914,
-          "latencyMicros": 0.41805666666732577
+          "latencyMicros": 0.4451400000001134
         },
         {
           "budget": 0.375,
@@ -426,7 +486,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03460995075859025,
           "validationMse": 0.03746092659377412,
-          "latencyMicros": 0.43902666666705653
+          "latencyMicros": 0.4527799999997721
         },
         {
           "budget": 0.5,
@@ -437,7 +497,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04571627918745886,
           "validationMse": 0.04596932396591001,
-          "latencyMicros": 0.47583333333326056
+          "latencyMicros": 0.5054166666665575
         },
         {
           "budget": 0.75,
@@ -448,7 +508,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05759267444670316,
           "validationMse": 0.06426337857985898,
-          "latencyMicros": 0.5868066666668407
+          "latencyMicros": 0.6155533333336886
         },
         {
           "budget": 1,
@@ -459,7 +519,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07105691325348804,
           "validationMse": 0.08559546569436212,
-          "latencyMicros": 0.5570833333331393
+          "latencyMicros": 0.6022233333328586
         }
       ]
     },
@@ -478,7 +538,7 @@
           "invalidReason": null,
           "calibrationMse": 0.027673594021976312,
           "validationMse": 0.02772253875944832,
-          "latencyMicros": 0.38291666666585417
+          "latencyMicros": 0.35499999999956344
         },
         {
           "budget": 0.375,
@@ -489,7 +549,7 @@
           "invalidReason": null,
           "calibrationMse": 0.031550129587595045,
           "validationMse": 0.030905322271687456,
-          "latencyMicros": 0.46833333333324845
+          "latencyMicros": 0.42958333333293314
         },
         {
           "budget": 0.5,
@@ -500,7 +560,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05954960732322906,
           "validationMse": 0.05540821500379913,
-          "latencyMicros": 0.48791666666678185
+          "latencyMicros": 0.557219999999082
         },
         {
           "budget": 0.75,
@@ -511,7 +571,7 @@
           "invalidReason": null,
           "calibrationMse": 0.1309050425157798,
           "validationMse": 0.14534741075865673,
-          "latencyMicros": 0.5937500000004547
+          "latencyMicros": 0.6002800000002632
         },
         {
           "budget": 1,
@@ -522,7 +582,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05665651129151982,
           "validationMse": 0.05670907779351567,
-          "latencyMicros": 0.5844433333337898
+          "latencyMicros": 0.608193333333323
         }
       ]
     },
@@ -541,7 +601,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05791970078793018,
           "validationMse": 0.053612745569109325,
-          "latencyMicros": 0.3622233333332285
+          "latencyMicros": 0.3744433333334503
         },
         {
           "budget": 0.375,
@@ -552,7 +612,7 @@
           "invalidReason": null,
           "calibrationMse": 0.053096268857576026,
           "validationMse": 0.04474298113671547,
-          "latencyMicros": 0.40347333333405305
+          "latencyMicros": 0.4333333333336971
         },
         {
           "budget": 0.5,
@@ -563,7 +623,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06456255032490756,
           "validationMse": 0.06492492085477578,
-          "latencyMicros": 0.48097333333316783
+          "latencyMicros": 0.5102766666664138
         },
         {
           "budget": 0.75,
@@ -574,7 +634,7 @@
           "invalidReason": null,
           "calibrationMse": 0.21981160856842114,
           "validationMse": 0.19166319391240447,
-          "latencyMicros": 0.8752800000002026
+          "latencyMicros": 0.6036099999998138
         },
         {
           "budget": 1,
@@ -585,7 +645,7 @@
           "invalidReason": null,
           "calibrationMse": 0.10286732088673829,
           "validationMse": 0.09506891203495094,
-          "latencyMicros": 1.0769466666670269
+          "latencyMicros": 0.8347233333332346
         }
       ]
     },
@@ -604,7 +664,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026377236885014532,
           "validationMse": 0.025403016966317197,
-          "latencyMicros": 0.41472333333331335
+          "latencyMicros": 0.43597333333309507
         },
         {
           "budget": 0.375,
@@ -615,7 +675,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11254794871340672,
           "validationMse": 0.11472468445230359,
-          "latencyMicros": 0.42694333333353524
+          "latencyMicros": 0.42125000000093377
         },
         {
           "budget": 0.5,
@@ -626,7 +686,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11516480431370979,
           "validationMse": 0.11433257269842367,
-          "latencyMicros": 0.46236333333429985
+          "latencyMicros": 0.4654166666659876
         },
         {
           "budget": 0.75,
@@ -637,7 +697,7 @@
           "invalidReason": null,
           "calibrationMse": 0.19429343874779648,
           "validationMse": 0.17019274138318374,
-          "latencyMicros": 0.6141666666659754
+          "latencyMicros": 0.6137500000007398
         },
         {
           "budget": 1,
@@ -648,7 +708,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07313143289430422,
           "validationMse": 0.08350129761052955,
-          "latencyMicros": 0.5804166666681946
+          "latencyMicros": 0.5906966666664933
         }
       ]
     },
@@ -667,7 +727,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0663274325641891,
           "validationMse": 0.061338610449387744,
-          "latencyMicros": 0.41527666666600754
+          "latencyMicros": 0.41569333333427494
         },
         {
           "budget": 0.375,
@@ -678,7 +738,7 @@
           "invalidReason": null,
           "calibrationMse": 0.09902641749486676,
           "validationMse": 0.09880493625515249,
-          "latencyMicros": 0.42125000000093377
+          "latencyMicros": 0.43916666666670306
         },
         {
           "budget": 0.5,
@@ -689,7 +749,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11244537769316862,
           "validationMse": 0.11218431097448073,
-          "latencyMicros": 0.445553333333919
+          "latencyMicros": 0.46666666666624224
         },
         {
           "budget": 0.75,
@@ -700,7 +760,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12786121880648074,
           "validationMse": 0.1398362394085215,
-          "latencyMicros": 0.5515299999994264
+          "latencyMicros": 0.5734733333323069
         },
         {
           "budget": 1,
@@ -711,7 +771,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08199588887111049,
           "validationMse": 0.07165361976770307,
-          "latencyMicros": 0.584166666665927
+          "latencyMicros": 0.6040300000010271
         }
       ]
     },
@@ -730,7 +790,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15151700183739103,
           "validationMse": 0.1634121091800106,
-          "latencyMicros": 0.8630533333340887
+          "latencyMicros": 0.7625000000007276
         },
         {
           "budget": 0.375,
@@ -741,7 +801,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08821578335885773,
           "validationMse": 0.0953434467611949,
-          "latencyMicros": 0.8379166666660846
+          "latencyMicros": 0.7569433333325529
         },
         {
           "budget": 0.5,
@@ -752,7 +812,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08870947232506063,
           "validationMse": 0.09318136434317105,
-          "latencyMicros": 0.8233333333328119
+          "latencyMicros": 0.8020833333330302
         },
         {
           "budget": 0.75,
@@ -763,7 +823,7 @@
           "invalidReason": null,
           "calibrationMse": 0.42241172591924875,
           "validationMse": 0.3994397800716789,
-          "latencyMicros": 0.8654166666656238
+          "latencyMicros": 0.5158333333338305
         },
         {
           "budget": 1,
@@ -774,7 +834,7 @@
           "invalidReason": null,
           "calibrationMse": 0.10289979862873876,
           "validationMse": 0.09666677578446681,
-          "latencyMicros": 1.4061133333340574
+          "latencyMicros": 2.4676400000013623
         }
       ]
     },
@@ -793,7 +853,7 @@
           "invalidReason": null,
           "calibrationMse": 0.061418594774930856,
           "validationMse": 0.056541564762528654,
-          "latencyMicros": 0.4309699999991305
+          "latencyMicros": 0.45347000000068266
         },
         {
           "budget": 0.375,
@@ -804,7 +864,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0823724188459865,
           "validationMse": 0.08578819307119535,
-          "latencyMicros": 0.5461100000002261
+          "latencyMicros": 0.5251399999997375
         },
         {
           "budget": 0.5,
@@ -815,7 +875,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06348976991849534,
           "validationMse": 0.06358480288860105,
-          "latencyMicros": 0.6001399999998588
+          "latencyMicros": 0.5749999999989086
         },
         {
           "budget": 0.75,
@@ -826,7 +886,7 @@
           "invalidReason": null,
           "calibrationMse": 0.10755109440736595,
           "validationMse": 0.12076632582373117,
-          "latencyMicros": 0.6398599999996198
+          "latencyMicros": 0.5909733333328404
         },
         {
           "budget": 1,
@@ -837,7 +897,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0415638942983118,
           "validationMse": 0.04868094723495003,
-          "latencyMicros": 0.5838866666666339
+          "latencyMicros": 0.5641666666663999
         }
       ]
     },
@@ -856,7 +916,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07474869991159368,
           "validationMse": 0.07814030142161471,
-          "latencyMicros": 0.4084733333335559
+          "latencyMicros": 0.4283333333326785
         },
         {
           "budget": 0.375,
@@ -867,7 +927,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12932387678624988,
           "validationMse": 0.1305411294982639,
-          "latencyMicros": 0.4877766666671353
+          "latencyMicros": 0.5054166666665575
         },
         {
           "budget": 0.5,
@@ -878,7 +938,7 @@
           "invalidReason": null,
           "calibrationMse": 0.1875539824623048,
           "validationMse": 0.16276554284959205,
-          "latencyMicros": 0.502083333334061
+          "latencyMicros": 0.5212500000000849
         },
         {
           "budget": 0.75,
@@ -889,7 +949,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12601798948756576,
           "validationMse": 0.13191352773629733,
-          "latencyMicros": 0.5633333333328968
+          "latencyMicros": 0.5787499999996726
         },
         {
           "budget": 1,
@@ -900,7 +960,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08579270547900512,
           "validationMse": 0.09217215133377708,
-          "latencyMicros": 0.5627799999986868
+          "latencyMicros": 0.591666666665939
         }
       ]
     },
@@ -919,7 +979,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0323464789612642,
           "validationMse": 0.03197369728738743,
-          "latencyMicros": 0.3413900000001983
+          "latencyMicros": 0.36319333333419007
         },
         {
           "budget": 0.375,
@@ -930,7 +990,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03428478835279414,
           "validationMse": 0.03613367580264707,
-          "latencyMicros": 0.3256933333341294
+          "latencyMicros": 0.34152666666614095
         },
         {
           "budget": 0.5,
@@ -941,7 +1001,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04013751847677315,
           "validationMse": 0.040176045419820505,
-          "latencyMicros": 0.4002766666674991
+          "latencyMicros": 0.4022199999993366
         },
         {
           "budget": 0.75,
@@ -952,7 +1012,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3871773690455322,
           "validationMse": 0.3806168572504807,
-          "latencyMicros": 0.5584733333337984
+          "latencyMicros": 0.5497200000005856
         },
         {
           "budget": 1,
@@ -963,7 +1023,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11177249504960286,
           "validationMse": 0.12277265346594383,
-          "latencyMicros": 0.5651400000003074
+          "latencyMicros": 0.5577799999991839
         }
       ]
     },
@@ -982,7 +1042,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04866256005702286,
           "validationMse": 0.04912608404472696,
-          "latencyMicros": 0.38472333333326486
+          "latencyMicros": 0.39625000000038807
         },
         {
           "budget": 0.375,
@@ -993,7 +1053,7 @@
           "invalidReason": null,
           "calibrationMse": 0.048429580054300696,
           "validationMse": 0.04890428696349195,
-          "latencyMicros": 0.3997233333332891
+          "latencyMicros": 0.4070833333344126
         },
         {
           "budget": 0.5,
@@ -1004,7 +1064,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05020778436567145,
           "validationMse": 0.04858069969889934,
-          "latencyMicros": 0.4502766666670747
+          "latencyMicros": 0.4566666666657208
         },
         {
           "budget": 0.75,
@@ -1015,7 +1075,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3596275907527857,
           "validationMse": 0.38955887550754026,
-          "latencyMicros": 0.5263899999984764
+          "latencyMicros": 0.5399999999993573
         },
         {
           "budget": 1,
@@ -1026,7 +1086,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11706339265060585,
           "validationMse": 0.1313031571199481,
-          "latencyMicros": 0.5608333333323875
+          "latencyMicros": 0.5686100000002625
         }
       ]
     },
@@ -1045,7 +1105,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026988772433363596,
           "validationMse": 0.026558510538021888,
-          "latencyMicros": 0.32805333333271847
+          "latencyMicros": 0.3451366666665005
         },
         {
           "budget": 0.375,
@@ -1056,7 +1116,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03255170576544865,
           "validationMse": 0.03199078376555538,
-          "latencyMicros": 0.36472333333222196
+          "latencyMicros": 0.37236333333263855
         },
         {
           "budget": 0.5,
@@ -1067,7 +1127,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06986426339214942,
           "validationMse": 0.06531185193677391,
-          "latencyMicros": 0.4798633333333176
+          "latencyMicros": 0.44735999999981385
         },
         {
           "budget": 0.75,
@@ -1078,7 +1138,7 @@
           "invalidReason": null,
           "calibrationMse": 0.30396262900715587,
           "validationMse": 0.2662451321219257,
-          "latencyMicros": 0.5395833333341216
+          "latencyMicros": 0.5509733333337863
         },
         {
           "budget": 1,
@@ -1089,7 +1149,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06265050199642971,
           "validationMse": 0.06583581248074293,
-          "latencyMicros": 0.5577766666662379
+          "latencyMicros": 0.5713900000000649
         }
       ]
     },
@@ -1108,7 +1168,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03250930743510749,
           "validationMse": 0.031036191921282028,
-          "latencyMicros": 0.3299999999975019
+          "latencyMicros": 0.35000000000157644
         },
         {
           "budget": 0.375,
@@ -1119,7 +1179,7 @@
           "invalidReason": null,
           "calibrationMse": 0.037829872610959527,
           "validationMse": 0.03675266614854943,
-          "latencyMicros": 0.4170833333319024
+          "latencyMicros": 0.4225000000011884
         },
         {
           "budget": 0.5,
@@ -1130,7 +1190,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03686359667333036,
           "validationMse": 0.03223966679384671,
-          "latencyMicros": 0.4388866666643783
+          "latencyMicros": 0.44166666666569654
         },
         {
           "budget": 0.75,
@@ -1141,7 +1201,7 @@
           "invalidReason": null,
           "calibrationMse": 0.2919923873867578,
           "validationMse": 0.2368889025151906,
-          "latencyMicros": 0.5145833333335759
+          "latencyMicros": 0.5263900000015079
         },
         {
           "budget": 1,
@@ -1152,7 +1212,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11506901881180637,
           "validationMse": 0.10365273612980257,
-          "latencyMicros": 0.5616666666658906
+          "latencyMicros": 0.5756933333335231
         }
       ]
     },
@@ -1171,7 +1231,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04175556335498944,
           "validationMse": 0.04310492693617833,
-          "latencyMicros": 0.6193066666673985
+          "latencyMicros": 0.7809699999991911
         },
         {
           "budget": 0.375,
@@ -1182,7 +1242,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03195933681706783,
           "validationMse": 0.033524921130575015,
-          "latencyMicros": 0.8226366666682831
+          "latencyMicros": 0.8155566666664527
         },
         {
           "budget": 0.5,
@@ -1193,7 +1253,7 @@
           "invalidReason": null,
           "calibrationMse": 0.046475595404195484,
           "validationMse": 0.04940284854746355,
-          "latencyMicros": 0.837776666667196
+          "latencyMicros": 0.8688899999985248
         },
         {
           "budget": 0.75,
@@ -1204,7 +1264,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07892462783151628,
           "validationMse": 0.07723611328790293,
-          "latencyMicros": 0.9766666666685827
+          "latencyMicros": 0.5611133333331964
         },
         {
           "budget": 1,
@@ -1215,7 +1275,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05510316387579605,
           "validationMse": 0.04700064084957082,
-          "latencyMicros": 0.6241666666664969
+          "latencyMicros": 0.9586133333323232
         }
       ]
     },
@@ -1234,7 +1294,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06986862587388291,
           "validationMse": 0.057339287286617635,
-          "latencyMicros": 0.48180666666667094
+          "latencyMicros": 0.44291666666746704
         },
         {
           "budget": 0.375,
@@ -1245,7 +1305,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04005708754274121,
           "validationMse": 0.032836509088215074,
-          "latencyMicros": 0.5241666666673458
+          "latencyMicros": 0.5304166666671032
         },
         {
           "budget": 0.5,
@@ -1256,7 +1316,7 @@
           "invalidReason": null,
           "calibrationMse": 0.030920457923015454,
           "validationMse": 0.03043171179654803,
-          "latencyMicros": 0.5812499999986661
+          "latencyMicros": 0.5293066666642213
         },
         {
           "budget": 0.75,
@@ -1267,7 +1327,7 @@
           "invalidReason": null,
           "calibrationMse": 0.09262109681872148,
           "validationMse": 0.09894786032729969,
-          "latencyMicros": 0.565556666667059
+          "latencyMicros": 0.5741666666654055
         },
         {
           "budget": 1,
@@ -1278,7 +1338,7 @@
           "invalidReason": null,
           "calibrationMse": 0.13247777753517234,
           "validationMse": 0.152483888323582,
-          "latencyMicros": 0.6284733333359327
+          "latencyMicros": 0.5999999999979385
         }
       ]
     },
@@ -1297,7 +1357,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05119629103324132,
           "validationMse": 0.047854043176052755,
-          "latencyMicros": 0.42055666666480346
+          "latencyMicros": 0.4022233333337984
         },
         {
           "budget": 0.375,
@@ -1308,7 +1368,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05736217069856321,
           "validationMse": 0.053852234770050994,
-          "latencyMicros": 0.44166666666569654
+          "latencyMicros": 0.4277766666655225
         },
         {
           "budget": 0.5,
@@ -1319,7 +1379,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07018800417589842,
           "validationMse": 0.0768251669017988,
-          "latencyMicros": 0.4983333333348128
+          "latencyMicros": 0.5066666666668121
         },
         {
           "budget": 0.75,
@@ -1330,7 +1390,7 @@
           "invalidReason": null,
           "calibrationMse": 0.14845147261952685,
           "validationMse": 0.12691266069566193,
-          "latencyMicros": 0.5398633333303829
+          "latencyMicros": 0.5416666666648476
         },
         {
           "budget": 1,
@@ -1341,7 +1401,7 @@
           "invalidReason": null,
           "calibrationMse": 0.049613587850941006,
           "validationMse": 0.049461436679563216,
-          "latencyMicros": 0.6008333333314416
+          "latencyMicros": 0.5938866666656395
         }
       ]
     },
@@ -1360,7 +1420,7 @@
           "invalidReason": null,
           "calibrationMse": 0.024700929951525438,
           "validationMse": 0.024726441770100114,
-          "latencyMicros": 0.38486000000072335
+          "latencyMicros": 0.43402999999974173
         },
         {
           "budget": 0.375,
@@ -1371,7 +1431,7 @@
           "invalidReason": null,
           "calibrationMse": 0.025196703031874317,
           "validationMse": 0.02461836038445912,
-          "latencyMicros": 0.5402766666672202
+          "latencyMicros": 0.5965299999994992
         },
         {
           "budget": 0.5,
@@ -1382,7 +1442,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04475608174275763,
           "validationMse": 0.04430104570199527,
-          "latencyMicros": 0.8990266666690635
+          "latencyMicros": 0.7665300000007846
         },
         {
           "budget": 0.75,
@@ -1393,7 +1453,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03626663399878282,
           "validationMse": 0.03134672906336191,
-          "latencyMicros": 0.5695833333356859
+          "latencyMicros": 0.6115266666650617
         },
         {
           "budget": 1,
@@ -1404,7 +1464,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07355861000809218,
           "validationMse": 0.08326566134447565,
-          "latencyMicros": 0.5868033333323789
+          "latencyMicros": 0.6175000000015037
         }
       ]
     },
@@ -1423,7 +1483,7 @@
           "invalidReason": null,
           "calibrationMse": 0.031033939545053582,
           "validationMse": 0.027266935728515976,
-          "latencyMicros": 0.6829166666648234
+          "latencyMicros": 0.5416666666678793
         },
         {
           "budget": 0.375,
@@ -1434,7 +1494,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0822891601132188,
           "validationMse": 0.0798570236743548,
-          "latencyMicros": 0.4452766666660561
+          "latencyMicros": 0.46166666666673944
         },
         {
           "budget": 0.5,
@@ -1445,7 +1505,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03175437182554694,
           "validationMse": 0.03330358727139707,
-          "latencyMicros": 0.5709700000018832
+          "latencyMicros": 0.5994433333338142
         },
         {
           "budget": 0.75,
@@ -1456,7 +1516,7 @@
           "invalidReason": null,
           "calibrationMse": 0.09710710759321288,
           "validationMse": 0.09661368843441864,
-          "latencyMicros": 0.5288899999989857
+          "latencyMicros": 0.8698600000025181
         },
         {
           "budget": 1,
@@ -1467,7 +1527,7 @@
           "invalidReason": null,
           "calibrationMse": 0.18288590091652496,
           "validationMse": 0.20399103967122845,
-          "latencyMicros": 0.6087499999982052
+          "latencyMicros": 0.668193333334178
         }
       ]
     },
@@ -1486,7 +1546,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026071088611476383,
           "validationMse": 0.026093653813478324,
-          "latencyMicros": 0.41527666666600754
+          "latencyMicros": 0.4440266666642856
         },
         {
           "budget": 0.375,
@@ -1497,7 +1557,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03221884892080228,
           "validationMse": 0.03132503097735405,
-          "latencyMicros": 0.5543066666662829
+          "latencyMicros": 0.6380533333322091
         },
         {
           "budget": 0.5,
@@ -1508,7 +1568,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06968411664490637,
           "validationMse": 0.06748309845224247,
-          "latencyMicros": 0.517776666665668
+          "latencyMicros": 0.5968033333344162
         },
         {
           "budget": 0.75,
@@ -1519,7 +1579,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05180912706331661,
           "validationMse": 0.04905753218069347,
-          "latencyMicros": 0.5902800000027734
+          "latencyMicros": 0.6923633333341664
         },
         {
           "budget": 1,
@@ -1530,7 +1590,7 @@
           "invalidReason": null,
           "calibrationMse": 0.09299558441735269,
           "validationMse": 0.10555049789012932,
-          "latencyMicros": 0.5773633333319594
+          "latencyMicros": 0.8206933333318981
         }
       ]
     },
@@ -1549,7 +1609,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026604620052395955,
           "validationMse": 0.025194034637051502,
-          "latencyMicros": 0.4286099999990256
+          "latencyMicros": 0.4350000000007033
         },
         {
           "budget": 0.375,
@@ -1560,7 +1620,7 @@
           "invalidReason": null,
           "calibrationMse": 0.030454895978093463,
           "validationMse": 0.03053931726726224,
-          "latencyMicros": 0.44305333333189384
+          "latencyMicros": 0.5656933333314859
         },
         {
           "budget": 0.5,
@@ -1571,7 +1631,7 @@
           "invalidReason": null,
           "calibrationMse": 0.029656972192137962,
           "validationMse": 0.03140897303440622,
-          "latencyMicros": 0.4712500000005093
+          "latencyMicros": 0.5411099999976917
         },
         {
           "budget": 0.75,
@@ -1582,7 +1642,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11688839818156213,
           "validationMse": 0.13189004753820646,
-          "latencyMicros": 0.8512499999991027
+          "latencyMicros": 0.5466666666658663
         },
         {
           "budget": 1,
@@ -1593,7 +1653,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11460669288566311,
           "validationMse": 0.12214377090456248,
-          "latencyMicros": 0.6087499999982052
+          "latencyMicros": 0.6265299999995477
         }
       ]
     },
@@ -1612,7 +1672,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026006258223318778,
           "validationMse": 0.02504673597096116,
-          "latencyMicros": 0.4140299999986989
+          "latencyMicros": 0.44514000000162923
         },
         {
           "budget": 0.375,
@@ -1623,7 +1683,7 @@
           "invalidReason": null,
           "calibrationMse": 0.027698110958179274,
           "validationMse": 0.027358813277955245,
-          "latencyMicros": 0.5029166666675641
+          "latencyMicros": 0.7037499999993694
         },
         {
           "budget": 0.5,
@@ -1634,7 +1694,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07283497790859425,
           "validationMse": 0.06844428087028402,
-          "latencyMicros": 0.5430566666655068
+          "latencyMicros": 0.6374999999995149
         },
         {
           "budget": 0.75,
@@ -1645,7 +1705,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05245209141612829,
           "validationMse": 0.05861922470966627,
-          "latencyMicros": 0.7077799999994264
+          "latencyMicros": 0.7137500000014066
         },
         {
           "budget": 1,
@@ -1656,7 +1716,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04903160018579537,
           "validationMse": 0.0495398537596192,
-          "latencyMicros": 0.5586099999982252
+          "latencyMicros": 0.8334700000007919
         }
       ]
     },
@@ -1675,7 +1735,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02723888609977464,
           "validationMse": 0.026315096825606763,
-          "latencyMicros": 0.3970833333338912
+          "latencyMicros": 0.5577800000022156
         },
         {
           "budget": 0.375,
@@ -1686,7 +1746,7 @@
           "invalidReason": null,
           "calibrationMse": 0.024360237368881543,
           "validationMse": 0.024407947289314502,
-          "latencyMicros": 0.48611333333610673
+          "latencyMicros": 0.44125000000046083
         },
         {
           "budget": 0.5,
@@ -1697,7 +1757,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026241335954782487,
           "validationMse": 0.02551566946990918,
-          "latencyMicros": 0.528193333332941
+          "latencyMicros": 0.6972233333332648
         },
         {
           "budget": 0.75,
@@ -1708,7 +1768,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04992968225422065,
           "validationMse": 0.045277586981335285,
-          "latencyMicros": 0.5780533333351437
+          "latencyMicros": 0.9315266666665897
         },
         {
           "budget": 1,
@@ -1719,7 +1779,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07668726083427355,
           "validationMse": 0.06907431516300636,
-          "latencyMicros": 0.6019466666657536
+          "latencyMicros": 0.6272233333341622
         }
       ]
     },
@@ -1738,7 +1798,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06932075255220886,
           "validationMse": 0.06636465700916241,
-          "latencyMicros": 0.5362499999985934
+          "latencyMicros": 0.6909733333335074
         },
         {
           "budget": 0.375,
@@ -1749,7 +1809,7 @@
           "invalidReason": null,
           "calibrationMse": 0.034977621226726284,
           "validationMse": 0.035306479689678934,
-          "latencyMicros": 0.7820833333335031
+          "latencyMicros": 0.7293066666655553
         },
         {
           "budget": 0.5,
@@ -1760,7 +1820,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03950530932515063,
           "validationMse": 0.0385909911842285,
-          "latencyMicros": 0.49971999999797845
+          "latencyMicros": 0.5788866666656153
         },
         {
           "budget": 0.75,
@@ -1771,7 +1831,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03548940807338583,
           "validationMse": 0.0382909949127112,
-          "latencyMicros": 0.697499999999612
+          "latencyMicros": 0.6323633333340695
         },
         {
           "budget": 1,
@@ -1782,7 +1842,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0638590496938555,
           "validationMse": 0.07249734930518112,
-          "latencyMicros": 0.7674999999987145
+          "latencyMicros": 0.7386133333329781
         }
       ]
     },
@@ -1801,7 +1861,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026511731916498523,
           "validationMse": 0.02635366614590156,
-          "latencyMicros": 0.5276400000002468
+          "latencyMicros": 0.5187500000010914
         },
         {
           "budget": 0.375,
@@ -1812,7 +1872,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02493812245071788,
           "validationMse": 0.024771910907323984,
-          "latencyMicros": 0.3826366666665611
+          "latencyMicros": 0.40666666666766105
         },
         {
           "budget": 0.5,
@@ -1823,7 +1883,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04199107211655825,
           "validationMse": 0.04244394231131949,
-          "latencyMicros": 0.6087500000012369
+          "latencyMicros": 0.6056966666650018
         },
         {
           "budget": 0.75,
@@ -1834,7 +1894,7 @@
           "invalidReason": null,
           "calibrationMse": 0.041951243954729725,
           "validationMse": 0.04417870529718286,
-          "latencyMicros": 0.5729166666666666
+          "latencyMicros": 0.6673600000006749
         },
         {
           "budget": 1,
@@ -1845,7 +1905,7 @@
           "invalidReason": null,
           "calibrationMse": 0.09299318814390412,
           "validationMse": 0.09911261862938589,
-          "latencyMicros": 0.6154166666662301
+          "latencyMicros": 0.6170833333332363
         }
       ]
     },
@@ -1864,7 +1924,7 @@
           "invalidReason": null,
           "calibrationMse": 0.039390345265672574,
           "validationMse": 0.04103599741947274,
-          "latencyMicros": 0.48736000000038376
+          "latencyMicros": 0.7045833333328725
         },
         {
           "budget": 0.375,
@@ -1875,7 +1935,7 @@
           "invalidReason": null,
           "calibrationMse": 0.031019123398661464,
           "validationMse": 0.02992543374377887,
-          "latencyMicros": 0.40972333333532635
+          "latencyMicros": 0.47249999999924813
         },
         {
           "budget": 0.5,
@@ -1886,7 +1946,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03331638299123198,
           "validationMse": 0.03442824865200365,
-          "latencyMicros": 0.4513900000013867
+          "latencyMicros": 0.5758333333324117
         },
         {
           "budget": 0.75,
@@ -1897,7 +1957,7 @@
           "invalidReason": null,
           "calibrationMse": 0.084128225299889,
           "validationMse": 0.08469421107252306,
-          "latencyMicros": 0.5268066666667437
+          "latencyMicros": 0.5751400000008289
         },
         {
           "budget": 1,
@@ -1908,7 +1968,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05808252217135735,
           "validationMse": 0.050249993985850214,
-          "latencyMicros": 0.718890000001314
+          "latencyMicros": 0.8173600000009174
         }
       ]
     },
@@ -1927,7 +1987,7 @@
           "invalidReason": null,
           "calibrationMse": 0.027473628966948868,
           "validationMse": 0.028475262589685992,
-          "latencyMicros": 0.44721999999940937
+          "latencyMicros": 0.4819433333310978
         },
         {
           "budget": 0.375,
@@ -1938,7 +1998,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0574283130639866,
           "validationMse": 0.06298054828373457,
-          "latencyMicros": 0.3755566666647307
+          "latencyMicros": 0.4255566666658221
         },
         {
           "budget": 0.5,
@@ -1949,7 +2009,7 @@
           "invalidReason": null,
           "calibrationMse": 0.044498263357999675,
           "validationMse": 0.04700476047717597,
-          "latencyMicros": 0.5552800000017063
+          "latencyMicros": 0.5936133333337542
         },
         {
           "budget": 0.75,
@@ -1960,7 +2020,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11084449222904932,
           "validationMse": 0.11096663251064513,
-          "latencyMicros": 0.5548633333334388
+          "latencyMicros": 0.7376399999975547
         },
         {
           "budget": 1,
@@ -1971,7 +2031,7 @@
           "invalidReason": null,
           "calibrationMse": 0.10781883900238955,
           "validationMse": 0.10801819724275061,
-          "latencyMicros": 0.6111100000028576
+          "latencyMicros": 0.6527766666658863
         }
       ]
     },
@@ -1990,7 +2050,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02865436114978001,
           "validationMse": 0.02804227779141608,
-          "latencyMicros": 0.4711100000016207
+          "latencyMicros": 0.7180566666647792
         },
         {
           "budget": 0.375,
@@ -2001,7 +2061,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04315330002690373,
           "validationMse": 0.04207859309701989,
-          "latencyMicros": 0.424723333332319
+          "latencyMicros": 0.5377766666667109
         },
         {
           "budget": 0.5,
@@ -2012,7 +2072,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02760180297594872,
           "validationMse": 0.02662569814995379,
-          "latencyMicros": 0.3443033333345132
+          "latencyMicros": 0.4411100000015722
         },
         {
           "budget": 0.75,
@@ -2023,7 +2083,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07417613387518085,
           "validationMse": 0.07061856654935811,
-          "latencyMicros": 0.5409733333332648
+          "latencyMicros": 0.5915266666670504
         },
         {
           "budget": 1,
@@ -2034,7 +2094,7 @@
           "invalidReason": null,
           "calibrationMse": 0.041131280498740146,
           "validationMse": 0.046859785985212135,
-          "latencyMicros": 0.7180566666647792
+          "latencyMicros": 0.7733333333332363
         }
       ]
     },
@@ -2053,7 +2113,7 @@
           "invalidReason": null,
           "calibrationMse": 0.025812186379034853,
           "validationMse": 0.025184513676768508,
-          "latencyMicros": 0.4763899999973849
+          "latencyMicros": 0.5141666666653085
         },
         {
           "budget": 0.375,
@@ -2064,7 +2124,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03734843441176591,
           "validationMse": 0.03823263466324406,
-          "latencyMicros": 0.5813866666661246
+          "latencyMicros": 0.6606966666640801
         },
         {
           "budget": 0.5,
@@ -2075,7 +2135,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07579889785013778,
           "validationMse": 0.07444384125995786,
-          "latencyMicros": 0.7787499999994907
+          "latencyMicros": 0.5425000000013824
         },
         {
           "budget": 0.75,
@@ -2086,7 +2146,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11487745862825449,
           "validationMse": 0.12240801239197656,
-          "latencyMicros": 0.6883333333341094
+          "latencyMicros": 0.6823600000006991
         },
         {
           "budget": 1,
@@ -2097,7 +2157,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06440197084241021,
           "validationMse": 0.06698252752917204,
-          "latencyMicros": 0.5827766666667836
+          "latencyMicros": 0.863886666666076
         }
       ]
     },
@@ -2116,7 +2176,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02524944989403564,
           "validationMse": 0.024781504278989713,
-          "latencyMicros": 0.3983333333356616
+          "latencyMicros": 0.4886133333335844
         },
         {
           "budget": 0.375,
@@ -2127,7 +2187,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03203787154806587,
           "validationMse": 0.03153151721266656,
-          "latencyMicros": 0.4594433333356089
+          "latencyMicros": 0.6236099999963093
         },
         {
           "budget": 0.5,
@@ -2138,7 +2198,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07232028109053616,
           "validationMse": 0.06303348700237874,
-          "latencyMicros": 0.5979166666656965
+          "latencyMicros": 0.7851400000011685
         },
         {
           "budget": 0.75,
@@ -2149,7 +2209,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04875231155706981,
           "validationMse": 0.05759856164721266,
-          "latencyMicros": 0.9530566666641486
+          "latencyMicros": 0.6023633333340209
         },
         {
           "budget": 1,
@@ -2160,7 +2220,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0719472605003268,
           "validationMse": 0.06209579278172702,
-          "latencyMicros": 0.651806666670988
+          "latencyMicros": 0.6655566666631785
         }
       ]
     },
@@ -2179,7 +2239,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02697622657387918,
           "validationMse": 0.026521041579660187,
-          "latencyMicros": 0.42458333333343035
+          "latencyMicros": 0.5854166666661816
         },
         {
           "budget": 0.375,
@@ -2190,7 +2250,7 @@
           "invalidReason": null,
           "calibrationMse": 0.037756924631574575,
           "validationMse": 0.036052596235499945,
-          "latencyMicros": 0.7365266666723377
+          "latencyMicros": 0.7877766666630729
         },
         {
           "budget": 0.5,
@@ -2201,7 +2261,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06430960686262174,
           "validationMse": 0.06341754196096551,
-          "latencyMicros": 0.49888666666447534
+          "latencyMicros": 0.5661099999997532
         },
         {
           "budget": 0.75,
@@ -2212,7 +2272,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0388976676514325,
           "validationMse": 0.04050560831011694,
-          "latencyMicros": 0.6700000000031044
+          "latencyMicros": 0.7480566666648277
         },
         {
           "budget": 1,
@@ -2223,7 +2283,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0626223800514749,
           "validationMse": 0.062002611341226185,
-          "latencyMicros": 0.7433333333331879
+          "latencyMicros": 0.9501399999984036
         }
       ]
     },
@@ -2242,7 +2302,7 @@
           "invalidReason": null,
           "calibrationMse": 0.025838722377085524,
           "validationMse": 0.026490056190808423,
-          "latencyMicros": 0.5148600000029546
+          "latencyMicros": 0.5918066666648277
         },
         {
           "budget": 0.375,
@@ -2253,7 +2313,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02702540753804455,
           "validationMse": 0.027183266290634733,
-          "latencyMicros": 0.48180333333827247
+          "latencyMicros": 0.4934733333357144
         },
         {
           "budget": 0.5,
@@ -2264,7 +2324,7 @@
           "invalidReason": null,
           "calibrationMse": 0.043970186645752384,
           "validationMse": 0.04782687477094025,
-          "latencyMicros": 0.6277766666668564
+          "latencyMicros": 0.5790266666614722
         },
         {
           "budget": 0.75,
@@ -2275,7 +2335,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07776033736882004,
           "validationMse": 0.08023987351066278,
-          "latencyMicros": 1.7555566666608986
+          "latencyMicros": 0.5668066666657978
         },
         {
           "budget": 1,
@@ -2286,7 +2346,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0935268111070053,
           "validationMse": 0.09086815324797645,
-          "latencyMicros": 0.62013999999787
+          "latencyMicros": 0.6561099999998987
         }
       ]
     },
@@ -2305,7 +2365,7 @@
           "invalidReason": null,
           "calibrationMse": 0.028000194874566276,
           "validationMse": 0.026614494325345947,
-          "latencyMicros": 0.4370833333329453
+          "latencyMicros": 0.703333333331102
         },
         {
           "budget": 0.375,
@@ -2316,7 +2376,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026816326853412474,
           "validationMse": 0.026663592070150607,
-          "latencyMicros": 0.5497233333335316
+          "latencyMicros": 0.6620833333302775
         },
         {
           "budget": 0.5,
@@ -2327,7 +2387,7 @@
           "invalidReason": null,
           "calibrationMse": 0.035462256226976525,
           "validationMse": 0.033070143092306,
-          "latencyMicros": 0.4648633333332934
+          "latencyMicros": 0.6138900000041758
         },
         {
           "budget": 0.75,
@@ -2338,7 +2398,7 @@
           "invalidReason": null,
           "calibrationMse": 0.10013736100267896,
           "validationMse": 0.10594692773119073,
-          "latencyMicros": 0.7251400000010714
+          "latencyMicros": 0.7554166666644354
         },
         {
           "budget": 1,
@@ -2349,7 +2409,7 @@
           "invalidReason": null,
           "calibrationMse": 0.13166952438041613,
           "validationMse": 0.13188721171539725,
-          "latencyMicros": 0.6930533333312875
+          "latencyMicros": 0.7940266666628304
         }
       ]
     },
@@ -2368,7 +2428,7 @@
           "invalidReason": null,
           "calibrationMse": 0.027281628822149937,
           "validationMse": 0.025957883113221534,
-          "latencyMicros": 0.4222233333348413
+          "latencyMicros": 0.47583333333629224
         },
         {
           "budget": 0.375,
@@ -2379,7 +2439,7 @@
           "invalidReason": null,
           "calibrationMse": 0.045610538730249256,
           "validationMse": 0.03938208430154949,
-          "latencyMicros": 0.5690299999999601
+          "latencyMicros": 0.7274999999996604
         },
         {
           "budget": 0.5,
@@ -2390,7 +2450,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03592510021913564,
           "validationMse": 0.037587998649215325,
-          "latencyMicros": 3.0818066666627906
+          "latencyMicros": 0.7251400000010714
         },
         {
           "budget": 0.75,
@@ -2401,7 +2461,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07861158484358227,
           "validationMse": 0.0648170036480053,
-          "latencyMicros": 0.5927766666657893
+          "latencyMicros": 0.6912499999998545
         },
         {
           "budget": 1,
@@ -2412,7 +2472,7 @@
           "invalidReason": null,
           "calibrationMse": 0.09503976342243257,
           "validationMse": 0.08459589490116572,
-          "latencyMicros": 0.5994466666622126
+          "latencyMicros": 0.6425000000005335
         }
       ]
     },
@@ -2431,7 +2491,7 @@
           "invalidReason": null,
           "calibrationMse": 0.030558043455423435,
           "validationMse": 0.03015913125004079,
-          "latencyMicros": 0.6001399999998588
+          "latencyMicros": 0.6497233333357144
         },
         {
           "budget": 0.375,
@@ -2442,7 +2502,7 @@
           "invalidReason": null,
           "calibrationMse": 0.027546891969465078,
           "validationMse": 0.025562594025196745,
-          "latencyMicros": 0.6605566666682231
+          "latencyMicros": 0.6254166666682673
         },
         {
           "budget": 0.5,
@@ -2453,7 +2513,7 @@
           "invalidReason": null,
           "calibrationMse": 0.031715613661559366,
           "validationMse": 0.028200141529228003,
-          "latencyMicros": 0.545553333334586
+          "latencyMicros": 0.6876400000025266
         },
         {
           "budget": 0.75,
@@ -2464,7 +2524,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08372227291774259,
           "validationMse": 0.0857444788817152,
-          "latencyMicros": 0.6826400000015079
+          "latencyMicros": 0.7844433333351238
         },
         {
           "budget": 1,
@@ -2475,7 +2535,7 @@
           "invalidReason": null,
           "calibrationMse": 0.1662881849760792,
           "validationMse": 0.15493032833601414,
-          "latencyMicros": 0.672640000005534
+          "latencyMicros": 0.727780000003501
         }
       ]
     },
@@ -2494,7 +2554,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02563689812899997,
           "validationMse": 0.0248493812474886,
-          "latencyMicros": 0.411109999998492
+          "latencyMicros": 0.4644433333366275
         },
         {
           "budget": 0.375,
@@ -2505,7 +2565,7 @@
           "invalidReason": null,
           "calibrationMse": 0.051662531332278584,
           "validationMse": 0.05638733063708725,
-          "latencyMicros": 0.5634733333317854
+          "latencyMicros": 0.7119466666699736
         },
         {
           "budget": 0.5,
@@ -2516,7 +2576,7 @@
           "invalidReason": null,
           "calibrationMse": 0.051544525887305,
           "validationMse": 0.040316853774712856,
-          "latencyMicros": 0.7195833333328968
+          "latencyMicros": 0.7856933333338626
         },
         {
           "budget": 0.75,
@@ -2527,7 +2587,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06067671427478255,
           "validationMse": 0.05710497820463582,
-          "latencyMicros": 0.5158333333323147
+          "latencyMicros": 0.5833333333369713
         },
         {
           "budget": 1,
@@ -2538,7 +2598,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06619014745601731,
           "validationMse": 0.059089309283517744,
-          "latencyMicros": 0.5947233333366361
+          "latencyMicros": 0.6319433333313403
         }
       ]
     },
@@ -2557,7 +2617,7 @@
           "invalidReason": null,
           "calibrationMse": 0.029795889678462927,
           "validationMse": 0.030776140293116126,
-          "latencyMicros": 0.7038900000043213
+          "latencyMicros": 0.7798633333307711
         },
         {
           "budget": 0.375,
@@ -2568,7 +2628,7 @@
           "invalidReason": null,
           "calibrationMse": 0.025034645507186832,
           "validationMse": 0.025330087078520774,
-          "latencyMicros": 0.5100000000008246
+          "latencyMicros": 0.47444333333260147
         },
         {
           "budget": 0.5,
@@ -2579,7 +2639,7 @@
           "invalidReason": null,
           "calibrationMse": 0.028930306450545295,
           "validationMse": 0.029208587667953007,
-          "latencyMicros": 0.5724999999983993
+          "latencyMicros": 0.6219433333293031
         },
         {
           "budget": 0.75,
@@ -2590,7 +2650,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08748230686855724,
           "validationMse": 0.08971448760536854,
-          "latencyMicros": 0.66069333333265
+          "latencyMicros": 0.8488899999974819
         },
         {
           "budget": 1,
@@ -2601,7 +2661,7 @@
           "invalidReason": null,
           "calibrationMse": 0.10967001500095952,
           "validationMse": 0.12503279986759824,
-          "latencyMicros": 0.6877766666669535
+          "latencyMicros": 0.742083333334449
         }
       ]
     },
@@ -2620,7 +2680,7 @@
           "invalidReason": null,
           "calibrationMse": 0.31935233483913666,
           "validationMse": 0.3289161420640994,
-          "latencyMicros": 0.3530566666631785
+          "latencyMicros": 0.4076400000000528
         },
         {
           "budget": 0.375,
@@ -2631,7 +2691,7 @@
           "invalidReason": null,
           "calibrationMse": 0.09218091567375998,
           "validationMse": 0.1041327778395455,
-          "latencyMicros": 0.4462499999984478
+          "latencyMicros": 0.45235999999931664
         },
         {
           "budget": 0.5,
@@ -2642,7 +2702,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06232535941753644,
           "validationMse": 0.06983321221024517,
-          "latencyMicros": 0.4200000000006791
+          "latencyMicros": 0.4174999999971381
         },
         {
           "budget": 0.75,
@@ -2653,7 +2713,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07633882576640817,
           "validationMse": 0.07780294473404921,
-          "latencyMicros": 0.47583333333629224
+          "latencyMicros": 0.46527666666709894
         },
         {
           "budget": 1,
@@ -2664,7 +2724,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03964411520985284,
           "validationMse": 0.04010872004782211,
-          "latencyMicros": 0.5745833333336728
+          "latencyMicros": 0.5770833333311506
         }
       ]
     },
@@ -2683,7 +2743,7 @@
           "invalidReason": null,
           "calibrationMse": 0.2721071843607947,
           "validationMse": 0.2693263311863857,
-          "latencyMicros": 0.5633333333328968
+          "latencyMicros": 0.6272233333280989
         },
         {
           "budget": 0.375,
@@ -2694,7 +2754,7 @@
           "invalidReason": null,
           "calibrationMse": 0.19006367737992055,
           "validationMse": 0.19745531060116953,
-          "latencyMicros": 0.5270833333330908
+          "latencyMicros": 0.5968066666658464
         },
         {
           "budget": 0.5,
@@ -2705,7 +2765,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05388825716625041,
           "validationMse": 0.05423275688187889,
-          "latencyMicros": 0.550970000003872
+          "latencyMicros": 0.6116666666700136
         },
         {
           "budget": 0.75,
@@ -2716,7 +2776,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07207846981713577,
           "validationMse": 0.07144974672350847,
-          "latencyMicros": 0.5738899999960267
+          "latencyMicros": 0.5673599999984921
         },
         {
           "budget": 1,
@@ -2727,7 +2787,7 @@
           "invalidReason": null,
           "calibrationMse": 0.034544522311581526,
           "validationMse": 0.036433534065543303,
-          "latencyMicros": 0.6534733333319309
+          "latencyMicros": 0.699029999996128
         }
       ]
     },
@@ -2746,7 +2806,7 @@
           "invalidReason": null,
           "calibrationMse": 0.2794284272724512,
           "validationMse": 0.28807472585493155,
-          "latencyMicros": 0.3959733333370726
+          "latencyMicros": 0.3915266666626849
         },
         {
           "budget": 0.375,
@@ -2757,7 +2817,7 @@
           "invalidReason": null,
           "calibrationMse": 0.2794284272724512,
           "validationMse": 0.28807472585493155,
-          "latencyMicros": 0.36347333333348314
+          "latencyMicros": 0.373056666667253
         },
         {
           "budget": 0.5,
@@ -2768,7 +2828,7 @@
           "invalidReason": null,
           "calibrationMse": 0.34155426923826593,
           "validationMse": 0.3463099202312106,
-          "latencyMicros": 0.3540266666702034
+          "latencyMicros": 0.37000000000261934
         },
         {
           "budget": 0.75,
@@ -2779,7 +2839,7 @@
           "invalidReason": null,
           "calibrationMse": 0.044891962710673576,
           "validationMse": 0.04202015419261415,
-          "latencyMicros": 0.5333333333328483
+          "latencyMicros": 0.5372233333279534
         },
         {
           "budget": 1,
@@ -2790,7 +2850,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026801301018682652,
           "validationMse": 0.02906121400014927,
-          "latencyMicros": 0.5980566666706485
+          "latencyMicros": 0.5841666666613795
         }
       ]
     },
@@ -2809,7 +2869,7 @@
           "invalidReason": null,
           "calibrationMse": 0.5580259045459975,
           "validationMse": 0.6362786389770931,
-          "latencyMicros": 0.5622233333330465
+          "latencyMicros": 0.6963899999997617
         },
         {
           "budget": 0.375,
@@ -2820,7 +2880,7 @@
           "invalidReason": null,
           "calibrationMse": 0.5399650741258167,
           "validationMse": 0.5558652971870875,
-          "latencyMicros": 0.7083333333321207
+          "latencyMicros": 0.8481933333314373
         },
         {
           "budget": 0.5,
@@ -2831,7 +2891,7 @@
           "invalidReason": null,
           "calibrationMse": 0.39833874172079986,
           "validationMse": 0.39470243821088635,
-          "latencyMicros": 0.6566666666670548
+          "latencyMicros": 0.4387499999999515
         },
         {
           "budget": 0.75,
@@ -2842,7 +2902,7 @@
           "invalidReason": null,
           "calibrationMse": 0.10424067910668991,
           "validationMse": 0.10921647874831071,
-          "latencyMicros": 0.6884733333329981
+          "latencyMicros": 0.5356933333314373
         },
         {
           "budget": 1,
@@ -2853,7 +2913,7 @@
           "invalidReason": null,
           "calibrationMse": 0.048862791364889746,
           "validationMse": 0.05137893193151292,
-          "latencyMicros": 0.8934700000039205
+          "latencyMicros": 0.8405533333340524
         }
       ]
     },
@@ -2872,7 +2932,7 @@
           "invalidReason": null,
           "calibrationMse": 1.1189005625521562,
           "validationMse": 1.158326783353187,
-          "latencyMicros": 0.8094433333341536
+          "latencyMicros": 0.5430566666655068
         },
         {
           "budget": 0.375,
@@ -2883,7 +2943,7 @@
           "invalidReason": null,
           "calibrationMse": 0.49160945043752385,
           "validationMse": 0.4886082339593178,
-          "latencyMicros": 0.622499999996459
+          "latencyMicros": 0.4655566666648762
         },
         {
           "budget": 0.5,
@@ -2894,7 +2954,7 @@
           "invalidReason": null,
           "calibrationMse": 0.44105374718440693,
           "validationMse": 0.45672408144224763,
-          "latencyMicros": 0.630416666669286
+          "latencyMicros": 0.46055333333545906
         },
         {
           "budget": 0.75,
@@ -2905,7 +2965,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15789363662223124,
           "validationMse": 0.1502980067358572,
-          "latencyMicros": 0.6979166666678793
+          "latencyMicros": 0.5088900000009744
         },
         {
           "budget": 1,
@@ -2916,7 +2976,7 @@
           "invalidReason": null,
           "calibrationMse": 0.052581028491410595,
           "validationMse": 0.04743049020291793,
-          "latencyMicros": 0.7591666666667152
+          "latencyMicros": 0.5970833333352251
         }
       ]
     },
@@ -2935,7 +2995,7 @@
           "invalidReason": null,
           "calibrationMse": 0.2462982004768503,
           "validationMse": 0.2701478014930837,
-          "latencyMicros": 0.4415299999952064
+          "latencyMicros": 0.4724999999962165
         },
         {
           "budget": 0.375,
@@ -2946,7 +3006,7 @@
           "invalidReason": null,
           "calibrationMse": 0.08493193321328789,
           "validationMse": 0.08033312558439394,
-          "latencyMicros": 0.4709699999997004
+          "latencyMicros": 0.7056933333357543
         },
         {
           "budget": 0.5,
@@ -2957,7 +3017,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04666973437830099,
           "validationMse": 0.04405075188603685,
-          "latencyMicros": 0.4919466666615335
+          "latencyMicros": 0.7200000000011642
         },
         {
           "budget": 0.75,
@@ -2968,7 +3028,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03773365190599216,
           "validationMse": 0.036397138356029195,
-          "latencyMicros": 0.5040299999988443
+          "latencyMicros": 0.7509733333366361
         },
         {
           "budget": 1,
@@ -2979,7 +3039,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03604379600357317,
           "validationMse": 0.03445137135593978,
-          "latencyMicros": 0.6115299999995235
+          "latencyMicros": 2.415416666663077
         }
       ]
     },
@@ -2998,7 +3058,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3351564048256028,
           "validationMse": 0.353057866833694,
-          "latencyMicros": 0.34110999999635777
+          "latencyMicros": 0.6058333333324603
         },
         {
           "budget": 0.375,
@@ -3009,7 +3069,7 @@
           "invalidReason": null,
           "calibrationMse": 0.14614378685971469,
           "validationMse": 0.14502351506225536,
-          "latencyMicros": 0.4329166666684614
+          "latencyMicros": 0.6008333333375049
         },
         {
           "budget": 0.5,
@@ -3020,7 +3080,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05330996431843948,
           "validationMse": 0.054092490083174675,
-          "latencyMicros": 3.6700000000018917
+          "latencyMicros": 0.5659733333353264
         },
         {
           "budget": 0.75,
@@ -3031,7 +3091,7 @@
           "invalidReason": null,
           "calibrationMse": 0.039232347917848326,
           "validationMse": 0.04123756297641078,
-          "latencyMicros": 0.7151366666706357
+          "latencyMicros": 0.622499999996459
         },
         {
           "budget": 1,
@@ -3042,7 +3102,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04713350213317826,
           "validationMse": 0.048340211097878165,
-          "latencyMicros": 0.8966666666613795
+          "latencyMicros": 0.6945833333338669
         }
       ]
     },
@@ -3061,7 +3121,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3559234375784002,
           "validationMse": 0.36715835265395635,
-          "latencyMicros": 0.4061133333379985
+          "latencyMicros": 0.3958333333321207
         },
         {
           "budget": 0.375,
@@ -3072,7 +3132,7 @@
           "invalidReason": null,
           "calibrationMse": 0.35401623098997137,
           "validationMse": 0.39913485928823533,
-          "latencyMicros": 0.4597199999989243
+          "latencyMicros": 0.4243066666640516
         },
         {
           "budget": 0.5,
@@ -3083,7 +3143,7 @@
           "invalidReason": null,
           "calibrationMse": 0.23497633044932958,
           "validationMse": 0.2399541311440106,
-          "latencyMicros": 0.44361333333048
+          "latencyMicros": 0.465833333334255
         },
         {
           "budget": 0.75,
@@ -3094,7 +3154,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0347925603508645,
           "validationMse": 0.034772765911386595,
-          "latencyMicros": 0.5230533333330337
+          "latencyMicros": 0.549583333334643
         },
         {
           "budget": 1,
@@ -3105,7 +3165,7 @@
           "invalidReason": null,
           "calibrationMse": 0.031335545011631105,
           "validationMse": 0.03043807121450491,
-          "latencyMicros": 0.60375000000325
+          "latencyMicros": 0.6830533333353136
         }
       ]
     },
@@ -3124,7 +3184,7 @@
           "invalidReason": null,
           "calibrationMse": 0.19118344678450824,
           "validationMse": 0.17893200868563003,
-          "latencyMicros": 0.3848633333291218
+          "latencyMicros": 0.686386666669326
         },
         {
           "budget": 0.375,
@@ -3135,7 +3195,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15374651426038793,
           "validationMse": 0.1427930425586477,
-          "latencyMicros": 0.425969999996596
+          "latencyMicros": 0.7323600000017905
         },
         {
           "budget": 0.5,
@@ -3146,7 +3206,7 @@
           "invalidReason": null,
           "calibrationMse": 0.16532681547694894,
           "validationMse": 0.14288138406474285,
-          "latencyMicros": 0.4149999999996605
+          "latencyMicros": 0.6945833333338669
         },
         {
           "budget": 0.75,
@@ -3157,7 +3217,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04618644588839048,
           "validationMse": 0.042912280603066115,
-          "latencyMicros": 0.5055533333325002
+          "latencyMicros": 0.7988899999994222
         },
         {
           "budget": 1,
@@ -3168,7 +3228,7 @@
           "invalidReason": null,
           "calibrationMse": 0.026452968603668678,
           "validationMse": 0.024907570861850727,
-          "latencyMicros": 0.6088899999970939
+          "latencyMicros": 0.7625000000007276
         }
       ]
     },
@@ -3187,7 +3247,7 @@
           "invalidReason": null,
           "calibrationMse": 0.16564625414424597,
           "validationMse": 0.1641082531494875,
-          "latencyMicros": 0.7665266666663229
+          "latencyMicros": 0.4034700000011071
         },
         {
           "budget": 0.375,
@@ -3198,7 +3258,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15664918698210148,
           "validationMse": 0.15968916391207874,
-          "latencyMicros": 0.7465266666683116
+          "latencyMicros": 0.5143066666641971
         },
         {
           "budget": 0.5,
@@ -3209,7 +3269,7 @@
           "invalidReason": null,
           "calibrationMse": 0.23811780233013743,
           "validationMse": 0.23587549894549967,
-          "latencyMicros": 0.8866666666654055
+          "latencyMicros": 0.5402766666641886
         },
         {
           "budget": 0.75,
@@ -3220,7 +3280,7 @@
           "invalidReason": null,
           "calibrationMse": 0.02696692299547724,
           "validationMse": 0.025889752609653694,
-          "latencyMicros": 0.8511133333316442
+          "latencyMicros": 0.6412500000017948
         },
         {
           "budget": 1,
@@ -3231,7 +3291,7 @@
           "invalidReason": null,
           "calibrationMse": 0.0238783196915614,
           "validationMse": 0.022792250413939487,
-          "latencyMicros": 1.120416666666036
+          "latencyMicros": 0.6786100000014509
         }
       ]
     },
@@ -3250,7 +3310,7 @@
           "invalidReason": null,
           "calibrationMse": 0.4035508056341137,
           "validationMse": 0.38939057198616583,
-          "latencyMicros": 0.43416666666113696
+          "latencyMicros": 0.7066666666651145
         },
         {
           "budget": 0.375,
@@ -3261,7 +3321,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3909694891872138,
           "validationMse": 0.3843663781409354,
-          "latencyMicros": 0.4393033333326457
+          "latencyMicros": 0.7509700000021743
         },
         {
           "budget": 0.5,
@@ -3272,7 +3332,7 @@
           "invalidReason": null,
           "calibrationMse": 0.34975231064574325,
           "validationMse": 0.34323804792689366,
-          "latencyMicros": 0.50541666666201
+          "latencyMicros": 17.140696666665463
         },
         {
           "budget": 0.75,
@@ -3283,7 +3343,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06214156833147576,
           "validationMse": 0.0680933969503183,
-          "latencyMicros": 0.5383333333338669
+          "latencyMicros": 0.9037499999976717
         },
         {
           "budget": 1,
@@ -3294,7 +3354,7 @@
           "invalidReason": null,
           "calibrationMse": 0.034724095036266805,
           "validationMse": 0.039669569199585725,
-          "latencyMicros": 0.5855566666650702
+          "latencyMicros": 0.5887499999941307
         }
       ]
     },
@@ -3313,7 +3373,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12121161681562259,
           "validationMse": 0.11839150356864887,
-          "latencyMicros": 0.364166666665066
+          "latencyMicros": 0.3969466666664327
         },
         {
           "budget": 0.375,
@@ -3324,7 +3384,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12121161681562259,
           "validationMse": 0.11839150356864887,
-          "latencyMicros": 0.6251399999988886
+          "latencyMicros": 0.38986333333620377
         },
         {
           "budget": 0.5,
@@ -3335,7 +3395,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06228191868442611,
           "validationMse": 0.0715591037043317,
-          "latencyMicros": 0.708750000000388
+          "latencyMicros": 0.4808333333373109
         },
         {
           "budget": 0.75,
@@ -3346,7 +3406,7 @@
           "invalidReason": null,
           "calibrationMse": 0.05976607903125763,
           "validationMse": 0.07160851949415654,
-          "latencyMicros": 0.7548600000033426
+          "latencyMicros": 0.5900000000049962
         },
         {
           "budget": 1,
@@ -3357,7 +3417,7 @@
           "invalidReason": null,
           "calibrationMse": 0.029172757241004033,
           "validationMse": 0.03077059630168011,
-          "latencyMicros": 1.0506933333332806
+          "latencyMicros": 0.5918066666648277
         }
       ]
     },
@@ -3376,7 +3436,7 @@
           "invalidReason": null,
           "calibrationMse": 1.3350440710122684,
           "validationMse": 1.3407760912299829,
-          "latencyMicros": 0.3890266666652072
+          "latencyMicros": 0.3584733333324645
         },
         {
           "budget": 0.375,
@@ -3387,7 +3447,7 @@
           "invalidReason": null,
           "calibrationMse": 0.9649167170257794,
           "validationMse": 0.9219301434584859,
-          "latencyMicros": 0.42402666666627437
+          "latencyMicros": 0.40374999999888433
         },
         {
           "budget": 0.5,
@@ -3398,7 +3458,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3771202590684853,
           "validationMse": 0.3911063213595566,
-          "latencyMicros": 0.4259733333371211
+          "latencyMicros": 0.41166666666564805
         },
         {
           "budget": 0.75,
@@ -3409,7 +3469,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07113984441702609,
           "validationMse": 0.0708542494848936,
-          "latencyMicros": 0.5211099999966488
+          "latencyMicros": 0.5198600000039733
         },
         {
           "budget": 1,
@@ -3420,7 +3480,7 @@
           "invalidReason": null,
           "calibrationMse": 0.057033030424622,
           "validationMse": 0.0605108589403401,
-          "latencyMicros": 0.5756966666679849
+          "latencyMicros": 0.5849999999979142
         }
       ]
     },
@@ -3439,7 +3499,7 @@
           "invalidReason": null,
           "calibrationMse": 0.31791861100170965,
           "validationMse": 0.33470565265509855,
-          "latencyMicros": 0.33569666666759684
+          "latencyMicros": 0.5613900000025751
         },
         {
           "budget": 0.375,
@@ -3450,7 +3510,7 @@
           "invalidReason": null,
           "calibrationMse": 0.2567858219215967,
           "validationMse": 0.27583996502784386,
-          "latencyMicros": 0.3726399999989856
+          "latencyMicros": 0.5645833333316356
         },
         {
           "budget": 0.5,
@@ -3461,7 +3521,7 @@
           "invalidReason": null,
           "calibrationMse": 0.11734933949550674,
           "validationMse": 0.11272345789119487,
-          "latencyMicros": 0.4388899999988401
+          "latencyMicros": 0.6113899999945716
         },
         {
           "budget": 0.75,
@@ -3472,7 +3532,7 @@
           "invalidReason": null,
           "calibrationMse": 0.07010396903449365,
           "validationMse": 0.06720934848850528,
-          "latencyMicros": 0.4888900000029632
+          "latencyMicros": 0.5956966666659961
         },
         {
           "budget": 1,
@@ -3483,7 +3543,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03253094297382297,
           "validationMse": 0.03492054861805637,
-          "latencyMicros": 0.5625000000024253
+          "latencyMicros": 0.6772200000038234
         }
       ]
     },
@@ -3502,7 +3562,7 @@
           "invalidReason": null,
           "calibrationMse": 0.06349068135683586,
           "validationMse": 0.06198296738855969,
-          "latencyMicros": 0.5520833333321207
+          "latencyMicros": 0.34819666666711174
         },
         {
           "budget": 0.375,
@@ -3513,7 +3573,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15160153646786145,
           "validationMse": 0.1408918395897065,
-          "latencyMicros": 0.593610000002324
+          "latencyMicros": 0.4154166666679278
         },
         {
           "budget": 0.5,
@@ -3524,7 +3584,7 @@
           "invalidReason": null,
           "calibrationMse": 0.13886367369580802,
           "validationMse": 0.12740444251667063,
-          "latencyMicros": 0.6187500000002425
+          "latencyMicros": 0.4448633333352821
         },
         {
           "budget": 0.75,
@@ -3535,7 +3595,7 @@
           "invalidReason": null,
           "calibrationMse": 0.055556706556154696,
           "validationMse": 0.056222652855493715,
-          "latencyMicros": 0.6379166666677824
+          "latencyMicros": 0.533053333335071
         },
         {
           "budget": 1,
@@ -3546,7 +3606,7 @@
           "invalidReason": null,
           "calibrationMse": 0.03276508349209768,
           "validationMse": 0.0389467594811245,
-          "latencyMicros": 0.6702766666664198
+          "latencyMicros": 0.595280000003792
         }
       ]
     },
@@ -3565,7 +3625,7 @@
           "invalidReason": null,
           "calibrationMse": 0.2424995000549181,
           "validationMse": 0.23747297157359631,
-          "latencyMicros": 0.4012500000014067
+          "latencyMicros": 0.7637500000055297
         },
         {
           "budget": 0.375,
@@ -3576,7 +3636,7 @@
           "invalidReason": null,
           "calibrationMse": 0.400292375070848,
           "validationMse": 0.42315547410378507,
-          "latencyMicros": 0.3970833333369228
+          "latencyMicros": 0.6687500000043656
         },
         {
           "budget": 0.5,
@@ -3587,7 +3647,7 @@
           "invalidReason": null,
           "calibrationMse": 0.38402426337257967,
           "validationMse": 0.40781275722049887,
-          "latencyMicros": 0.4023600000012569
+          "latencyMicros": 0.6002799999987474
         },
         {
           "budget": 0.75,
@@ -3598,7 +3658,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12966614269223856,
           "validationMse": 0.14436659217377976,
-          "latencyMicros": 0.49666666666477494
+          "latencyMicros": 0.8686133333321777
         },
         {
           "budget": 1,
@@ -3609,7 +3669,7 @@
           "invalidReason": null,
           "calibrationMse": 0.021596015838324947,
           "validationMse": 0.0272716157263263,
-          "latencyMicros": 0.6133333333370198
+          "latencyMicros": 0.90666666666948
         }
       ]
     },
@@ -3628,7 +3688,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3342317903565659,
           "validationMse": 0.3090722829396844,
-          "latencyMicros": 0.32333333333250874
+          "latencyMicros": 0.43694333333405666
         },
         {
           "budget": 0.375,
@@ -3639,7 +3699,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12110201111082103,
           "validationMse": 0.13127496911272835,
-          "latencyMicros": 0.4065266666718041
+          "latencyMicros": 0.4420833333400272
         },
         {
           "budget": 0.5,
@@ -3650,7 +3710,7 @@
           "invalidReason": null,
           "calibrationMse": 0.17605858438653305,
           "validationMse": 0.16629053509473518,
-          "latencyMicros": 0.6920833333303259
+          "latencyMicros": 0.5168066666616747
         },
         {
           "budget": 0.75,
@@ -3661,7 +3721,7 @@
           "invalidReason": null,
           "calibrationMse": 0.15842795330852827,
           "validationMse": 0.16381507807502077,
-          "latencyMicros": 0.7973599999968428
+          "latencyMicros": 0.6352766666653528
         },
         {
           "budget": 1,
@@ -3672,7 +3732,7 @@
           "invalidReason": null,
           "calibrationMse": 0.055322850095724324,
           "validationMse": 0.0628485273092148,
-          "latencyMicros": 0.7916666666642413
+          "latencyMicros": 0.6312499999936941
         }
       ]
     },
@@ -3691,7 +3751,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3703478550257729,
           "validationMse": 0.37347650108646424,
-          "latencyMicros": 0.4634733333296026
+          "latencyMicros": 0.4306966666626977
         },
         {
           "budget": 0.375,
@@ -3702,7 +3762,7 @@
           "invalidReason": null,
           "calibrationMse": 0.25098115582691666,
           "validationMse": 0.24711593472702692,
-          "latencyMicros": 0.4498599999957757
+          "latencyMicros": 0.4418066666645852
         },
         {
           "budget": 0.5,
@@ -3713,7 +3773,7 @@
           "invalidReason": null,
           "calibrationMse": 0.12409520456981551,
           "validationMse": 0.09572404678740865,
-          "latencyMicros": 0.5105566666679806
+          "latencyMicros": 0.44291666666443535
         },
         {
           "budget": 0.75,
@@ -3724,7 +3784,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04757683230042178,
           "validationMse": 0.047177098582218496,
-          "latencyMicros": 0.6454166666662786
+          "latencyMicros": 0.5959733333293116
         },
         {
           "budget": 1,
@@ -3735,7 +3795,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04318343175301417,
           "validationMse": 0.04153660214217968,
-          "latencyMicros": 0.6449999999919479
+          "latencyMicros": 0.5838899999920008
         }
       ]
     },
@@ -3754,7 +3814,7 @@
           "invalidReason": null,
           "calibrationMse": 0.21511061330022263,
           "validationMse": 0.1996702074315955,
-          "latencyMicros": 0.3230533333407948
+          "latencyMicros": 0.6665266666702033
         },
         {
           "budget": 0.375,
@@ -3765,7 +3825,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3538130437059742,
           "validationMse": 0.35595422280666367,
-          "latencyMicros": 0.3751399999964633
+          "latencyMicros": 0.6013866666641358
         },
         {
           "budget": 0.5,
@@ -3776,7 +3836,7 @@
           "invalidReason": null,
           "calibrationMse": 0.16962689664445327,
           "validationMse": 0.1759515593465105,
-          "latencyMicros": 0.4122200000104688
+          "latencyMicros": 0.6572233333281474
         },
         {
           "budget": 0.75,
@@ -3787,7 +3847,7 @@
           "invalidReason": null,
           "calibrationMse": 0.04513451459210365,
           "validationMse": 0.05370740205071159,
-          "latencyMicros": 0.4229166666603608
+          "latencyMicros": 0.5811133333312076
         },
         {
           "budget": 1,
@@ -3798,7 +3858,7 @@
           "invalidReason": null,
           "calibrationMse": 0.029250153093444572,
           "validationMse": 0.032345035847050396,
-          "latencyMicros": 0.5818066666688537
+          "latencyMicros": 0.7194466666624066
         }
       ]
     },
@@ -3817,7 +3877,7 @@
           "invalidReason": null,
           "calibrationMse": 0.19426462879945505,
           "validationMse": 0.18153940068863425,
-          "latencyMicros": 0.31083333332693047
+          "latencyMicros": 0.3738866666632627
         },
         {
           "budget": 0.375,
@@ -3828,7 +3888,7 @@
           "invalidReason": null,
           "calibrationMse": 0.3163847840685113,
           "validationMse": 0.3537651543853217,
-          "latencyMicros": 0.29847333332630416
+          "latencyMicros": 0.40583333334022126
         },
         {
           "budget": 0.5,
@@ -3839,7 +3899,7 @@
           "invalidReason": null,
           "calibrationMse": 0.19351928436311402,
           "validationMse": 0.2122399607177706,
-          "latencyMicros": 0.374443333336482
+          "latencyMicros": 0.4737499999949553
         },
         {
           "budget": 0.75,
@@ -3850,7 +3910,7 @@
           "invalidReason": null,
           "calibrationMse": 0.025453643053238936,
           "validationMse": 0.02531658181728123,
-          "latencyMicros": 0.5306933333243554
+          "latencyMicros": 0.6168066666577943
         },
         {
           "budget": 1,
@@ -3861,7 +3921,7 @@
           "invalidReason": null,
           "calibrationMse": 0.033286531239116686,
           "validationMse": 0.02763911561102187,
-          "latencyMicros": 0.8176399999986946
+          "latencyMicros": 0.5991666666765619
         }
       ]
     }
@@ -3876,7 +3936,7 @@
       "medianEffectiveSynapses": 4,
       "meanExpressivity": 0.34545454545454535,
       "invalid": 0,
-      "medianLatencyMicros": 0.41159833333343465
+      "medianLatencyMicros": 0.40895833333403664
     },
     {
       "arm": "conditioned",
@@ -3887,7 +3947,7 @@
       "medianEffectiveSynapses": 9.5,
       "meanExpressivity": 0.5323529411764706,
       "invalid": 0,
-      "medianLatencyMicros": 0.4329850000002959
+      "medianLatencyMicros": 0.438888333333504
     },
     {
       "arm": "conditioned",
@@ -3898,7 +3958,7 @@
       "medianEffectiveSynapses": 13,
       "meanExpressivity": 0.6363636363636365,
       "invalid": 0,
-      "medianLatencyMicros": 0.4778483333332891
+      "medianLatencyMicros": 0.49624999999991815
     },
     {
       "arm": "conditioned",
@@ -3909,7 +3969,7 @@
       "medianEffectiveSynapses": 28,
       "meanExpressivity": 0.8393939393939391,
       "invalid": 0,
-      "medianLatencyMicros": 0.5727083333336698
+      "medianLatencyMicros": 0.5738199999988562
     },
     {
       "arm": "conditioned",
@@ -3920,7 +3980,7 @@
       "medianEffectiveSynapses": 44,
       "meanExpressivity": 1,
       "invalid": 0,
-      "medianLatencyMicros": 0.5809033333340115
+      "medianLatencyMicros": 0.5927766666657892
     },
     {
       "arm": "independent",
@@ -3931,7 +3991,7 @@
       "medianEffectiveSynapses": 3,
       "meanExpressivity": 0.32272727272727264,
       "invalid": 0,
-      "medianLatencyMicros": 0.44215166666617733
+      "medianLatencyMicros": 0.5302083333344854
     },
     {
       "arm": "independent",
@@ -3942,7 +4002,7 @@
       "medianEffectiveSynapses": 6,
       "meanExpressivity": 0.3823529411764705,
       "invalid": 0,
-      "medianLatencyMicros": 0.5064583333341943
+      "medianLatencyMicros": 0.6100699999979042
     },
     {
       "arm": "independent",
@@ -3953,7 +4013,7 @@
       "medianEffectiveSynapses": 10.5,
       "meanExpressivity": 0.4545454545454544,
       "invalid": 0,
-      "medianLatencyMicros": 0.5504166666681461
+      "medianLatencyMicros": 0.602569999999408
     },
     {
       "arm": "independent",
@@ -3964,7 +4024,7 @@
       "medianEffectiveSynapses": 25.5,
       "meanExpressivity": 0.7833333333333331,
       "invalid": 0,
-      "medianLatencyMicros": 0.6267349999992197
+      "medianLatencyMicros": 0.6868050000002768
     },
     {
       "arm": "independent",
@@ -3975,7 +4035,7 @@
       "medianEffectiveSynapses": 44,
       "meanExpressivity": 1,
       "invalid": 0,
-      "medianLatencyMicros": 0.6132633333345439
+      "medianLatencyMicros": 0.6979866666688395
     },
     {
       "arm": "pruned",
@@ -3986,7 +4046,7 @@
       "medianEffectiveSynapses": 1,
       "meanExpressivity": 0.12272727272727271,
       "invalid": 0,
-      "medianLatencyMicros": 0.39861166666923964
+      "medianLatencyMicros": 0.4547216666651366
     },
     {
       "arm": "pruned",
@@ -3997,7 +4057,7 @@
       "medianEffectiveSynapses": 4,
       "meanExpressivity": 0.25,
       "invalid": 0,
-      "medianLatencyMicros": 0.4427766666655467
+      "medianLatencyMicros": 0.4899316666645367
     },
     {
       "arm": "pruned",
@@ -4008,7 +4068,7 @@
       "medianEffectiveSynapses": 8,
       "meanExpressivity": 0.3727272727272727,
       "invalid": 0,
-      "medianLatencyMicros": 0.49868166666177177
+      "medianLatencyMicros": 0.4988199999994928
     },
     {
       "arm": "pruned",
@@ -4019,7 +4079,7 @@
       "medianEffectiveSynapses": 23,
       "meanExpressivity": 0.6712121212121211,
       "invalid": 0,
-      "medianLatencyMicros": 0.5358333333333576
+      "medianLatencyMicros": 0.5928483333354961
     },
     {
       "arm": "pruned",
@@ -4030,7 +4090,7 @@
       "medianEffectiveSynapses": 44,
       "meanExpressivity": 1,
       "invalid": 0,
-      "medianLatencyMicros": 0.6291666666644838
+      "medianLatencyMicros": 0.6542349999987588
     }
   ],
   "primary": {

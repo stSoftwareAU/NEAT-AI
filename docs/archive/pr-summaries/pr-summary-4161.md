@@ -20,8 +20,13 @@ interpolate: its median at the unseen 75% budget (0.173) is worse than at 50%
 (0.058) or 100% (0.085). Nothing under `src/` changes, and no default or genome
 format changes.
 
-The cited paper could not be read in this run, so its method is not pinned (see
-the `missing` entry below). Part of #4161.
+The cited paper, arXiv 2611.06895 v1 (Fehrman, Morra & Naumann), is now pinned
+in the manifest (`manifest.paper`, from `SOURCE_METHOD`) and on the evidence
+page. Each element of its method is mapped to this study, and the details the
+source excerpts do not give are listed. The paper's core mechanism is a
+HyperNEAT CPPN that takes developmental time as an input. This genome has no
+budget input, so the study tests a simpler, gene-ordered expression, and the
+negative result is not evidence against the paper's generator.
 
 ## Spec
 
@@ -61,8 +66,13 @@ the `missing` entry below). Part of #4161.
 
 ### Undiscoverable Facts
 
-- arXiv 2611.06895 could not be fetched: WebFetch returned
-  `proxy refused the connection`. The design follows the issue text.
+- This host's proxy refuses direct fetches of arxiv.org (curl:
+  `CONNECT tunnel failed, response 403`; WebFetch:
+  `proxy refused the connection`). The paper was read on 2026-11-15 through
+  search-indexed excerpts of its abstract and HTML full text. The CPPN's other
+  inputs and its threshold, the NEAT settings beyond population size (100) and
+  generations (200), the task fitness definitions and the exact unseen ages are
+  not in those excerpts. They are listed as `unpinned` and not guessed.
 - Latency (µs per activation) was measured on a shared, parallel host. It is
   indicative only and no verdict uses it.
 
@@ -71,7 +81,7 @@ the `missing` entry below). Part of #4161.
 Backend and CLI research harness only; no UI. Write-up:
 `docs/evidence/budget-conditioned-4161.md`; artefact:
 `docs/evidence/budget-conditioned-4161.json`. The run was at code commit
-`f6c60651`, NEAT-AI 7.1.19 and Deno 2.9.8. It covered seeds 4161–4180 and corpus
+`429f66b9`, NEAT-AI 7.1.19 and Deno 2.9.8. It covered seeds 4161–4180 and corpus
 seed 4161, completed 60/60 runs with 0 failures, and took about 19 s
 (indicative).
 
@@ -89,21 +99,30 @@ flowchart LR
 | unseen budgets vs `pruned`         | −0.0498   | [−0.102, −0.00417] | 13        | benefit |
 | full size (100%) vs `pruned`       | +0.0479   | [0.0345, 0.0622]   | 0         | harm    |
 
-The study was run twice at `f6c60651`. The two JSON files were identical apart
+The study was run twice at `429f66b9`. The two JSON files were identical apart
 from latency fields (compared with `jq` after deleting `latencyMicros` and
-`medianLatencyMicros`).
+`medianLatencyMicros`). Since `f6c60651`, the code changes only add the pinned
+method to the manifest. The results also match the first run at `f6c60651`
+exactly, once latency, `codeVersion` and `paper` are removed.
 
 ## Acceptance Criteria
 
-- **missing** — "Read and pin the full method before reproducing it" — reason:
-  arXiv 2611.06895 was unreachable from this container
-  (`proxy refused the
-  connection`), so the method is this repository's reading
-  of the issue text, as the module doc and evidence page state.
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **partial** — "Read and pin the full method before reproducing it" — evidence:
+  `scripts/lib/budgetConditionedStudy.ts` (`SOURCE_METHOD`, emitted as
+  `manifest.paper`),
+  `test/scripts/BudgetConditionedStudy.ts::the manifest pins the source method it maps onto`,
+  `docs/evidence/budget-conditioned-4161.md` (Source method (pinned)) —
+  reviewer: partial — reason: the paper was read only through search-indexed
+  excerpts, because this host's proxy refuses arxiv.org, so four method details
+  stay unpinned. The pin was added after the study had already run, and the
+  study tests a different mechanism (nested top-k expression, not a CPPN that
+  takes the condition as an input).
 
 ## Test Plan
 
-- Added `test/scripts/BudgetConditionedStudy.ts` (13 tests):
+- Added `test/scripts/BudgetConditionedStudy.ts` (14 tests):
   - budget-to-synapse rounding (11, 17, 22, 33, 44), with refusals for 0,
     negative, above-1 and NaN budgets
   - expression keeps exactly the top-k by priority, nested across budgets;
@@ -118,13 +137,22 @@ from latency fields (compared with `jq` after deleting `latencyMicros` and
   - `budgetVerdict` and `studyOutcome`, every branch, including full-size harm
     blocking success
   - a small `runStudy` completes every run
+  - the manifest carries the pinned source method (`SOURCE_METHOD`), and every
+    element has a paper side, a study side and a fidelity, with at least one
+    marked `departs`
 - `deno test --allow-all test/scripts/BudgetConditionedStudy.ts test/scripts/ConnectivityPriorStudy.ts`
-  passed (27 passed, 0 failed). No existing test was edited.
+  passed (27 passed, 0 failed). No existing test was edited. After the method
+  pin, `deno test --allow-all test/scripts/BudgetConditionedStudy.ts` passed (14
+  passed, 0 failed).
 - All `test/docs/*.ts` passed (318 passed, 0 failed). cspell over the new and
   changed files reports only the existing `carryover` hit in `CHANGELOG.md`.
-  `expressivity` was added to `docs/cspell.json`.
+  `expressivity` was added to `docs/cspell.json`, and later the paper's author
+  names, `connectomes`, `optomotor` and `thresholded`. After the method pin,
+  `test/docs/*.ts` passed again (318 passed, 0 failed), and cspell over the
+  changed files reports 0 issues.
 - `./quality.sh` ran on head `9858f5f5` and passed: exit 0, 10,369 passed, 0
-  failed, 50 ignored.
+  failed, 50 ignored. It has not been re-run after the method pin; the worker
+  re-runs it on the final head.
 - Not checked: macOS and Windows; the invalid-expression path (no input that
   fails `creatureValidate` was found); no production corpus or representative
   run, so the finding covers tiny networks on a synthetic target only.
