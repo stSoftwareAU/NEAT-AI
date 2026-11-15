@@ -66,7 +66,7 @@
         "recurrent-selfloop"
       ],
       "baseline": "recurrent-control",
-      "path": "recurrent execution: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with activate(input, true) over the records in order from a cleared state; mutation-only search (Offspring.breed cannot carry a self-loop) with the default FFW mutation set in both arms",
+      "path": "recurrent execution: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with activate(input, true) over the records in order from a cleared state; mutation-only search (crossover does not keep self-loops across a search) with the default FFW mutation set in both arms",
       "reason": "the grid stays on the forward-only path (the production default); self-loops are tested only on the already-supported recurrent execution path, as a paired comparison of the control topology with and without one self-loop per hidden neuron; exploratory, validation seeds only"
     },
     "paper": "arXiv 2610.33498 not read; the method is this repository's reading of the issue"

@@ -26,8 +26,10 @@
  * (`forwardOnly: false`, `feedbackLoop: true`, scored with
  * `activate(input, true)` over the records in order). Two recurrent arms are
  * paired by seed: the control topology with and without one self-loop per
- * hidden neuron. `Offspring.breed` cannot carry a self-loop, so both recurrent
- * arms search by mutation alone. This comparison is exploratory, runs on the
+ * hidden neuron. Crossover does not keep self-loops across a search
+ * (`Offspring.breed` returns `undefined` for parents that share neuron uuids,
+ * and the loops were lost from the population within a few generations in
+ * probes), so both recurrent arms search by mutation alone. This comparison is exploratory, runs on the
  * validation seeds only and never feeds the cell choice.
  *
  * The method is this repository's reading of the issue; the paper it cites
@@ -472,9 +474,11 @@ function seededUuid(rng: RandomNumberGenerator): string {
  * Offspring by mutation alone, from the same rank-biased parent draw as
  * {@link breedOffspring}.
  *
- * Crossover cannot carry a self-loop (`Offspring.sortNeurons` rejects a parent
- * with one), so the recurrent arms search by mutation alone — both of them, so
- * the search is identical.
+ * Crossover does not keep self-loops across a search: `Offspring.breed`
+ * returns `undefined` for parents that share neuron uuids, and in probes of
+ * {@link breedOffspring} the loops were lost from the population within a few
+ * generations. The recurrent arms therefore search by mutation alone — both of
+ * them, so the search is identical.
  */
 export function mutateOffspring(
   population: readonly Creature[],
@@ -931,7 +935,7 @@ export function runStudy(options: StudyOptions = {}) {
         arms: [RECURRENT_CONTROL_ARM, SELF_LOOP_ARM],
         baseline: RECURRENT_CONTROL_ARM,
         path:
-          "recurrent execution: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with activate(input, true) over the records in order from a cleared state; mutation-only search (Offspring.breed cannot carry a self-loop) with the default FFW mutation set in both arms",
+          "recurrent execution: forwardOnly false, feedbackLoop true, disableRandomSamples true; scored with activate(input, true) over the records in order from a cleared state; mutation-only search (crossover does not keep self-loops across a search) with the default FFW mutation set in both arms",
         reason:
           "the grid stays on the forward-only path (the production default); self-loops are tested only on the already-supported recurrent execution path, as a paired comparison of the control topology with and without one self-loop per hidden neuron; exploratory, validation seeds only",
       },

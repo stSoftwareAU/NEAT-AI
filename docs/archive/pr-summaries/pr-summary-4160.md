@@ -26,9 +26,11 @@ reproduces exactly. Closes #4160.
 ### Essential Design Decisions
 
 - Both recurrent arms search by mutation alone (`mutateOffspring`), because
-  `Offspring.breed` cannot carry a self-loop. Both use the default `FFW`
-  mutation set, which has no self-loop operator, so neither arm can gain or lose
-  self-loops except by neuron removal.
+  crossover does not keep self-loops across a search: `Offspring.breed` returns
+  `undefined` for parents that share neuron uuids and loses the loops from the
+  population within a few generations (see Undiscoverable Facts). Both use the
+  default `FFW` mutation set, which has no self-loop operator, so neither arm
+  can gain or lose self-loops except by neuron removal.
 - Recurrent scoring: `clearState()`, then
   `scoreCreature(creature, records, 1, true)`, on train and holdout.
   `scoreCreature` (in `scripts/lib/preSelectionAB.ts`) gains an optional
@@ -42,9 +44,18 @@ reproduces exactly. Closes #4160.
 
 ### Undiscoverable Facts
 
-- `Offspring.sortNeurons` topologically sorts every inward synapse, so a parent
-  with a self-loop is rejected. In a scratch probe, `Offspring.breed` returned
-  `undefined` for two self-loop parents.
+- `Offspring.breed` does not reject a self-loop parent as such. Scratch probes
+  at the head, with the options `breedOffspring` passes: for 30 of 30 pairs of
+  independently built `buildRecurrentCreature` parents it returned a child with
+  all 8 self-loops; for 30 of 30 pairs of a parent and its own clone (shared
+  neuron uuids) it returned `undefined`. Inside the harness's crossover path
+  (`breedOffspring`, six creatures, random scores, `mutationRate` 0.5) children
+  were produced every generation, but over 8 generations the self-loops were
+  gone from the whole population by generation 7 at seed 1 and by generation 3
+  at seed 2, and still present in some creatures at generation 8 at seed 3. A
+  recurrent search by crossover therefore cannot be relied on to keep the loops,
+  which is why both recurrent arms search by mutation alone. The cause was not
+  traced.
 - The mutation-only path keeps self-loops. In a scratch probe, cloning with
   `Creature.fromJSON(parent.exportJSON())` plus `forwardOnly = false` and then
   mutating under `feedbackLoop: true` kept 7 of 8 self-loops over 40

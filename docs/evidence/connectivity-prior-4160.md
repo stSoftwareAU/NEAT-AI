@@ -122,11 +122,13 @@ exploratory paired comparison. Two recurrent arms share the control topology
 Both arms use `feedbackLoop: true` and `disableRandomSamples: true`, and are
 scored with `activate(input, true)` over the records in order from a cleared
 state (train and holdout). The search is mutation-only with the default `FFW`
-mutation set; neither arm has a self-loop operator. `Offspring.breed` cannot
-carry a self-loop, because `Offspring.sortNeurons` topologically sorts every
-inward synapse and so rejects a parent with a self-loop. The budget is the same
-60,000 records, on validation seeds 4160–4179 only; they were never calibration
-candidates. The verdict rule is the same, against `recurrent-control`.
+mutation set; neither arm has a self-loop operator. Crossover is not used:
+`Offspring.breed` returns `undefined` for parents that share neuron uuids, and
+in a probe of the harness's crossover path the self-loops were lost from the
+whole population within a few generations in two of three seeds. The budget is
+the same 60,000 records, on validation seeds 4160–4179 only; they were never
+calibration candidates. The verdict rule is the same, against
+`recurrent-control`.
 
 **Result: no-benefit.** Mean difference (self-loop − recurrent-control holdout
 MSE) +0.001095, 95% CI [-0.02372, +0.01908], W/L 9/11.
