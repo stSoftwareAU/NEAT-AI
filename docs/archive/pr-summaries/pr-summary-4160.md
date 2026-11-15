@@ -109,7 +109,8 @@ flowchart LR
   loop filters on `arm.kind !== "prior"` so it type-checks with the new arm
   kind. No assertion was removed.
 - `deno test -A test/scripts/ConnectivityPriorStudy.ts test/scripts/PreSelectionAB.ts`
-  on the working tree after the review fixes: `ok | 24 passed | 0 failed`.
+  on ace1c269 (the review-fix commit; the test files are unchanged since):
+  `ok | 24 passed | 0 failed`.
 - `./quality.sh --rust-scorer-bin=<built rust_scorer>` on c40ce1bc exited 0:
   `ok | 10360 passed (5 steps) | 0 failed | 50 ignored (8m48s)`.
 
