@@ -4,8 +4,8 @@ Adds an opt-in research harness, `deno task topology-weight-luck-study`, that
 tests whether a new edge's gain comes from its topology or from where its
 initial weight landed. Each of 99 evolved parents gets one new forward edge
 under eight fixed weight draws. Each draw is paired with a weight-only nudge of
-the same Float32 budget. Three preregistered selection rules pick mutations on a
-cheap sample, and the picks are then checked on the full train set and an
+a matched Float32 budget. Three preregistered selection rules pick mutations on
+a cheap sample, and the picks are then checked on the full train set and an
 untouched holdout.
 
 Result on the synthetic corpus:
@@ -26,7 +26,7 @@ is Part of #4162.
 ### Intent and Rationale
 
 - An added edge is two changes at once: a new topology and a random new weight.
-  Pairing each new-edge draw with a weight-only nudge of the same Float32 L1
+  Pairing each new-edge draw with a weight-only nudge of a matched Float32 L1
   budget (|w_k|) separates the two. The paired difference is the topology's
   share of the gain.
 - The harness reuses existing code rather than building new machinery:
@@ -45,10 +45,13 @@ is Part of #4162.
   studied.
 - **Assumption — the parents:** the "100 representative parents" are the top 10
   distinct creatures from each of 10 seeded 15-generation runs. All weights and
-  biases are rounded to Float32 so the matched budget is exact. Only 99 are
-  distinct, and the artefact's `coverage` reports that.
+  biases are rounded to Float32, so the matched budget agrees to within one
+  Float32 rounding step (355 of 792 recorded budgets differ, by at most 8.1e-7
+  relative); it is not bit-exact. Only 99 are distinct, and the artefact's
+  `coverage` reports that.
 - **Calibration and validation:** selection reads only the cheap sample (the
-  first 50 train records). The full train set confirms, and the holdout is never
+  first 50 train records). The full train set confirms (it includes the 50 cheap
+  records, so train precision is partly in-sample), and the holdout is never
   read before confirmation. A test proves selection does not change when the
   holdout changes.
 - **The criteria:** rules, thresholds (6 of 8), seeds and the
@@ -100,7 +103,7 @@ Backend/CLI research harness only. No UI files changed.
 flowchart LR
     P["10 seeded runs<br/>99 Float32 parents"] --> E["1 new forward edge<br/>per parent"]
     E --> T["8 fixed new-edge<br/>weight draws"]
-    E --> W["8 matched weight-only<br/>nudges (same Float32 budget)"]
+    E --> W["8 matched weight-only<br/>nudges (matched Float32 budget)"]
     T --> C["Cheap sample: 3<br/>preregistered rules"]
     W --> C
     C --> F["Confirm on full train"]

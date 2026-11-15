@@ -28,8 +28,10 @@ selection picks weight-placement luck. No default is changed.
 - **Mutation** is one uniformly chosen new forward edge per parent creature.
 - **New-edge arm** gives that edge each of eight fixed weight draws.
 - **Control arm** is a matched weight-only nudge: one uniformly chosen existing
-  synapse is moved by ±|w_k| in Float32, so both arms spend the same Float32 L1
-  budget.
+  synapse is moved by ±|w_k| in Float32, so both arms spend a matched L1 budget
+  — equal to within one Float32 rounding step, not bit-identical (the artefact
+  records the realised `budget` per draw; 355 of 792 differ, by at most 8.1e-7
+  relative).
 - **Paired gain** for draw k is the control's error minus the new-edge arm's
   error on the same records; positive means the added edge won.
 
@@ -51,7 +53,8 @@ flowchart LR
 - Draw seeds 41620–41627, shared by every mutation. Each draw is the production
   `Synapse.randomWeight(1)` rounded with `Math.fround`.
 - The matched weight-only control nudges one uniformly chosen existing synapse
-  by ±|w_k| in Float32, so both arms spend the same Float32 L1 budget.
+  by ±|w_k| in Float32, so both arms spend a matched L1 budget (equal to within
+  one Float32 rounding step; the realised budget is recorded per draw).
 - Corpus seed 4162; 300 train and 300 holdout records; the cheap sample is the
   first 50 train records.
 - `CONSISTENCY_THRESHOLD` is 6 of 8 draws.
@@ -72,8 +75,11 @@ flowchart LR
 
 ## Results
 
-Per rule, over 99 mutations. Confirmation is on data the rule never saw: a
-mutation is confirmed when its median paired gain there is above 0.
+Per rule, over 99 mutations. The holdout is data the rule never saw. The full
+train set used for train confirmation includes the 50 cheap records every rule
+selected on (50 of 300), so train precision is partly in-sample; holdout
+precision is the unseen figure. A mutation is confirmed when its median paired
+gain there is above 0.
 
 | Rule            | Selected of 99 | Confirmed train | Precision train | Confirmed holdout | Precision holdout | Mean holdout gain of selected | Cheap selection cost (records) |
 | --------------- | -------------- | --------------- | --------------- | ----------------- | ----------------- | ----------------------------- | ------------------------------ |
@@ -131,7 +137,7 @@ distinct parents. All 99 mutations were evaluated, with 0 failures.
 
 - On this synthetic task the median over mutations of the holdout median paired
   gain is small but positive, with a CI above 0. On average an added edge beats
-  a matched weight-only nudge of the same Float32 budget.
+  a matched weight-only nudge of the same (Float32-rounded) budget.
 - Only about 36% of mutations win at least 6 of 8 draws on holdout. Most
   single-edge gains are not consistent across weight draws.
 - `best-draw` selected 19 mutations, 15 of them confirmed on the holdout
