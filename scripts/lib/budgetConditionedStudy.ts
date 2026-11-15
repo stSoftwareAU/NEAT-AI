@@ -45,8 +45,12 @@
  * finished and never guides a decision. Latency is indicative wall-clock only
  * and never feeds a verdict.
  *
- * The method is this repository's reading of the issue; the paper it cites
- * (arXiv 2611.06895) was not read.
+ * The cited paper's method is pinned in {@link SOURCE_METHOD}, together with
+ * how this study maps onto it and where it departs. The main departure: the
+ * paper feeds developmental time to a HyperNEAT generator as an input, while
+ * this genome has no budget input. A budget picks the top-k synapses by an
+ * evolved priority gene, so the negative result here does not test the
+ * paper's generator.
  *
  * @module budgetConditionedStudy
  */
@@ -671,6 +675,98 @@ interface Failure {
   message: string;
 }
 
+/** One element of the source method, how this study maps it, and how faithfully. */
+export interface PinnedMethodElement {
+  /** The paper's element, as read. */
+  paper: string;
+  /** What this study does in its place. */
+  study: string;
+  /** `same`: reproduced as read. `analogue`: same role, different mechanism. `departs`: not reproduced. */
+  fidelity: "same" | "analogue" | "departs";
+}
+
+/**
+ * The source method, pinned before the reproduction is judged (Issue #4161).
+ *
+ * The paper was read on 2026-11-15 through search-indexed excerpts of its
+ * abstract page and its HTML full text. A direct fetch of arxiv.org was
+ * refused by this host's proxy, so the details the excerpts do not give are
+ * listed in `unpinned`, not guessed.
+ */
+export const SOURCE_METHOD = Object.freeze({
+  arxivId: "2611.06895",
+  version: "v1",
+  submitted: "2026-11-04",
+  doi: "10.48550/arXiv.2611.06895",
+  title:
+    "Learning Time-Varying Connectomes for Stable Behavior Across Development",
+  authors: ["Christof Fehrman", "Jacob J. Morra", "Eva A. Naumann"],
+  categories: ["q-bio.NC", "cs.NE"],
+  readOn: "2026-11-15",
+  readVia:
+    "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895; direct fetch refused by the host proxy",
+  elements: Object.freeze(
+    [
+      {
+        paper:
+          "One compact generative encoding: a HyperNEAT CPPN that takes developmental time as an extra input and emits age-specific connectivity for a recurrent controller.",
+        study:
+          "One genome of weights, biases and an evolved expression-priority gene; a budget keeps the top-k candidate synapses by priority. The genome has no budget input.",
+        fidelity: "departs",
+      },
+      {
+        paper:
+          "The substrate (neuron birth, position, sensory organisation, intrinsic time constants) is prescribed per age; only connectivity is generated.",
+        study:
+          "One fixed candidate topology (4 inputs, 8 hidden, 1 output, 44 candidate synapses); the budget sets how many candidates are expressed.",
+        fidelity: "analogue",
+      },
+      {
+        paper:
+          "Developmentally aware conditions optimise mean fitness across 3, 5 or 15 evenly spaced developmental snapshots.",
+        study:
+          "The conditioned arm optimises mean calibration MSE across 3 budgets: 25%, 50% and 100% (not evenly spaced).",
+        fidelity: "analogue",
+      },
+      {
+        paper:
+          "Performance is measured over the whole developmental interval, at trained and at unseen ages.",
+        study:
+          "Validation MSE at the trained budgets and at the unseen 37.5% and 75%, on a validation split no search reads.",
+        fidelity: "analogue",
+      },
+      {
+        paper:
+          "Controls: the same optimiser run at the initial substrate only or the mature substrate only (five conditions in all).",
+        study:
+          "Controls: independent per-budget searches (including the unseen budgets, which is stronger than single-snapshot training) and a full-size search pruned by frozen-weight magnitude, all at an equal charged-record budget.",
+        fidelity: "analogue",
+      },
+      {
+        paper:
+          "Five independent evolutionary runs per condition for each substrate-task pair, 200 generations each.",
+        study:
+          "20 seeds per arm, stopped by an equal charged-calibration-record budget rather than a generation count.",
+        fidelity: "departs",
+      },
+      {
+        paper:
+          "Two substrates (Fish, Ring) and two closed-loop visuomotor tasks (optomotor response, phototaxis).",
+        study: "One synthetic 4-input regression scored in-process.",
+        fidelity: "departs",
+      },
+    ] as readonly PinnedMethodElement[],
+  ),
+  unpinned: Object.freeze(
+    [
+      "CPPN inputs beyond developmental time, its output activation and how connections are thresholded",
+      "the population size and the NEAT settings of the CPPN search",
+      "the fitness definitions for the optomotor and phototaxis tasks",
+      "the exact ages evaluated as unseen",
+    ] as readonly string[],
+  ),
+});
+
 const CRITERIA =
   "Primary metric: per-seed mean validation MSE over the unseen budgets (37.5%, 75%). benefit iff the paired-bootstrap 95% CI of (conditioned - control) lies below 0, harm iff it lies above 0, insufficient-data when fewer than 5 paired seeds, otherwise no-benefit. Success iff benefit against both independent and pruned controls and the full-size (100%) validation MSE against pruned is not harm. Per-budget comparisons are exploratory.";
 
@@ -790,8 +886,7 @@ export function runStudy(options: StudyOptions = {}) {
       seeds,
       bootstrap: { resamples: BOOTSTRAP_RESAMPLES, seed: BOOTSTRAP_SEED },
       criteria: CRITERIA,
-      paper:
-        "arXiv 2611.06895 not read; the method is this repository's reading of the issue",
+      paper: SOURCE_METHOD,
       ockham:
         "Unlike NEAT-AI-Ockham's frozen-weight pruning, the expression order here is an evolved, heritable gene; the pruned control ranks a finished network's frozen weights by magnitude.",
     },

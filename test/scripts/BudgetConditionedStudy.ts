@@ -25,6 +25,7 @@ import {
   HIDDEN,
   runArmSeed,
   runStudy,
+  SOURCE_METHOD,
   studyOutcome,
   SYNAPSE_COUNT,
   TRAINING_BUDGETS,
@@ -270,4 +271,21 @@ Deno.test("a small study completes every run at the budgeted size", () => {
     }
   }
   assertEquals(study.primary.vsIndependent.verdict, "insufficient-data");
+});
+
+Deno.test("the manifest pins the source method it maps onto", () => {
+  const study = runStudy({ seedCount: 1, baseSeed: 100, settings: SMALL });
+  const paper = study.manifest.paper;
+  assertEquals(paper, SOURCE_METHOD);
+  assertEquals(paper.arxivId, "2611.06895");
+  assertEquals(paper.version, "v1");
+  assert(paper.elements.length > 0);
+  for (const element of paper.elements) {
+    assert(element.paper.length > 0);
+    assert(element.study.length > 0);
+    assert(["same", "analogue", "departs"].includes(element.fidelity));
+  }
+  // The generator that takes the condition as an input is the paper's core
+  // mechanism; this study does not reproduce it, and the manifest says so.
+  assert(paper.elements.some((e) => e.fidelity === "departs"));
 });
