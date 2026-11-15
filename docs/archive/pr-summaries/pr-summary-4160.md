@@ -87,7 +87,7 @@ flowchart LR
 
 ## Test Plan
 
-- `test/scripts/ConnectivityPriorStudy.ts` adds four tests:
+- `test/scripts/ConnectivityPriorStudy.ts` adds five tests:
   - `buildRecurrentCreature adds one self-loop per hidden neuron and nothing else`.
     It asserts 8 self-loops against 0, `forwardOnly === false`, and forward
     synapses identical to the no-loop build at the same seed.
@@ -95,14 +95,21 @@ flowchart LR
     and the stateless scores are equal.
   - `recurrent arms are reproducible, restore global state and report self-loops`.
     It asserts initial 8 and final > 0 for the self-loop arm, and 0/0 for
-    `recurrent-control`.
+    `recurrent-control`. For both recurrent arms it also asserts that the search
+    ran: `stalled === false`, `generations > 1`, and `recordsScored` above the
+    initial population's cost, so offspring were produced and scored.
+  - `mutateOffspring returns mutated recurrent children that keep their self-loops`.
+    With `mutationRate: 1` and `feedbackLoop: true`, it asserts exactly `count`
+    children, each with `forwardOnly === false`, 8 self-loops, no score, a uuid
+    and an `exportJSON()` different from every parent's, and that the parents
+    are not edited in place.
   - `chooseCell never returns a recurrent arm`. A recurrent arm has the lowest
     train MSE in the input and is still not chosen.
 - Existing tests: the test helper `run` now fills `selfLoops`, and the grid-cell
   loop filters on `arm.kind !== "prior"` so it type-checks with the new arm
   kind. No assertion was removed.
 - `deno test -A test/scripts/ConnectivityPriorStudy.ts test/scripts/PreSelectionAB.ts`
-  on c40ce1bc: `ok | 23 passed | 0 failed`.
+  on the working tree after the review fixes: `ok | 24 passed | 0 failed`.
 - `./quality.sh --rust-scorer-bin=<built rust_scorer>` on c40ce1bc exited 0:
   `ok | 10360 passed (5 steps) | 0 failed | 50 ignored (8m48s)`.
 

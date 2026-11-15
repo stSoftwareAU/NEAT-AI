@@ -13,6 +13,8 @@ import {
 } from "@std/assert";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   type ArmRun,
   ARMS,
@@ -26,6 +28,7 @@ import {
   countSelfLoops,
   DEFAULT_SETTINGS,
   HIDDEN,
+  mutateOffspring,
   pairedBootstrapCi,
   RECURRENT_ARMS,
   RECURRENT_CONTROL_ARM,
@@ -273,6 +276,48 @@ Deno.test("recurrent arms are reproducible, restore global state and report self
     assert(a.selfLoops.final > 0);
     const c = runArm(RECURRENT(RECURRENT_CONTROL_ARM), 11, SMALL, corpus);
     assertEquals(c.selfLoops, { initial: 0, final: 0 });
+    // The search really ran: offspring were produced and scored, so the
+    // surviving self-loops are not just the untouched initial population.
+    for (const r of [a, c]) {
+      assertEquals(r.stalled, false);
+      assert(r.generations > 1);
+      assert(r.recordsScored > SMALL.populationSize * SMALL.trainRecords);
+    }
+  });
+});
+
+Deno.test("mutateOffspring returns mutated recurrent children that keep their self-loops", async () => {
+  await withRngTestLock(() => {
+    const rng = createSeededRng(21);
+    const selfLoopRng = createSeededRng(22);
+    const population = Array.from(
+      { length: 4 },
+      () => buildRecurrentCreature(rng, selfLoopRng),
+    );
+    const mutator = new Mutator(
+      createNeatConfig({
+        populationSize: 4,
+        mutationRate: 1,
+        seed: 21,
+        feedbackLoop: true,
+        disableRandomSamples: true,
+      }),
+    );
+    const before = population.map((p) => JSON.stringify(p.exportJSON()));
+    const children = mutateOffspring(population, 6, mutator, rng);
+    assertEquals(children.length, 6);
+    for (const child of children) {
+      assertEquals(child.forwardOnly, false);
+      assertEquals(countSelfLoops(child), HIDDEN);
+      assertEquals(child.score, undefined);
+      assert(child.uuid !== undefined);
+      assert(!before.includes(JSON.stringify(child.exportJSON())));
+    }
+    // The parents are not edited in place.
+    assertEquals(
+      population.map((p) => JSON.stringify(p.exportJSON())),
+      before,
+    );
   });
 });
 
