@@ -122,7 +122,7 @@ exactly, once latency, `codeVersion` and `paper` are removed.
 
 ## Test Plan
 
-- Added `test/scripts/BudgetConditionedStudy.ts` (14 tests):
+- Added `test/scripts/BudgetConditionedStudy.ts` (20 tests):
   - budget-to-synapse rounding (11, 17, 22, 33, 44), with refusals for 0,
     negative, above-1 and NaN budgets
   - expression keeps exactly the top-k by priority, nested across budgets;
@@ -131,28 +131,44 @@ exactly, once latency, `codeVersion` and `paper` are removed.
   - a dangling hidden neuron is dropped and the expression stays valid
   - `validateSettings` names the offending field
   - `evolve` charges within budget, and the leftover is smaller than one
-    evaluation; every arm stays within budget
+    evaluation
+  - every arm stays within budget and spends nearly all of it (equal total
+    search cost): the unspent remainder is under three evaluations for
+    conditioned, one for pruned and five for independent, so a mis-split budget
+    such as `C / 10` for the independent sub-searches or `C / 2` for pruned
+    fails
   - validation never guides the search
   - same-seed reproduction, and a different seed differs
+  - `unseenScore` averages only the 37.5% and 75% budgets
+  - `compare`, on six seed-paired fixtures where conditioned beats the control
+    at 37.5% and 75% and loses at 25%, 50% and 100%: a negative `meanDiff`, six
+    wins, no losses and `benefit` on the unseen score; `harm` with six losses at
+    100%; swapping the arms flips the sign, the tallies and the verdict; a tie
+    is neither a win nor a loss; runs not paired by seed throw an error that
+    says they are not paired by seed; no paired runs gives `n` 0, a `NaN` mean
+    and `insufficient-data`
   - `budgetVerdict` and `studyOutcome`, every branch, including full-size harm
     blocking success
   - a small `runStudy` completes every run
+  - a failing `runStudy` (600 records, so each independent sub-search cannot
+    evaluate its four initial genomes): 4 of 6 runs complete, two `independent`
+    failures name `initial genomes` and their seeds, no seed has every arm so
+    nothing pairs, the primary verdicts are `insufficient-data` and the outcome
+    is `failure`
   - the manifest carries the pinned source method (`SOURCE_METHOD`), and every
     element has a paper side, a study side and a fidelity, with at least one
     marked `departs`
 - `deno test --allow-all test/scripts/BudgetConditionedStudy.ts test/scripts/ConnectivityPriorStudy.ts`
-  passed (27 passed, 0 failed). No existing test was edited. After the method
-  pin, `deno test --allow-all test/scripts/BudgetConditionedStudy.ts` passed (14
-  passed, 0 failed).
-- All `test/docs/*.ts` passed (318 passed, 0 failed). cspell over the new and
-  changed files reports only the existing `carryover` hit in `CHANGELOG.md`.
-  `expressivity` was added to `docs/cspell.json`, and later the paper's author
-  names, `connectomes`, `optomotor` and `thresholded`. After the method pin,
-  `test/docs/*.ts` passed again (318 passed, 0 failed), and cspell over the
-  changed files reports 0 issues.
-- `./quality.sh` ran on head `9858f5f5` and passed: exit 0, 10,369 passed, 0
-  failed, 50 ignored. It has not been re-run after the method pin; the worker
-  re-runs it on the final head.
+  passed (34 passed, 0 failed) after the review fixes. No existing test was
+  edited; the six added tests answer review findings and change no code under
+  `scripts/` or `src/`.
+- All `test/docs/*.ts` passed earlier (318 passed, 0 failed). cspell over the
+  new and changed files reported only the existing `carryover` hit in
+  `CHANGELOG.md`; `expressivity`, the paper's author names, `connectomes`,
+  `optomotor` and `thresholded` were added to `docs/cspell.json`.
+- `./quality.sh` ran on an earlier head (`9858f5f5`) and passed: exit 0, 10,369
+  passed, 0 failed, 50 ignored. It has not been re-run since; the worker re-runs
+  it on the final head.
 - Not checked: macOS and Windows; the invalid-expression path (no input that
   fails `creatureValidate` was found); no production corpus or representative
   run, so the finding covers tiny networks on a synthetic target only.

@@ -7,6 +7,7 @@
 
 import {
   assert,
+  assertAlmostEquals,
   assertEquals,
   assertNotEquals,
   assertThrows,
@@ -14,9 +15,11 @@ import {
 import {
   ARM_NAMES,
   type ArmName,
+  type ArmSeedRun,
   type BudgetStudySettings,
   budgetSynapses,
   budgetVerdict,
+  compare,
   DEFAULT_SETTINGS,
   EVAL_BUDGETS,
   evolve,
@@ -29,6 +32,7 @@ import {
   studyOutcome,
   SYNAPSE_COUNT,
   TRAINING_BUDGETS,
+  unseenScore,
   validateSettings,
 } from "../../scripts/lib/budgetConditionedStudy.ts";
 import { buildStudyCorpus } from "../../scripts/lib/connectivityPriorStudy.ts";
@@ -182,6 +186,16 @@ Deno.test("every arm stays within the budget", () => {
     const run = runArmSeed(arm, 3, SMALL, corpus);
     assert(run.recordsCharged <= SMALL.budgetRecords, arm);
     assert(run.recordsCharged > 0, arm);
+    // Equal total search cost: each arm spends its whole share, so the unspent
+    // remainder is under one evaluation's cost (summed over sub-searches).
+    const unspent = SMALL.budgetRecords - run.recordsCharged;
+    const oneEvaluation = SMALL.calibrationRecords;
+    const bound = {
+      conditioned: TRAINING_BUDGETS.length * oneEvaluation,
+      pruned: oneEvaluation,
+      independent: EVAL_BUDGETS.length * oneEvaluation,
+    }[arm];
+    assert(unspent < bound, `${arm} left ${unspent} of the budget unspent`);
     assertEquals(run.budgets.length, EVAL_BUDGETS.length);
   }
 });
@@ -288,4 +302,158 @@ Deno.test("the manifest pins the source method it maps onto", () => {
   // The generator that takes the condition as an input is the paper's core
   // mechanism; this study does not reproduce it, and the manifest says so.
   assert(paper.elements.some((e) => e.fidelity === "departs"));
+});
+
+/** A run whose validation MSE at each budget is given by `mse`. */
+function fixtureRun(
+  arm: ArmName,
+  seed: number,
+  mse: (budget: number) => number,
+): ArmSeedRun {
+  return {
+    arm,
+    seed,
+    recordsCharged: 1,
+    evaluations: 1,
+    budgets: EVAL_BUDGETS.map((budget) => ({
+      budget,
+      keptSynapses: budgetSynapses(budget),
+      effectiveSynapses: budgetSynapses(budget),
+      expressivity: 1,
+      valid: true,
+      invalidReason: null,
+      calibrationMse: 0,
+      validationMse: mse(budget),
+      latencyMicros: null,
+    })),
+  };
+}
+
+const PAIRED_SEEDS = [10, 11, 12, 13, 14, 15];
+const UNSEEN_GAIN = (i: number) => 1 + 0.1 * i;
+
+/**
+ * Conditioned is better (lower) than the control at the unseen budgets
+ * 0.375 and 0.75 and worse at 0.25, 0.5 and 1, so the unseen mean and the
+ * mean over every budget point opposite ways.
+ */
+function pairedFixtures() {
+  const conditioned = PAIRED_SEEDS.map((seed, i) =>
+    fixtureRun("conditioned", seed, (b) => {
+      if (b === 0.375) return 3 + i;
+      if (b === 0.75) return 5 + i;
+      return 20 + i;
+    })
+  );
+  const control = PAIRED_SEEDS.map((seed, i) =>
+    fixtureRun("pruned", seed, (b) => {
+      if (b === 0.375) return 3 + i + UNSEEN_GAIN(i);
+      if (b === 0.75) return 5 + i + UNSEEN_GAIN(i);
+      return 15 + i;
+    })
+  );
+  return { conditioned, control };
+}
+
+Deno.test("unseenScore averages only the 37.5% and 75% budgets", () => {
+  const run = fixtureRun("conditioned", 1, (b) => {
+    if (b === 0.375) return 2;
+    if (b === 0.75) return 6;
+    return 1000;
+  });
+  assertEquals(unseenScore(run), 4);
+});
+
+Deno.test("compare is conditioned minus control on the unseen budgets", () => {
+  const { conditioned, control } = pairedFixtures();
+  const c = compare(conditioned, control, unseenScore);
+  assertEquals(c.n, 6);
+  const expected = -PAIRED_SEEDS.reduce((s, _, i) => s + UNSEEN_GAIN(i), 0) /
+    PAIRED_SEEDS.length;
+  assertAlmostEquals(c.meanDiff, expected, 1e-9);
+  assert(c.meanDiff < 0);
+  assertEquals(c.wins, 6);
+  assertEquals(c.losses, 0);
+  assertEquals(c.verdict, "benefit");
+
+  // The trained budgets point the other way, so the pick function matters.
+  const at100 = compare(
+    conditioned,
+    control,
+    (r) => r.budgets.find((b) => b.budget === 1)!.validationMse,
+  );
+  assertAlmostEquals(at100.meanDiff, 5, 1e-9);
+  assertEquals(at100.wins, 0);
+  assertEquals(at100.losses, 6);
+  assertEquals(at100.verdict, "harm");
+
+  // Swapping the arms swaps the sign, the tallies and the verdict.
+  const swapped = compare(control, conditioned, unseenScore);
+  assertAlmostEquals(swapped.meanDiff, -expected, 1e-9);
+  assertEquals(swapped.wins, 0);
+  assertEquals(swapped.losses, 6);
+  assertEquals(swapped.verdict, "harm");
+});
+
+Deno.test("compare counts a tie as neither a win nor a loss", () => {
+  const { conditioned, control } = pairedFixtures();
+  const tied = fixtureRun("pruned", PAIRED_SEEDS[0], (b) => {
+    if (b === 0.375) return 3;
+    if (b === 0.75) return 5;
+    return 0;
+  });
+  const c = compare(conditioned, [tied, ...control.slice(1)], unseenScore);
+  assertEquals(c.wins, 5);
+  assertEquals(c.losses, 0);
+});
+
+Deno.test("compare refuses runs that are not paired by seed", () => {
+  const { conditioned, control } = pairedFixtures();
+  assertThrows(
+    () => compare(conditioned, control.slice(1), unseenScore),
+    Error,
+    "not paired by seed",
+  );
+  const shifted = [...control.slice(1), control[0]];
+  assertThrows(
+    () => compare(conditioned, shifted, unseenScore),
+    Error,
+    "not paired by seed",
+  );
+});
+
+Deno.test("compare of no paired runs is insufficient data", () => {
+  const c = compare([], [], unseenScore);
+  assertEquals(c.n, 0);
+  assertEquals(c.wins, 0);
+  assertEquals(c.losses, 0);
+  assert(Number.isNaN(c.meanDiff));
+  assertEquals(c.verdict, "insufficient-data");
+});
+
+Deno.test("a failed run is recorded and the others still compare", () => {
+  // 600 records leave each independent sub-search 120: three evaluations at
+  // 40 records, one short of the 4 initial genomes. The conditioned (cost
+  // 120) and pruned (cost 40) arms still fit their population.
+  const study = runStudy({
+    seedCount: 2,
+    baseSeed: 100,
+    settings: { ...SMALL, budgetRecords: 600 },
+  });
+  assertEquals(study.coverage.expectedRuns, 6);
+  assertEquals(study.coverage.completedRuns, 4);
+  assertEquals(study.runs.length, 4);
+  assertEquals(study.coverage.failures.length, 2);
+  for (const failure of study.coverage.failures) {
+    assertEquals(failure.arm, "independent");
+    assert(failure.message.includes("initial genomes"), failure.message);
+  }
+  assertEquals(
+    study.coverage.failures.map((f) => f.seed).sort(),
+    [100, 101],
+  );
+  assertEquals(study.primary.vsIndependent.n, 0);
+  assertEquals(study.primary.vsIndependent.verdict, "insufficient-data");
+  assertEquals(study.primary.vsPruned.verdict, "insufficient-data");
+  assertEquals(study.outcome.outcome, "failure");
 });
