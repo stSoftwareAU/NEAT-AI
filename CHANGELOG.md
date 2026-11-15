@@ -308,6 +308,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4162:** opt-in `deno task topology-weight-luck-study` compares each
+  new forward edge under eight fixed weight draws with eight matched Float32
+  weight-only nudges. Result: best-draw selection's mean holdout gain is
+  negative, and the primary median-paired versus best-draw test is no-benefit.
+  Nothing in `src/` calls it; see
+  [the evidence page](docs/evidence/topology-weight-luck-4162.md).
+
 - **Issue #4160:** opt-in `deno task connectivity-prior-study` compares sparse,
   input-reachable initial topologies against the current fully connected one.
   Result: no cell beat the control and the calibration-chosen cell was harmful,

@@ -403,14 +403,12 @@ function seededUuid(rng: RandomNumberGenerator): string {
   return `${hex(8)}-${hex(4)}-4${hex(3)}-${variant}${hex(3)}-${hex(12)}`;
 }
 
-/** Run one arm at one seed, with the global generator and uuids seeded. */
-export function runArm(
-  arm: StudyArm,
-  seed: number,
-  settings: StudySettings,
-  corpus: { train: readonly ABRecord[]; holdout: readonly ABRecord[] },
-): ArmRun {
-  validateSettings(settings);
+/**
+ * Run `fn` with the global generator and `crypto.randomUUID` seeded from
+ * `seed`, restoring both afterwards. `fn` must be synchronous, so the seeding
+ * holds for all of it.
+ */
+export function withSeededGlobals<T>(seed: number, fn: () => T): T {
   const previousRng = getRandomNumberGenerator();
   const originalUuid = crypto.randomUUID;
   const uuidRng = createSeededRng(seed + 1);
@@ -420,12 +418,22 @@ export function runArm(
   (crypto as { randomUUID: () => string }).randomUUID = () =>
     seededUuid(uuidRng);
   try {
-    // The run is synchronous, so the seeding holds for all of it.
-    return runSeeded(arm, seed, settings, corpus);
+    return fn();
   } finally {
     (crypto as { randomUUID: () => string }).randomUUID = originalUuid;
     setRandomNumberGenerator(previousRng);
   }
+}
+
+/** Run one arm at one seed, with the global generator and uuids seeded. */
+export function runArm(
+  arm: StudyArm,
+  seed: number,
+  settings: StudySettings,
+  corpus: { train: readonly ABRecord[]; holdout: readonly ABRecord[] },
+): ArmRun {
+  validateSettings(settings);
+  return withSeededGlobals(seed, () => runSeeded(arm, seed, settings, corpus));
 }
 
 function runSeeded(
