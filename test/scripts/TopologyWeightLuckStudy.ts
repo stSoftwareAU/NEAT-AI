@@ -25,10 +25,12 @@ import {
   chooseNewEdge,
   comparePrecision,
   DEFAULT_SETTINGS,
+  distribution,
   drawNewEdgeWeights,
   DRAWS,
   type MutationRecord,
   precisionVerdict,
+  ruleOutcome,
   RULES,
   runStudy,
   summarise,
@@ -217,6 +219,130 @@ function shaped(cheap: number[], holdoutConfirmed: boolean): MutationRecord {
 function many(n: number, make: () => MutationRecord): MutationRecord[] {
   return Array.from({ length: n }, make);
 }
+
+const LATE = [1.5, 0.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5];
+
+/**
+ * Fourteen mutations where the cheap shape and the holdout shape disagree.
+ * Train follows the cheap shape; the holdout gain is +0.5 when confirmed and
+ * -0.5 when not.
+ *   3 x GENUINE cheap, holdout confirmed
+ *   2 x GENUINE cheap, holdout not confirmed
+ *   4 x LUCKY cheap, holdout confirmed
+ *   1 x LUCKY cheap, holdout not confirmed
+ *   2 x LATE cheap (late luck), holdout confirmed
+ *   2 x BAD cheap, holdout confirmed
+ */
+function disagreeing(holdoutFlip = false): MutationRecord[] {
+  const h = (confirmed: boolean) => holdoutFlip ? !confirmed : confirmed;
+  return [
+    ...many(3, () => shaped(GENUINE, h(true))),
+    ...many(2, () => shaped(GENUINE, h(false))),
+    ...many(4, () => shaped(LUCKY, h(true))),
+    ...many(1, () => shaped(LUCKY, h(false))),
+    ...many(2, () => shaped(LATE, h(true))),
+    ...many(2, () => shaped(BAD, h(true))),
+  ];
+}
+
+Deno.test("ruleOutcome counts, precisions, mean gain and cost match a hand calculation", () => {
+  const records = disagreeing();
+  assertEquals(records.length, 14);
+  const outcome = (name: string) => ruleOutcome(rule(name), records, 10);
+
+  // single-draw selects on the first draw: GENUINE (5) and LUCKY (5), not LATE.
+  const single = outcome("single-draw");
+  assertEquals(single.rule, "single-draw");
+  assertEquals(single.selected, 10);
+  assertEquals(single.confirmedTrain, 5); // the GENUINE ones
+  assertEquals(single.confirmedHoldout, 7); // 3 GENUINE + 4 LUCKY
+  assertAlmostEquals(single.precisionTrain!, 0.5);
+  assertAlmostEquals(single.precisionHoldout!, 0.7);
+  // (3 x 0.5 - 2 x 0.5 + 4 x 0.5 - 1 x 0.5) / 10
+  assertAlmostEquals(single.meanHoldoutGainSelected!, 0.2);
+  assertEquals(single.selectionCostRecords, 14 * 2 * 10);
+
+  // best-draw also takes the two LATE mutations.
+  const best = outcome("best-draw");
+  assertEquals(best.selected, 12);
+  assertEquals(best.confirmedTrain, 5);
+  assertEquals(best.confirmedHoldout, 9);
+  assertAlmostEquals(best.precisionTrain!, 5 / 12);
+  assertAlmostEquals(best.precisionHoldout!, 0.75);
+  assertAlmostEquals(best.meanHoldoutGainSelected!, 0.25);
+  assertEquals(best.selectionCostRecords, 14 * 16 * 10);
+
+  // median-paired takes only the five GENUINE ones; holdout confirms three.
+  const med = outcome("median-paired");
+  assertEquals(med.selected, 5);
+  assertEquals(med.confirmedTrain, 5);
+  assertEquals(med.confirmedHoldout, 3);
+  assertAlmostEquals(med.precisionTrain!, 1);
+  assertAlmostEquals(med.precisionHoldout!, 0.6);
+  assertAlmostEquals(med.meanHoldoutGainSelected!, 0.1);
+  assertEquals(med.selectionCostRecords, 14 * 16 * 10);
+});
+
+Deno.test("ruleOutcome reports null precision and gain when nothing is selected, and still charges the cost", () => {
+  const none = ruleOutcome(
+    rule("median-paired"),
+    many(3, () => shaped(BAD, true)),
+    10,
+  );
+  assertEquals(none.selected, 0);
+  assertEquals(none.confirmedTrain, 0);
+  assertEquals(none.confirmedHoldout, 0);
+  assertEquals(none.precisionTrain, null);
+  assertEquals(none.precisionHoldout, null);
+  assertEquals(none.meanHoldoutGainSelected, null);
+  assertEquals(none.selectionCostRecords, 3 * 16 * 10);
+});
+
+Deno.test("ruleOutcome selection ignores the holdout but the holdout figures follow it", () => {
+  const a = ruleOutcome(rule("median-paired"), disagreeing(), 10);
+  const b = ruleOutcome(rule("median-paired"), disagreeing(true), 10);
+  // Selection and every train figure are identical.
+  assertEquals(b.selected, a.selected);
+  assertEquals(b.confirmedTrain, a.confirmedTrain);
+  assertEquals(b.precisionTrain, a.precisionTrain);
+  assertEquals(b.selectionCostRecords, a.selectionCostRecords);
+  // With the holdout flipped, the five GENUINE picks are confirmed 2 of 5.
+  assertEquals(a.confirmedHoldout, 3);
+  assertEquals(b.confirmedHoldout, 2);
+  assertAlmostEquals(b.precisionHoldout!, 0.4);
+  assertAlmostEquals(b.meanHoldoutGainSelected!, -0.1);
+});
+
+Deno.test("distribution gives the histogram and fractions by hand", () => {
+  const records = disagreeing();
+  // Cheap: 5 GENUINE win 8 draws; 5 LUCKY and 2 LATE win 1; 2 BAD win 0.
+  const cheap = distribution(records, "cheap", 200);
+  assertEquals(cheap.n, 14);
+  assertEquals(cheap.signConsistencyHistogram, [2, 7, 0, 0, 0, 0, 0, 0, 5]);
+  assertAlmostEquals(cheap.fractionConsistent!, 5 / 14);
+  // LUCKY and LATE: best draw wins, median does not: 7 of 14.
+  assertAlmostEquals(cheap.fractionLuckOnly!, 0.5);
+  // Nine medians of -0.5 and five of +0.5.
+  assertEquals(cheap.medianOfMedianPairedGain, -0.5);
+  assert(cheap.medianCi!.low <= cheap.medianCi!.high);
+
+  // Holdout: the three confirmed shapes win 8 draws, the others win 0.
+  const holdout = distribution(records, "holdout", 200);
+  assertEquals(holdout.signConsistencyHistogram, [3, 0, 0, 0, 0, 0, 0, 0, 11]);
+  assertAlmostEquals(holdout.fractionConsistent!, 11 / 14);
+  assertEquals(holdout.fractionLuckOnly, 0);
+  assertEquals(holdout.medianOfMedianPairedGain, 0.5);
+});
+
+Deno.test("distribution of no records is null with an all-zero histogram", () => {
+  const empty = distribution([], "holdout", 50);
+  assertEquals(empty.n, 0);
+  assertEquals(empty.medianOfMedianPairedGain, null);
+  assertEquals(empty.medianCi, null);
+  assertEquals(empty.fractionConsistent, null);
+  assertEquals(empty.fractionLuckOnly, null);
+  assertEquals(empty.signConsistencyHistogram, new Array(9).fill(0));
+});
 
 Deno.test("comparePrecision reports benefit, harm and no-benefit", () => {
   const median = rule("median-paired");

@@ -10,8 +10,10 @@ untouched holdout.
 
 Result on the synthetic corpus:
 
-- Picking the best of eight draws (`best-draw`) selects weight-placement luck:
-  the mutations it picks have a mean holdout gain of −0.00016.
+- `best-draw` picked 19 mutations and 15 are confirmed on the holdout (precision
+  0.79, as for `single-draw`). Its mean holdout gain (−0.00016) is pulled below
+  zero by one mutation (`r0-p6`, −0.0377); the median of the 19 is +0.00108. The
+  study does not show that best-of-eight selection picks luck.
 - The preregistered primary test, `median-paired` against `best-draw`, is
   **no-benefit**: +0.175 holdout precision, 95% CI [−0.009, 0.381].
 - No default changed, and nothing in `src/` calls the harness.
@@ -133,6 +135,15 @@ whose corpus and seeding are reused).
     with a positive control.
   - Hand-computed `summarise` arithmetic.
   - A lucky draw is selected by `best-draw` but not by `median-paired`.
+  - `ruleOutcome` against a 14-mutation fixture where the cheap and holdout
+    shapes disagree: `selected`, `confirmedTrain`, `confirmedHoldout`, both
+    precisions, `meanHoldoutGainSelected` and `selectionCostRecords` for all
+    three rules, asserted by hand; the nothing-selected case (null precisions
+    and gain, cost still charged); and a flipped holdout that leaves selection
+    and train figures unchanged while the holdout figures move.
+  - `distribution` (now exported) by hand on the same fixture: histogram,
+    `fractionConsistent`, `fractionLuckOnly` and the median, plus the empty
+    case.
   - `comparePrecision` returns benefit, harm and no-benefit.
   - `validateSettings` names the field it refuses.
   - A tiny end-to-end study is complete and reproducible, and selection is the
@@ -141,8 +152,10 @@ whose corpus and seeding are reused).
   `withSeededGlobals` was extracted from `runArm`, so the refactor kept the old
   behaviour.
 - `deno test --allow-all test/scripts/TopologyWeightLuckStudy.ts test/scripts/ConnectivityPriorStudy.ts`:
-  23 passed, 0 failed.
-- `./quality.sh --rust-scorer-bin=<built rust_scorer>` on the final code commit:
+  28 passed, 0 failed (14 in each file, run on the final head).
+- `./quality.sh --rust-scorer-bin=<built rust_scorer>` on the code commit before
+  the review fixes (the review-fix push adds tests, an `export` and docs
+  wording, and was checked with the targeted commands below, not the full gate):
   exit 0, 10365 passed, 0 failed, 50 ignored (12m23s). This host has no
   `rust_scorer` on PATH, and plain `./quality.sh` stops at its pre-flight, so
   the binary was built from a fresh NEAT-AI-scorer clone.

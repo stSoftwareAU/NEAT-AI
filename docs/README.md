@@ -136,8 +136,8 @@ Tuning guides and benchmark research.
   selection. What it measured is in
   [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
 - **[evidence/topology-weight-luck-4162.md](evidence/topology-weight-luck-4162.md)**
-  — topology gains versus new-edge weight-placement luck (Issue #4162):
-  best-of-8 selection picks luck; the preregistered primary test is no-benefit.
+  — topology gains versus new-edge weight-placement luck (Issue #4162): the
+  preregistered primary test (median-paired against best-draw) is no-benefit.
 - **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
   — initial connectivity and input fan-out as priors (Issue #4160): a negative
   result; no sparse start beat the current initialisation.

@@ -15,9 +15,13 @@ by the best single draw (`best-draw`) gives a holdout precision difference of
 by the predeclared criterion the result is no-benefit, even though the point
 estimate favours `median-paired`. The secondary test against `single-draw` is a
 benefit (+0.181, CI [0.079, 0.291]) but costs eight times the cheap evaluations.
-Selecting the best of eight draws picked mutations whose mean holdout gain is
-negative, which is weight-placement luck rather than topology. No default is
-changed.
+`best-draw` picked 19 mutations, and 15 of them (0.79) are confirmed on the
+holdout, the same precision as `single-draw` (0.78). Its mean holdout gain is
+slightly negative (-0.00016), but one mutation (`r0-p6`, input-3 → output-0,
+-0.0377) pulls it below zero: the median of the 19 is +0.00108 and the other 18
+average about +0.0019. The mean carries no confidence interval and is not one of
+the preregistered criteria, so the study does not show that best-of-eight
+selection picks weight-placement luck. No default is changed.
 
 ## What was compared
 
@@ -130,9 +134,13 @@ distinct parents. All 99 mutations were evaluated, with 0 failures.
   a matched weight-only nudge of the same Float32 budget.
 - Only about 36% of mutations win at least 6 of 8 draws on holdout. Most
   single-edge gains are not consistent across weight draws.
-- `best-draw` selected 19 mutations whose mean holdout median paired gain is
-  negative (about -0.00016). Picking the luckiest of eight draws selects
-  weight-placement luck rather than topology.
+- `best-draw` selected 19 mutations, 15 of them confirmed on the holdout
+  (precision 0.79, against 0.78 for `single-draw`). Their mean holdout median
+  paired gain is about -0.00016, but one mutation (`r0-p6`, -0.0377) accounts
+  for that: the median of the 19 is +0.00108 (all 99 mutations: +0.00052) and
+  the other 18 average about +0.0019. The mean has no interval here and is not a
+  preregistered criterion, so it is not evidence that best-of-eight selection
+  picks luck.
 - The primary test, `median-paired` against `best-draw`, is no-benefit by the
   preregistered criterion: the CI lower bound (about -0.009) is just below 0,
   even though the point estimate is +0.175.

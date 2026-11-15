@@ -679,7 +679,8 @@ const CRITERIA =
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-function distribution(
+/** The descriptive distribution of the median paired gain over `records`. */
+export function distribution(
   records: readonly MutationRecord[],
   corpus: CorpusName,
   resamples: number,
