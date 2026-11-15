@@ -27,7 +27,7 @@ under `src/` changes and no default changes. Closes #4159.
 - It reuses the real creatures, crossover (`Offspring.breed`, via
   `breedOffspring`), `Mutator` and `geneticCompatibility`, plus
   `preSelectionAB`'s corpus and scoring. `seedPopulation` and `breedOffspring`
-  were exported for this rather than copied.
+  are exported by Develop already, so they are imported rather than copied.
 - Transport is the creature JSON export/import round-trip (the wire format the
   fleet's file exchange moves), measured in bytes. The transport format itself
   is #3910's scope (still open) and is not changed.
@@ -96,11 +96,15 @@ Backend and CLI research harness only; no UI. Full write-up:
 `commit` `7eabf57c` with `dirty: false` and `sourceSha256`
 `ebb9cf08cbea8456877560496d6a5cbe285e923ad82c8ff940ede9b002e5e3a5`: the 20 seeds
 were run from a clean `scripts/` and `src/`, so that commit reproduces the
-artefact apart from the wall-clock fields. The command refuses a dirty
-`scripts/` or `src/` unless `--allow-dirty` is passed, and records `dirty` and
-`sourceSha256` either way. 20 seeds (4159–4178), 6 islands × 10 creatures, 24
-generations, exchange every 4 generations (five rounds, at generations 4 to 20),
-coverage 60/60 runs, 0 failures.
+artefact apart from the wall-clock fields. Develop has since changed one line of
+`scripts/lib/preSelectionAB.ts` (a parameter type narrowed to
+`Pick<ABSettings, "populationSize">`, no runtime effect), so the hash of the
+head's files differs from the recorded one; `src/` and the harness logic are
+unchanged. The command refuses a dirty `scripts/` or `src/` unless
+`--allow-dirty` is passed, and records `dirty` and `sourceSha256` either way. 20
+seeds (4159–4178), 6 islands × 10 creatures, 24 generations, exchange every 4
+generations (five rounds, at generations 4 to 20), coverage 60/60 runs, 0
+failures.
 
 ```mermaid
 flowchart TD
@@ -135,7 +139,7 @@ pre-selection harness, already cited in its own module).
 
 ## Test Plan
 
-- Added `test/scripts/IslandExchangeStudy.ts` (19 tests):
+- Added `test/scripts/IslandExchangeStudy.ts` (22 tests):
   - split sizes, disjointness and determinism
   - ring allocation, which spends exactly the budget, is fair over a cycle and
     refuses bad input
@@ -164,13 +168,23 @@ pre-selection harness, already cited in its own module).
   - every verdict rule, including a `better` interval refused for bytes and for
     collapse
   - a small study completes every planned run
+  - the published comparison, through `runStudy` on five seeds: each paired
+    difference is the arm's held-out MSE minus the broadcast's for the same
+    seed, `wins` counts the negative ones, the bytes ratio is ring over
+    broadcast, and both collapse rates match the per-run `collapsed` flags
+  - the run-level `collapsed` flag: islands that all start from one creature
+    report distance 0 and `collapsed: true`; distinct starts report `false`
+  - a failing arm: a clock that throws on the first arm call of one seed lowers
+    coverage to 5 of 6, is recorded in `failures` with its seed, arm and
+    message, drops that seed from the failed arm's comparison and summary, and
+    leaves the other comparison paired on both seeds
   - same-seed reproduction
   - `withSeededUuids` restores `crypto.randomUUID`, including when `fn` throws
-- Edited `scripts/lib/preSelectionAB.ts`: `export` added to `seedPopulation` and
-  `breedOffspring` only. No existing test was edited or removed.
-  `test/scripts/PreSelectionAB.ts` still passes.
+- This change does not edit `scripts/lib/preSelectionAB.ts`: Develop already
+  exports `seedPopulation` and `breedOffspring`. No existing test was edited or
+  removed. `test/scripts/PreSelectionAB.ts` still passes.
 - `deno test --allow-all test/scripts/IslandExchangeStudy.ts test/scripts/PreSelectionAB.ts`
-  passed (24 passed, 0 failed).
+  passed (27 passed, 0 failed).
 - All non-helper files in `test/docs/` passed (318 passed, 0 failed).
 - `deno fmt`, `deno lint` and `deno check` on `scripts/` and `test/scripts/`
   passed on the final code. The full `./quality.sh` was not re-run on this head:

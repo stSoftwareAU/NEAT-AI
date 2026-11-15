@@ -514,3 +514,90 @@ Deno.test("island study — seeded uuids are v4-shaped and always restored", () 
   assert(crypto.randomUUID === original);
   assertNotEquals(crypto.randomUUID(), crypto.randomUUID());
 });
+
+Deno.test("island study — run-level collapse is true for one shared start and false for distinct starts", async () => {
+  await withRngTestLock(() => {
+    const one: IslandStudySettings = { ...SMALL, generations: 1 };
+    const splits = buildSplits(one);
+    const distinct = buildInitialIslands(one);
+    const shared = distinct.map(() => distinct[0][0]).map((c) =>
+      distinct[0].map(() => c)
+    );
+    const same = runArmSeed("none", one, splits, shared, counterClock());
+    assertEquals(same.finalInterIslandDistance, 0);
+    assertEquals(same.collapsed, true);
+    const apart = runArmSeed("none", one, splits, distinct, counterClock());
+    assert(apart.finalInterIslandDistance > one.collapseThreshold);
+    assertEquals(apart.collapsed, false);
+  });
+});
+
+Deno.test("island study — the published comparison is arm minus control, seed for seed", async () => {
+  await withRngTestLock(() => {
+    const seeds = [4159, 4160, 4161, 4162, 4163];
+    const study = runStudy(SMALL, seeds, counterClock());
+    const holdout = (arm: string, seed: number) =>
+      study.results.find((r) => r.arm === arm && r.seed === seed)!;
+    for (
+      const [name, arm] of [
+        ["ringVsBroadcast", "ring"],
+        ["noneVsBroadcast", "none"],
+      ] as const
+    ) {
+      const comparison = study.comparisons[name];
+      assertEquals(comparison.seeds, seeds);
+      assertEquals(comparison.diffs.length, seeds.length);
+      seeds.forEach((seed, i) => {
+        assertEquals(
+          comparison.diffs[i],
+          holdout(arm, seed).holdoutMse - holdout("broadcast", seed).holdoutMse,
+          `${name}: seed ${seed}`,
+        );
+      });
+      assertEquals(
+        comparison.wins,
+        comparison.diffs.filter((d) => d < 0).length,
+      );
+      const collapseRate = (a: string) =>
+        seeds.filter((s) => holdout(a, s).collapsed).length / seeds.length;
+      assertEquals(comparison.armCollapseRate, collapseRate(arm));
+      assertEquals(comparison.controlCollapseRate, collapseRate("broadcast"));
+    }
+    // Bytes are ring over broadcast: the ring moves fewer, so the ratio is
+    // below one, and the operands are not interchangeable.
+    const ringBytes = seeds.reduce((t, s) => t + holdout("ring", s).bytes, 0);
+    const broadcastBytes = seeds.reduce(
+      (t, s) => t + holdout("broadcast", s).bytes,
+      0,
+    );
+    assertNotEquals(ringBytes, broadcastBytes);
+    assertEquals(
+      study.comparisons.ringVsBroadcast.bytesRatio,
+      ringBytes / broadcastBytes,
+    );
+  });
+});
+
+Deno.test("island study — a failing arm lowers coverage, is recorded and leaves the other seed paired", async () => {
+  await withRngTestLock(() => {
+    // The baseline for the first seed spends 2 clock calls per island, so the
+    // 7th call is the first made by the first arm (`none`) of that seed.
+    let calls = 0;
+    const clock = () => {
+      calls++;
+      if (calls === 7) throw new Error("clock failed");
+      return calls;
+    };
+    const study = runStudy(SMALL, [4159, 4160], clock);
+    assertEquals(study.coverage, { plannedRuns: 6, completedRuns: 5 });
+    assertEquals(study.failures.length, 1);
+    assertEquals(study.failures[0].seed, 4159);
+    assertEquals(study.failures[0].arm, "none");
+    assertEquals(study.failures[0].message, "clock failed");
+    assertEquals(study.comparisons.noneVsBroadcast.seeds, [4160]);
+    assertEquals(study.comparisons.noneVsBroadcast.diffs.length, 1);
+    assertEquals(study.comparisons.ringVsBroadcast.seeds, [4159, 4160]);
+    assertEquals(study.summary.find((s) => s.arm === "none")!.seeds, 1);
+    assertEquals(study.summary.find((s) => s.arm === "ring")!.seeds, 2);
+  });
+});

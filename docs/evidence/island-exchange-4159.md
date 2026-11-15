@@ -32,10 +32,13 @@ motivation only.
   which had been run with `--allow-dirty` on the same harness (identical
   `sourceSha256`). The artefact is a later commit than the one it names, because
   it is committed after the run; only `scripts/` and `src/` are checked for
-  being clean. `sourceSha256` is the SHA-256 of
-  `scripts/island_exchange_study.ts`, `scripts/lib/islandExchangeStudy.ts` and
-  `scripts/lib/preSelectionAB.ts` (each as `path`, newline, content, newline, in
-  that order).
+  being clean. Develop has since narrowed one parameter type in
+  `scripts/lib/preSelectionAB.ts` (`Pick<ABSettings, "populationSize">`, no
+  runtime effect), so a hash taken at the current head differs from the recorded
+  one; `src/` and the harness logic are unchanged. `sourceSha256` is the SHA-256
+  of `scripts/island_exchange_study.ts`, `scripts/lib/islandExchangeStudy.ts`
+  and `scripts/lib/preSelectionAB.ts` (each as `path`, newline, content,
+  newline, in that order).
 - A synthetic two-input regression from `preSelectionAB.buildCorpus`, seeded per
   study seed. No private data.
 
