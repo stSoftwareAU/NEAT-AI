@@ -111,11 +111,15 @@ whose corpus and seeding are reused).
 
 ## Acceptance Criteria
 
-- **missing** — "Read and pin the full method before reproducing it" — reason:
-  the arXiv fetch failed in this sandbox (`proxy refused the
-  connection`), so
-  the method is this repository's reading of the issue, and every artefact says
-  so.
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **missing** — "Read and pin the full method before reproducing it" — reviewer:
+  missing — reason: the paper could not be read from this sandbox, so the method
+  is this repository's reading of the issue, and every artefact says so. The
+  retry run tried again: `curl` to arXiv `abs`, `pdf`, `export` and the export
+  API failed with `CONNECT tunnel failed, response 403`, and WebFetch to arXiv,
+  Semantic Scholar and alphaXiv failed with `proxy refused the
+  connection`.
 
 ## Test Plan
 
