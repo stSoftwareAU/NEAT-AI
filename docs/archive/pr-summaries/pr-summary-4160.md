@@ -3,8 +3,8 @@
 ## Summary
 
 PR #4169 delivered the opt-in `deno task connectivity-prior-study` harness and
-its negative grid result, but left one part of the issue undone: self-loops
-were not tested. This PR tests them on the already-supported recurrent execution
+its negative grid result, but left one part of the issue undone: self-loops were
+not tested. This PR tests them on the already-supported recurrent execution
 path, as a paired comparison of the control topology with and without one
 self-loop per hidden neuron. The result is `no-benefit`, so no optional prior is
 added and nothing under `src/` changes. Every earlier forward-only result
@@ -27,8 +27,8 @@ reproduces exactly. Closes #4160.
 
 - Both recurrent arms search by mutation alone (`mutateOffspring`), because
   `Offspring.breed` cannot carry a self-loop. Both use the default `FFW`
-  mutation set, which has no self-loop operator, so neither arm can gain or
-  lose self-loops except by neuron removal.
+  mutation set, which has no self-loop operator, so neither arm can gain or lose
+  self-loops except by neuron removal.
 - Recurrent scoring: `clearState()`, then
   `scoreCreature(creature, records, 1, true)`, on train and holdout.
   `scoreCreature` (in `scripts/lib/preSelectionAB.ts`) gains an optional
@@ -67,14 +67,14 @@ deno task connectivity-prior-study --code-version=f1eac480 \
   2,400,000.
 - Compared with the artefact on the base branch, the calibration runs, the
   chosen cell (`d3-f1`), the threshold, every validation run and the
-  confirmatory comparison are identical. The only difference is the new
-  per-run `selfLoops` field.
+  confirmatory comparison are identical. The only difference is the new per-run
+  `selfLoops` field.
 - Self-loops: `no-benefit`. The self-loop arm's holdout MSE minus
   `recurrent-control`'s has a mean of +0.001095, with 95% CI [−0.02372,
   +0.01908] and W/L 9/11. Median holdout is 0.1065 against 0.09504, and upper
   quartile 0.1513 against 0.1354. The self-loop arm reached the threshold in 5
-  of 20 runs, against 4 of 20. Self-loops survived the search: the best
-  creature kept a mean of 7.7 of 8 (minimum 6).
+  of 20 runs, against 4 of 20. Self-loops survived the search: the best creature
+  kept a mean of 7.7 of 8 (minimum 6).
 
 ```mermaid
 flowchart LR
@@ -91,8 +91,8 @@ flowchart LR
   - `buildRecurrentCreature adds one self-loop per hidden neuron and nothing else`.
     It asserts 8 self-loops against 0, `forwardOnly === false`, and forward
     synapses identical to the no-loop build at the same seed.
-  - `self-loops matter only on the recurrent path`. The recurrent scores
-    differ, and the stateless scores are equal.
+  - `self-loops matter only on the recurrent path`. The recurrent scores differ,
+    and the stateless scores are equal.
   - `recurrent arms are reproducible, restore global state and report self-loops`.
     It asserts initial 8 and final > 0 for the self-loop arm, and 0/0 for
     `recurrent-control`.
