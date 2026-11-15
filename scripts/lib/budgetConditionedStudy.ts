@@ -730,21 +730,21 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
-          "Performance is measured over the whole developmental interval, at trained and at unseen ages.",
+          "Performance is measured over the whole developmental interval, at trained and at unseen ages, on 20 test trials whose starting states and stimulus sequences were not seen during optimisation.",
         study:
           "Validation MSE at the trained budgets and at the unseen 37.5% and 75%, on a validation split no search reads.",
         fidelity: "analogue",
       },
       {
         paper:
-          "Controls: the same optimiser run at the initial substrate only or the mature substrate only (five conditions in all).",
+          "Controls: standard HyperNEAT optimised at the initial substrate only (T=0) and 'Reverse' HyperNEAT at the mature substrate only (T=1), with the CPPN time input held at its training value during testing (five conditions in all).",
         study:
           "Controls: independent per-budget searches (including the unseen budgets, which is stronger than single-snapshot training) and a full-size search pruned by frozen-weight magnitude, all at an equal charged-record budget.",
         fidelity: "analogue",
       },
       {
         paper:
-          "Five independent evolutionary runs per condition for each substrate-task pair, 200 generations each.",
+          "Five independent evolutionary runs per condition for each substrate-task pair, populations of 100 genomes evolved for 200 generations.",
         study:
           "20 seeds per arm, stopped by an equal charged-calibration-record budget rather than a generation count.",
         fidelity: "departs",
@@ -759,8 +759,8 @@ export const SOURCE_METHOD = Object.freeze({
   ),
   unpinned: Object.freeze(
     [
-      "CPPN inputs beyond developmental time, its output activation and how connections are thresholded",
-      "the population size and the NEAT settings of the CPPN search",
+      "CPPN inputs beyond developmental time, its output activation and how connections are thresholded (the paper cites HyperNEAT-LEO; whether it uses a link-expression output was not confirmed)",
+      "the NEAT settings of the CPPN search beyond population size and generation count",
       "the fitness definitions for the optomotor and phototaxis tasks",
       "the exact ages evaluated as unseen",
     ] as readonly string[],
