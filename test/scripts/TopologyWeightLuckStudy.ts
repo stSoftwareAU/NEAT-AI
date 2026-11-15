@@ -126,16 +126,24 @@ Deno.test("chooseNewEdge picks an absent forward pair and refuses a full creatur
   );
 });
 
-/** Every corpus shares the same numbers, so one literal set describes a record. */
+/**
+ * The cheap and train corpora share the same numbers unless `train` gives the
+ * full train set its own; the holdout does likewise through `holdout`.
+ */
 function record(
   parent: number,
   topo: number[],
   weight: number[],
   holdout?: { topo: number[]; weight: number[] },
+  train?: { topo: number[]; weight: number[] },
 ): MutationRecord {
-  const mse = (v: number, h?: number) => ({
+  const mse = (
+    v: number,
+    h?: number,
+    t?: number,
+  ) => ({
     cheap: v,
-    train: v,
+    train: t ?? v,
     holdout: h ?? v,
   });
   return {
@@ -146,14 +154,14 @@ function record(
       k,
       weight: 0.5,
       budget: 0.5,
-      mse: mse(v, holdout?.topo[k]),
+      mse: mse(v, holdout?.topo[k], train?.topo[k]),
     })),
     weightOnly: weight.map((v, k) => ({
       k,
       synapse: { fromUUID: "a", toUUID: "b" },
       delta: 0.5,
       budget: 0.5,
-      mse: mse(v, holdout?.weight[k]),
+      mse: mse(v, holdout?.weight[k], train?.weight[k]),
     })),
     records: { cheap: 0, train: 0, holdout: 0 },
   };
@@ -208,11 +216,21 @@ const BAD = [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5];
 const LUCKY = [0.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5];
 const FLAT = [1, 1, 1, 1, 1, 1, 1, 1];
 
-/** Cheap shape `cheap`, holdout confirmed or not. */
-function shaped(cheap: number[], holdoutConfirmed: boolean): MutationRecord {
+/**
+ * Cheap shape `cheap`, holdout confirmed or not. The train shape follows the
+ * cheap one unless `train` names another.
+ */
+function shaped(
+  cheap: number[],
+  holdoutConfirmed: boolean,
+  train: number[] = cheap,
+): MutationRecord {
   const r = record(1, cheap, FLAT);
   const h = holdoutConfirmed ? GENUINE : BAD;
-  for (let k = 0; k < DRAWS; k++) r.topology[k].mse.holdout = h[k];
+  for (let k = 0; k < DRAWS; k++) {
+    r.topology[k].mse.holdout = h[k];
+    r.topology[k].mse.train = train[k];
+  }
   return r;
 }
 
@@ -311,6 +329,37 @@ Deno.test("ruleOutcome selection ignores the holdout but the holdout figures fol
   assertEquals(b.confirmedHoldout, 2);
   assertAlmostEquals(b.precisionHoldout!, 0.4);
   assertAlmostEquals(b.meanHoldoutGainSelected!, -0.1);
+});
+
+Deno.test("ruleOutcome selects on the cheap sample and confirms on the train set", () => {
+  // Cheap says GENUINE (selected by median-paired), train says BAD.
+  const cheapGood = many(3, () => shaped(GENUINE, true, BAD));
+  // Cheap says BAD (not selected), train says GENUINE.
+  const trainGood = many(2, () => shaped(BAD, true, GENUINE));
+  // Cheap and train both say GENUINE.
+  const both = many(4, () => shaped(GENUINE, false));
+  const records = [...cheapGood, ...trainGood, ...both];
+  const out = ruleOutcome(rule("median-paired"), records, 10);
+  // Selected follows the cheap shape: 3 + 4.
+  assertEquals(out.selected, 7);
+  // Confirmed train follows the train shape: only the 4 that agree.
+  assertEquals(out.confirmedTrain, 4);
+  assertAlmostEquals(out.precisionTrain!, 4 / 7);
+  // Holdout confirms the 3 cheapGood and none of the 4 unconfirmed.
+  assertEquals(out.confirmedHoldout, 3);
+  assertAlmostEquals(out.precisionHoldout!, 3 / 7);
+  assertEquals(out.selectionCostRecords, 9 * 16 * 10);
+
+  // The same data, compared by precision, uses the cheap selection too.
+  const cmp = comparePrecision(
+    records,
+    rule("median-paired"),
+    rule("single-draw"),
+    50,
+    1,
+  );
+  // single-draw selects the same 7 (first draw wins on cheap) so no difference.
+  assertEquals(cmp.observed, 0);
 });
 
 Deno.test("distribution gives the histogram and fractions by hand", () => {
@@ -427,7 +476,19 @@ Deno.test("a tiny study is complete, reproducible and never selects on the holdo
     for (const m of a.mutations) {
       assertEquals(m.topology.length, 8);
       assertEquals(m.weightOnly.length, 8);
+      // One parent score plus eight topology and eight weight-only draws,
+      // each on 17 corpus passes of the cheap, train and holdout sets.
+      assertEquals(m.records, {
+        cheap: 17 * TINY.cheapRecords,
+        train: 17 * TINY.trainRecords,
+        holdout: 17 * TINY.holdoutRecords,
+      });
     }
+    const sum = (pick: (m: MutationRecord) => number) =>
+      a.mutations.reduce((t, m) => t + pick(m), 0);
+    assertEquals(a.cost.cheapRecords, sum((m) => m.records.cheap));
+    assertEquals(a.cost.trainRecords, sum((m) => m.records.train));
+    assertEquals(a.cost.holdoutRecords, sum((m) => m.records.holdout));
     assertEquals(a.mutations, b.mutations);
     assertEquals(a.rules, b.rules);
 

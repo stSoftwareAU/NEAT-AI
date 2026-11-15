@@ -144,18 +144,23 @@ whose corpus and seeding are reused).
     three rules, asserted by hand; the nothing-selected case (null precisions
     and gain, cost still charged); and a flipped holdout that leaves selection
     and train figures unchanged while the holdout figures move.
+  - `ruleOutcome` where the cheap and train shapes disagree: `selected` follows
+    the cheap shape while `confirmedTrain` and `precisionTrain` follow the train
+    shape, and `comparePrecision` selects from the cheap sample too.
   - `distribution` (now exported) by hand on the same fixture: histogram,
     `fractionConsistent`, `fractionLuckOnly` and the median, plus the empty
     case.
   - `comparePrecision` returns benefit, harm and no-benefit.
   - `validateSettings` names the field it refuses.
-  - A tiny end-to-end study is complete and reproducible, and selection is the
-    same when the holdout changes.
+  - A tiny end-to-end study is complete and reproducible, selection is the same
+    when the holdout changes, each mutation's `records` is `17 x` the cheap,
+    train and holdout sizes, and `cost` is their sums.
 - `test/scripts/ConnectivityPriorStudy.ts` (unchanged) still passes after
   `withSeededGlobals` was extracted from `runArm`, so the refactor kept the old
   behaviour.
 - `deno test --allow-all test/scripts/TopologyWeightLuckStudy.ts test/scripts/ConnectivityPriorStudy.ts`:
-  28 passed, 0 failed (14 in each file, run on the final head).
+  29 passed, 0 failed (15 in `TopologyWeightLuckStudy.ts`, 14 in
+  `ConnectivityPriorStudy.ts`, run on the final head).
 - `./quality.sh --rust-scorer-bin=<built rust_scorer>` on the code commit before
   the review fixes (the review-fix push adds tests, an `export` and docs
   wording, and was checked with the targeted commands below, not the full gate):
