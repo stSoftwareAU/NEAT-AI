@@ -360,6 +360,11 @@ export class Neat {
   discoveryComplete: ResponseData[] = [];
   trainingComplete: ResponseData[] = [];
   /**
+   * Issue #4099: whether the over-run stop has spent its single merge pass.
+   * See {@link claimOverrunMergePass}.
+   */
+  overrunMergePassUsed = false;
+  /**
    * Issue #4107: the training results `evolve()` has merged this generation
    * whose generation has not committed yet, as train ID to result duration in
    * ms (if any). `processCompletedResults` fills it; the commit logs
@@ -645,6 +650,35 @@ export class Neat {
     return Math.max(1, Math.min(maxWaitByIterations, maxWaitByTime));
   }
 
+  /**
+   * Issue #4099: claim the over-run stop's single merge pass. The over-run
+   * guard trips at the instant the time budget ends the last generation, so a
+   * result that settled after that generation's processCompletedResults() is
+   * still queued here. Returns true at most once per run, and only while a
+   * settled training or discovery result is queued; the caller then runs one
+   * more evolve(), bounded by the hard deadline like every generation, which
+   * merges and commits it. A result that settles after that pass is discarded
+   * at teardown. A failed training result (non-finite `train.error`) is not
+   * mergeable, so it does not claim the pass; it is left for teardown, which
+   * already skips it.
+   */
+  claimOverrunMergePass(): boolean {
+    if (this.overrunMergePassUsed) return false;
+    const t =
+      this.trainingComplete.filter((r) =>
+        r.train !== undefined && Number.isFinite(r.train.error)
+      ).length;
+    const d = this.discoveryComplete.length;
+    if (t + d === 0) return false;
+    this.overrunMergePassUsed = true;
+    getLogger().info(
+      `[Neat] Over-run stop: running one more generation to merge ${
+        t + d
+      } settled result(s) (training: ${t}, discovery: ${d}) before finishing`,
+    );
+    return true;
+  }
+
   finishUp(
     iterations?: number,
     endTimeMS?: number,
@@ -861,7 +895,9 @@ export class Neat {
     // processCompletedResults() is in neither in-progress map, so the checks
     // above miss it. Wait one more pass: the loop calls evolve() again, which
     // merges and clears the arrays, so this cannot spin. The over-run path
-    // never calls evolve() again, so it is excluded and discards at teardown.
+    // does not wait here: it claims its one merge pass through
+    // claimOverrunMergePass() before calling finishUp, and a result still
+    // queued after that pass is discarded at teardown.
     if (
       this.terminationReason !== "overrun" &&
       (this.trainingComplete.length > 0 || this.discoveryComplete.length > 0)

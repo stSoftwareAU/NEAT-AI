@@ -42,6 +42,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4099:** a training or discovery result that settles after the last
+  generation is no longer discarded on every run that ends on its time budget.
+  The over-run guard trips as the budget ends the last generation, so it used to
+  take precedence and discard queued results at teardown. `evolveDir`,
+  `evolveEnv` and `evolveRL` now run exactly one more `evolve()` to merge and
+  commit them (`Neat.claimOverrunMergePass()`, once per run, only for a training
+  result with a finite error or a discovery result). The pass is still bounded
+  by the hard deadline, and results settling after it, or on a hard-deadline or
+  interrupted stop, are still logged discarded with their task ID.
+
 - **Issue #4126:** scheduled native training no longer pins a worker thread
   after quarantine. Workers await `trainDirAsync`, using nonblocking FFI or an
   asynchronous CLI child. C-heap buffers and an OS loader reference keep late

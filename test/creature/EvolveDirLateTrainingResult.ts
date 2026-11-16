@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
-import { evolveDir } from "@creature/CreatureTraining.ts";
+import { evolveDir, type EvolveDirDeps } from "@creature/CreatureTraining.ts";
 import type { Neat } from "@neat/Neat.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import {
@@ -302,6 +302,148 @@ Deno.test({
       Deno.addSignalListener = realAddSignalListener;
       setLogger(previousLogger);
       await Deno.remove(dataSetDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+    const { json: trainedJSON, value } = constantCreature();
+    const dataSetDir = makeDataDir(constantDataSet(value), 2000);
+    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4099-" });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const lines: string[] = [];
+    const previousLogger = getLogger();
+    const originalTrainTracked = WorkerHandler.prototype.trainTracked;
+    const originalTrain = WorkerHandler.prototype.train;
+    let captured: Neat | undefined;
+    let resolveTraining!: (response: ResponseData) => void;
+    const response = new Promise<ResponseData>((resolve) => {
+      resolveTraining = resolve;
+    });
+    let taskID: string | undefined;
+
+    const train = (_creature: Creature, _options: unknown, label?: string) => {
+      taskID = (label ?? _creature.uuid!).slice(-8);
+      return response;
+    };
+    WorkerHandler.prototype.trainTracked = function (
+      c: Creature,
+      options: unknown,
+      label?: string,
+    ) {
+      return { taskID: 4099, response: train(c, options, label) };
+    };
+    WorkerHandler.prototype.train = train;
+
+    // Injected clock: the soft budget (60 s) is exceeded when the result
+    // settles, but the hard cap (start + 120 s) has not been reached.
+    const startMS = Date.now();
+    let nowMS = startMS;
+
+    const options: NeatOptions = {
+      populationSize: 10,
+      iterations: 1,
+      trainPerGen: 1,
+      threads: 1,
+      verbose: false,
+      creatureStore,
+      timeoutMinutes: 1,
+    };
+
+    try {
+      const deps: EvolveDirDeps = {
+        startTimeMS: startMS,
+        now: () => nowMS,
+        overrunEnforcementFactor: 1,
+        onNeatReady: (neat) => {
+          captured = neat;
+          const recorder: Logger = {
+            debug: (...a: unknown[]) => lines.push(a.join(" ")),
+            info: (...a: unknown[]) => lines.push(a.join(" ")),
+            warn: (...a: unknown[]) => lines.push(a.join(" ")),
+            error: (...a: unknown[]) => lines.push(a.join(" ")),
+          };
+          setLogger(recorder);
+
+          const realEvolve = neat.evolve.bind(neat);
+          let finalRequestedGeneration = true;
+          neat.evolve = async (...args: Parameters<Neat["evolve"]>) => {
+            const out = await realEvolve(...args);
+            if (finalRequestedGeneration) {
+              finalRequestedGeneration = false;
+              assert(
+                taskID,
+                "the last requested generation must schedule training",
+              );
+              nowMS = startMS + 90_000;
+              resolveTraining({
+                taskID: 4099,
+                duration: 1,
+                train: { ID: taskID, creature: trainedJSON, error: 0 },
+              } as ResponseData);
+              await response;
+            }
+            return out;
+          };
+        },
+      };
+      const result = await evolveDir(creature, dataSetDir, options, deps);
+
+      assert(captured, "the run must construct a population");
+      assert(taskID, "a worker training task must have been dispatched");
+      assertEquals(
+        result.terminationReason,
+        "overrun",
+        "the run must end on the over-run path",
+      );
+      const plain = stripAnsi(lines.join("\n"));
+      assert(
+        plain.includes("Training over-run"),
+        `the over-run branch must have run; got: ${plain}`,
+      );
+      assertEquals(
+        result.generation,
+        2,
+        `the over-run stop runs exactly one merge generation; got: ${plain}`,
+      );
+      assertEquals(
+        plain.split("running one more generation to merge 1 settled result(s)")
+          .length - 1,
+        1,
+        `the merge pass must be claimed exactly once; got: ${plain}`,
+      );
+      assertEquals(
+        plain.split("\n").filter((line) =>
+          new RegExp(`Training\\s+${taskID}\\s+completed`).test(line)
+        ).length,
+        1,
+        `the settled result must have exactly one completion; got: ${plain}`,
+      );
+      assert(
+        !plain.includes(`Training ${taskID} discarded`),
+        `the settled result must not be discarded; got: ${plain}`,
+      );
+      const stored = await loadStoredCreatures(creatureStore);
+      assert(
+        stored.some((c) => getTag(c, "trainID") === taskID),
+        "the settled worker result must reach the persisted creature store",
+      );
+      assert(
+        captured.population.some((c) => getTag(c, "trainID") === taskID),
+        "the settled worker result must reach the returned population",
+      );
+    } finally {
+      WorkerHandler.prototype.trainTracked = originalTrainTracked;
+      WorkerHandler.prototype.train = originalTrain;
+      setLogger(previousLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
     }
   },
 });

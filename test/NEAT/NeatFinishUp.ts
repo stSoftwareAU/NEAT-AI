@@ -623,8 +623,9 @@ Deno.test("finishUp: an over-run stop does not wait on results it will never mer
     const options: NeatOptions = { populationSize: 10 };
     const neat = new Neat(2, 1, options, workers);
 
-    // The over-run path never calls evolve() again, so waiting here would spin
-    // until the hard deadline. Teardown discards these instead.
+    // finishUp itself never waits on the over-run path. The single merge pass
+    // is claimed by claimOverrunMergePass() before finishUp is called, and any
+    // result still queued after that pass is discarded at teardown.
     neat.terminationReason = "overrun";
     neat.trainingComplete.push(settledTraining(3, "abc12345"));
     neat.discoveryComplete.push(settledDiscovery(4, "def12345"));
@@ -634,6 +635,77 @@ Deno.test("finishUp: an over-run stop does not wait on results it will never mer
       true,
       "an over-run stop must finish without waiting on unmerged results",
     );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("claimOverrunMergePass: grants one pass only while a settled result is queued (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    assertEquals(neat.claimOverrunMergePass(), false, "nothing is queued");
+    assertEquals(neat.overrunMergePassUsed, false, "no pass was spent");
+
+    neat.trainingComplete.push(settledTraining(1, "abc12345"));
+    log = captureLog();
+    assertEquals(neat.claimOverrunMergePass(), true);
+    assert(
+      log.lines.some((l) =>
+        l.includes(
+          "running one more generation to merge 1 settled result(s) (training: 1, discovery: 0)",
+        )
+      ),
+      `the claim must be logged; got: ${log.lines.join(" | ")}`,
+    );
+
+    assertEquals(
+      neat.claimOverrunMergePass(),
+      false,
+      "the pass is granted at most once per run",
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("claimOverrunMergePass: a failed training result does not claim the pass (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    const failed = settledTraining(1, "abc12345");
+    failed.train!.error = Number.POSITIVE_INFINITY;
+    neat.trainingComplete.push(failed);
+    assertEquals(neat.claimOverrunMergePass(), false);
+    assertEquals(neat.overrunMergePassUsed, false);
+
+    neat.trainingComplete.push(settledTraining(2, "def12345"));
+    assertEquals(neat.claimOverrunMergePass(), true);
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("claimOverrunMergePass: a queued discovery result alone earns the pass (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.discoveryComplete.push(settledDiscovery(2, "def12345"));
+    assertEquals(neat.claimOverrunMergePass(), true);
   } finally {
     await terminateWorkers(workers);
   }

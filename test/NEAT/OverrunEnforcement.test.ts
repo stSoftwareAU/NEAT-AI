@@ -78,6 +78,10 @@ Deno.test({
       iterations: 8,
       timeoutMinutes: 1,
       threads: 1,
+      // No training is scheduled, so no settled result can claim the Issue
+      // #4099 over-run merge pass and the generation assertion still pins that
+      // nothing else starts a generation after the threshold.
+      trainPerGen: 0,
       creatureStore,
       logger,
       onTrainingEvent: (event) => {
@@ -124,6 +128,10 @@ Deno.test({
       assert(
         joined.includes("Training over-run"),
         "the over-run self-termination path must be logged",
+      );
+      assert(
+        !joined.includes("running one more generation to merge"),
+        "with nothing queued, the over-run stop must not claim a merge pass",
       );
       assert(
         !joined.includes("Hard deadline (timeoutMinutes + grace) exceeded"),
