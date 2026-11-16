@@ -13,22 +13,32 @@ import {
 } from "@std/assert";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   type ArmRun,
   ARMS,
   buildControlCreature,
   buildPriorCreature,
+  buildRecurrentCreature,
   buildStudyCorpus,
   chooseCell,
   compareToControl,
   connectivityStats,
+  countSelfLoops,
   DEFAULT_SETTINGS,
+  HIDDEN,
+  mutateOffspring,
   pairedBootstrapCi,
+  RECURRENT_ARMS,
+  RECURRENT_CONTROL_ARM,
   runArm,
+  SELF_LOOP_ARM,
   type StudySettings,
   validateCell,
   verdict,
 } from "../../scripts/lib/connectivityPriorStudy.ts";
+import { scoreCreature } from "../../scripts/lib/preSelectionAB.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
 
 const SMALL: StudySettings = {
@@ -153,6 +163,7 @@ const run = (arm: string, seed: number, trainMse: number, h = 1): ArmRun => ({
   stalled: false,
   initial: { meanHiddenInDegree: 0, meanInputFanOut: 0, reachable: true },
   final: { meanHiddenInDegree: 0, meanInputFanOut: 0, reachable: true },
+  selfLoops: { initial: 0, final: 0 },
 });
 
 Deno.test("chooseCell picks the lowest median train MSE, ties to ARMS order", () => {
@@ -192,7 +203,7 @@ Deno.test("pairedBootstrapCi is deterministic and ordered", () => {
 
 Deno.test("every grid cell builds with exact connectivity for several seeds", () => {
   for (const arm of ARMS) {
-    if (arm.kind === "control") continue;
+    if (arm.kind !== "prior") continue;
     for (const seed of [1, 2, 3, 4, 5]) {
       const stats = connectivityStats(
         buildPriorCreature(
@@ -207,4 +218,114 @@ Deno.test("every grid cell builds with exact connectivity for several seeds", ()
       assert(stats.reachable, arm.arm);
     }
   }
+});
+
+const RECURRENT = (name: string) => RECURRENT_ARMS.find((a) => a.arm === name)!;
+
+Deno.test("buildRecurrentCreature adds one self-loop per hidden neuron and nothing else", () => {
+  const withLoops = buildRecurrentCreature(
+    createSeededRng(3),
+    createSeededRng(9),
+  );
+  const without = buildRecurrentCreature(createSeededRng(3), null);
+  assertEquals(countSelfLoops(withLoops), HIDDEN);
+  assertEquals(countSelfLoops(without), 0);
+  assertEquals(countSelfLoops(buildControlCreature(createSeededRng(3))), 0);
+  assertEquals(withLoops.forwardOnly, false);
+  assertEquals(without.forwardOnly, false);
+  const key = (c: typeof withLoops) =>
+    c.synapses.filter((s) => s.from !== s.to).map((s) => [
+      s.from,
+      s.to,
+      s.weight,
+    ]);
+  assertEquals(key(withLoops), key(without));
+});
+
+Deno.test("self-loops matter only on the recurrent path", () => {
+  const { train } = buildStudyCorpus(4160, 60, 60);
+  const make = (loops: boolean) =>
+    buildRecurrentCreature(
+      createSeededRng(3),
+      loops ? createSeededRng(9) : null,
+    );
+  const a = make(true);
+  const b = make(false);
+  a.clearState();
+  b.clearState();
+  const recurrentA = scoreCreature(a, train, 1, true).score;
+  const recurrentB = scoreCreature(b, train, 1, true).score;
+  assertNotEquals(recurrentA, recurrentB);
+  assertEquals(
+    scoreCreature(a, train, 1, false).score,
+    scoreCreature(b, train, 1, false).score,
+  );
+});
+
+Deno.test("recurrent arms are reproducible, restore global state and report self-loops", async () => {
+  await withRngTestLock(() => {
+    const corpus = buildStudyCorpus(4160, 60, 60);
+    const before = getRandomNumberGenerator();
+    const uuidBefore = crypto.randomUUID;
+    const a = runArm(RECURRENT(SELF_LOOP_ARM), 11, SMALL, corpus);
+    const b = runArm(RECURRENT(SELF_LOOP_ARM), 11, SMALL, corpus);
+    assertEquals(a, b);
+    assert(getRandomNumberGenerator() === before);
+    assert(crypto.randomUUID === uuidBefore);
+    assertEquals(a.selfLoops.initial, HIDDEN);
+    assert(a.selfLoops.final > 0);
+    const c = runArm(RECURRENT(RECURRENT_CONTROL_ARM), 11, SMALL, corpus);
+    assertEquals(c.selfLoops, { initial: 0, final: 0 });
+    // The search really ran: offspring were produced and scored, so the
+    // surviving self-loops are not just the untouched initial population.
+    for (const r of [a, c]) {
+      assertEquals(r.stalled, false);
+      assert(r.generations > 1);
+      assert(r.recordsScored > SMALL.populationSize * SMALL.trainRecords);
+    }
+  });
+});
+
+Deno.test("mutateOffspring returns mutated recurrent children that keep their self-loops", async () => {
+  await withRngTestLock(() => {
+    const rng = createSeededRng(21);
+    const selfLoopRng = createSeededRng(22);
+    const population = Array.from(
+      { length: 4 },
+      () => buildRecurrentCreature(rng, selfLoopRng),
+    );
+    const mutator = new Mutator(
+      createNeatConfig({
+        populationSize: 4,
+        mutationRate: 1,
+        seed: 21,
+        feedbackLoop: true,
+        disableRandomSamples: true,
+      }),
+    );
+    const before = population.map((p) => JSON.stringify(p.exportJSON()));
+    const children = mutateOffspring(population, 6, mutator, rng);
+    assertEquals(children.length, 6);
+    for (const child of children) {
+      assertEquals(child.forwardOnly, false);
+      assertEquals(countSelfLoops(child), HIDDEN);
+      assertEquals(child.score, undefined);
+      assert(child.uuid !== undefined);
+      assert(!before.includes(JSON.stringify(child.exportJSON())));
+    }
+    // The parents are not edited in place.
+    assertEquals(
+      population.map((p) => JSON.stringify(p.exportJSON())),
+      before,
+    );
+  });
+});
+
+Deno.test("chooseCell never returns a recurrent arm", () => {
+  const runs = [
+    run(SELF_LOOP_ARM, 1, 0.0),
+    run(RECURRENT_CONTROL_ARM, 1, 0.0),
+    run("d2-f2", 1, 0.4),
+  ];
+  assertEquals(chooseCell(runs), "d2-f2");
 });
