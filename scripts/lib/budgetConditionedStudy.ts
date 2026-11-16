@@ -797,8 +797,9 @@ export interface PinnedMethodElement {
  *
  * The paper was read on 2026-11-15 and 2026-11-16 through search-indexed
  * excerpts of its abstract page and its HTML full text. A direct fetch of
- * arxiv.org was refused by this host's proxy, so the details the excerpts do
- * not give are listed in `unpinned`, not guessed.
+ * arxiv.org and its mirrors was refused by this host's proxy, so
+ * `fullTextRead` is `false` and the details the excerpts do not give are
+ * listed in `unpinned`, not guessed.
  */
 export const SOURCE_METHOD = Object.freeze({
   arxivId: "2611.06895",
@@ -811,7 +812,8 @@ export const SOURCE_METHOD = Object.freeze({
   categories: ["q-bio.NC", "cs.NE"],
   readOn: "2026-11-15 and 2026-11-16",
   readVia:
-    "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895; direct fetch refused by the host proxy",
+    "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895 (Sections 2.2, 3.3, 3.4 and 3.5, Tables 1 and 3); direct fetch of arxiv.org, its HTML and PDF, and the SciRate, alphaXiv, Hugging Face and Semantic Scholar mirrors refused by the host proxy",
+  fullTextRead: false,
   elements: Object.freeze(
     [
       {
@@ -823,7 +825,14 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
-          "Developmental time (T) is an input to the generator, so connectivity and weights can change with age rather than only grow or shrink.",
+          "The CPPN (HyperNEAT-LEO, Verbancsics and Stanley 2011) is queried once per directed source-target pair the projection rules permit, with seven inputs: the source and target coordinates (x_src, y_src, x_tgt, y_tgt) at the queried age T, half the source-minus-target coordinate differences, and T. Initial CPPNs have those 7 inputs, 2 hidden nodes and 2 outputs (weight and expression gate), both outputs tanh; a connection is expressed iff the expression output is > 0, with the weight output as its weight. CPPN connection parameters are initialised from N(0, 1), hidden- and output-node biases from N(0, 0.1²), and connections respect a feedforward node ordering.",
+        study:
+          "No CPPN and no coordinates: each candidate synapse has its own genes, initialised uniformly (weight and bias in [-1, 1], priority in [0, 1], budgetInput slopes in [-1, 1]). Expression keeps the top-k candidates by priority, so the budget sets the expressed count; it is not an evolved expression output thresholded at 0.",
+        fidelity: "departs",
+      },
+      {
+        paper:
+          "Developmental time (T) is an input to the generator, so connectivity and weights can change with age rather than only grow or shrink. In 58 of the 60 developmentally aware runs, T had an active path to the weight output, the expression output, or both.",
         study:
           "budgetInput arm: each candidate synapse carries a priority and a weight that are linear in the budget (priority + slope × budget, weight + slope × budget), so the budget is an input to expression and the kept set need not be nested across budgets. A linear rule per synapse, not a CPPN over coordinates.",
         fidelity: "analogue",
@@ -858,21 +867,21 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
-          "Controls: standard HyperNEAT optimised at the initial substrate only (T=0) and 'Reverse' HyperNEAT at the mature substrate only (T=1), with the CPPN time input held at its training value during testing (five conditions in all).",
+          "Controls: standard HyperNEAT optimised at the initial substrate only (T=0) and 'Reverse' HyperNEAT at the mature substrate only (T=1), with the CPPN time input held at its training value during testing (T=0 and T=1 respectively; five conditions in all). Both baselines fail to generalise to the three unseen developmental times.",
         study:
           "Controls: independent per-budget searches (including the unseen budgets, which is stronger than single-snapshot training) and a full-size search pruned by frozen-weight magnitude, all at an equal charged-record budget.",
         fidelity: "analogue",
       },
       {
         paper:
-          "Five independent evolutionary runs per condition for each substrate-task pair, populations of 100 genomes evolved for 200 generations.",
+          "Five independent evolutionary runs per condition for each substrate-task pair, populations of 100 genomes evolved for 200 generations. Table 3: add-connection and add-node mutation probabilities 0.10 per offspring, speciation compatibility threshold 1.0.",
         study:
-          "20 seeds per arm, stopped by an equal charged-calibration-record budget rather than a generation count.",
+          "20 seeds per arm, stopped by an equal charged-calibration-record budget rather than a generation count; a (μ+λ) search with μ = λ = 10 over a fixed candidate topology, uniform crossover and Gaussian gene mutation (rate 0.2, σ 0.3), no structural mutation and no speciation.",
         fidelity: "departs",
       },
       {
         paper:
-          "Two substrates (Fish, Ring) and two closed-loop visuomotor tasks (optomotor response, phototaxis).",
+          "Two substrates (Fish, Ring) and two closed-loop visuomotor tasks: the optomotor response (follow moving gratings) and phototaxis (move toward a stationary light within a retinal detection radius; the phototaxis sensing distance grows from 20 to 40). Each step the agent turns by ωΔt, then moves vΔt along the new heading, clipped at the environment boundaries. Behaviour is inspected as heading error relative to stimulus motion (optomotor) and L2 distance to the emitter (phototaxis).",
         study: "One synthetic 4-input regression scored in-process.",
         fidelity: "departs",
       },
@@ -887,10 +896,10 @@ export const SOURCE_METHOD = Object.freeze({
   ),
   unpinned: Object.freeze(
     [
-      "CPPN inputs beyond developmental time, its output activation and how connections are thresholded (the paper cites HyperNEAT-LEO; whether it uses a link-expression output was not confirmed)",
-      "the NEAT settings of the CPPN search beyond population size and generation count",
-      "the fitness definitions for the optomotor and phototaxis tasks",
-      "the values of the unseen ages (the excerpts say standard HyperNEAT was tested at three unseen developmental times, but not which)",
+      "the rest of Table 3: weight mutation rate and power, survival threshold, elitism, stagnation, and the activation set of hidden CPPN nodes",
+      "the fitness equations of Section 3.4 (the excerpts show what is plotted, heading error and distance to the emitter, but not how fitness is computed from them)",
+      "the values of the unseen ages (the excerpts say the baselines were tested at three unseen developmental times, but not which)",
+      "anything else the excerpts do not reach: the full text was never read whole, so this list may be incomplete",
     ] as readonly string[],
   ),
 });

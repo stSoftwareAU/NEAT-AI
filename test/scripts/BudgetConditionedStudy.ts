@@ -310,6 +310,20 @@ Deno.test("the manifest pins the source method it maps onto", () => {
   assert(paper.elements.some((e) => e.fidelity === "departs"));
 });
 
+Deno.test("a manifest that did not read the full text names what it could not pin", () => {
+  const study = runStudy({ seedCount: 1, baseSeed: 100, settings: SMALL });
+  const paper = study.manifest.paper;
+  // The method was pinned from excerpts, not the whole paper: the manifest
+  // must say so rather than imply a complete reading.
+  assertEquals(paper.fullTextRead, false);
+  assert(paper.unpinned.length > 0);
+  for (const gap of paper.unpinned) assert(gap.length > 0);
+  // Every pinned element is distinct, so no detail is pinned twice with two
+  // different readings.
+  const read = paper.elements.map((e) => e.paper);
+  assertEquals(new Set(read).size, read.length);
+});
+
 /** A run whose validation MSE at each budget is given by `mse`. */
 function fixtureRun(
   arm: ArmName,
