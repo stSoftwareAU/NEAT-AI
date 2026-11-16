@@ -23,6 +23,13 @@
  *   and the run was simply over budget.
  * - `inFlightPhase` is the phase the run last declared with `setPhase`.
  * - `heartbeatIntervalMS` is the interval the heartbeat is measured against.
+ * - `lastHeartbeatHeapUsedMB` is the V8 heap used, in MiB, when the main thread
+ *   last ticked.
+ * - `heapLimitMB` is the isolate's V8 heap limit (`heap_size_limit`), in MiB.
+ *   A blocked loop whose last heap reading is close to the limit points at
+ *   garbage collection near the heap limit; a blocked loop with plenty of
+ *   headroom points at synchronous main-thread work. Either reads `unknown`
+ *   when it was not measured.
  *
  * This file must import nothing. It runs as a standalone module, and it is
  * loaded by URL from the main thread.
@@ -44,6 +51,11 @@ interface ArmMessage {
   generationBuffer: SharedArrayBuffer;
   /** One 64-bit slot of epoch milliseconds, bumped by the main thread. */
   heartbeatBuffer: SharedArrayBuffer;
+  /**
+   * Two 64-bit slots: heap used at the latest heartbeat, then the V8 heap
+   * limit, both in bytes; 0 means not measured.
+   */
+  heapBuffer: SharedArrayBuffer;
   /** Phase names, indexed by the phase slot. */
   phaseNames: readonly string[];
   /** The interval the heartbeat is measured against, echoed in the breach line. */
@@ -87,11 +99,21 @@ self.onmessage = (event: MessageEvent<ArmMessage>) => {
     breachLine,
     generationBuffer,
     heartbeatBuffer,
+    heapBuffer,
     phaseNames,
     heartbeatIntervalMS,
   } = event.data;
   const generation = new Int32Array(generationBuffer);
   const heartbeat = new BigInt64Array(heartbeatBuffer);
+  const heap = new BigInt64Array(heapBuffer);
+
+  /** Bytes in a slot as whole MiB, or `unknown` when not measured. */
+  const heapMB = (slot: number): string => {
+    const bytes = Atomics.load(heap, slot);
+    return bytes <= 0n
+      ? "unknown"
+      : String(Math.round(Number(bytes) / (1024 * 1024)));
+  };
 
   /** The breach line, with the measured liveness suffix. */
   const breachText = (): string => {
@@ -100,7 +122,9 @@ self.onmessage = (event: MessageEvent<ArmMessage>) => {
     const line = breachLine.replaceAll("{generation}", label);
     const ageMs = Math.max(0, Date.now() - Number(Atomics.load(heartbeat, 0)));
     const phase = phaseNames[Atomics.load(generation, 1)];
-    return `${line} lastHeartbeatAgeMs=${ageMs} inFlightPhase=${phase} heartbeatIntervalMS=${heartbeatIntervalMS}\n`;
+    return `${line} lastHeartbeatAgeMs=${ageMs} inFlightPhase=${phase} heartbeatIntervalMS=${heartbeatIntervalMS} lastHeartbeatHeapUsedMB=${
+      heapMB(0)
+    } heapLimitMB=${heapMB(1)}\n`;
   };
 
   const breach = (): void => {
