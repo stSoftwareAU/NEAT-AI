@@ -1,103 +1,83 @@
-# Experiment: differential-weight offspring and delayed population contraction (Issue #4156)
+# Experiment: differential-weight offspring and delayed population contraction (Issue #4156) — the paper's mechanism
 
 ## Summary
 
-Adds an opt-in research harness, `deno task differential-weight-study`. It
-compares differential-evolution (DE) weight-only offspring, which fill about 20%
-of the offspring slots within a species, against delayed population contraction,
-as a 2×2 at an equal charged-record budget. The 2×2 is crossed with whether
-local-refinement descendants re-enter the population. The harness also records
-the 30-seed result, which is a **negative finding**. No arm meets the
-predeclared benefit criterion, none is harm, and every held-out MSE CI95 spans
-zero. No production code changed: nothing under `src/` is touched, and nothing
-imports the harness. Part of #4156, which stays open: the paper's method was not
-read, so the result tests this repository's reading of the issue and not the
-paper's method.
+PR #4165 merged the opt-in harness and a negative result, but it never read the
+paper. This follow-up pins the paper's method as far as the container can reach
+it. It then tests the paper's own contraction mechanism and re-runs the whole
+study on fresh validation seeds:
+
+- **Paper partly pinned.** arXiv 2610.26202 (Ambrosini, v1 2026-10-19) still
+  cannot be fetched (`CONNECT tunnel failed, response 403`). Web search did
+  return the abstract and excerpts of the PDF text. The manifest's `paper`
+  object now records the title, author and version, plus what is pinned and what
+  is not (`methodRead: "partial"`).
+- **New arms for the paper's contraction.** The paper's "delayed contraction" is
+  a budget-aware delay of L-SHADE's linear population-size reduction (LPSR). The
+  harness only had NEAT-AI's adaptive shrink rule, so `delayedLinearSize` and
+  four arms (`lpsr`, `de+lpsr` × `@reenter`/`@isolated`) are added beside the
+  existing ones: 12 arms and 11 predeclared contrasts.
+- **Fresh validation seeds.** The 8-arm results on 14156–14185 were seen before
+  the LPSR arms were designed. That range is now refused like 4156–4185, and all
+  12 arms ran on the fresh range 24156–24185.
+
+The result is negative again. No contrast is benefit or harm, and every held-out
+MSE CI95 spans zero. The paper's delayed LPSR is not better here (+0.001361 with
+re-entry, +0.002685 isolated). It also cuts behavioural diversity to 0.72 and
+0.65 of the control, below the 0.8 floor. Nothing under `src/` changes.
+
+The full text is still unread, so the delay cap, F/CR and the injection fraction
+are not pinned. Part of #4156.
 
 ## Spec
 
 ### Intent and Rationale
 
-- The issue asks for a controlled comparison, not a feature. The harness follows
-  the existing study pattern (`scripts/lib/preSelectionAB.ts`,
-  `scripts/pre_selection_ab.ts`): a library, a CLI, a `deno task`, an evidence
-  page and a JSON artefact.
-- It reuses the real `Mutator`, `Offspring.breed` (through `breedOffspring`),
-  `Genus`, `computeAdaptivePopulationSize`, `detectPlateau`, `seedPopulation`,
-  `buildCorpus`, `scoreCreature`, `median` and the `cliArgs` readers.
-- The runner already has a contraction rule, the plateau-driven shrink in
-  `src/NEAT/AdaptivePopulationSizer.ts`, which is off by default. The
-  "contraction" arms therefore reuse that rule and do not introduce a new one.
+- The open criterion was "Read and pin the full method before reproducing it".
+  Search excerpts showed that the paper's contraction is delayed L-SHADE LPSR
+  (section 3.3, figure 2), not a diversity-driven shrink. The merged harness
+  therefore never tested the paper's mechanism, and this PR adds that arm.
+- The existing adaptive arms stay, as the issue's "reuse existing mechanisms"
+  asks, and the LPSR arms sit beside them rather than replacing them.
 
 ### Essential Design Decisions
 
-- **DE** is DE/rand/1/bin, weight-only, with F=0.5 and CR=0.9. It works over
-  genes that the target and three donors from the same `Genus` species all
-  carry: biases keyed by neuron uuid and weights keyed by the synapse
-  `(fromUUID, toUUID, type)`. Topology, squashes and uuids are the target's,
-  which preserves alignment and activation semantics. Parents are cloned through
-  `exportJSON` and never modified. When a species has fewer than three donors,
-  the slot falls back to an ordinary offspring, which is counted.
-- **Contraction** is delayed until 50% of the record budget and can only shrink,
-  with a floor of 0.5× the base size. Assumption: the rule runs with
-  `highDiversityThreshold` 0 and `lowDiversityThreshold` 0 rather than the
-  production defaults of 0.8 and 0.3. In a 3-seed pilot the population held 1.3
-  to 2.3 species per 24 creatures, so under the defaults the grow branch always
-  fired and the shrink branch never did, and the arm would have been identical
-  to the control. The manifest records this as `contractionPolicy`.
-- **Local refinement** stands in for production backprop: each generation, 4
-  Gaussian weight perturbations of the best creature are tried, and they are
-  charged in every arm. In `@reenter` arms an improved descendant joins the
-  population, as trained creatures do in production. In `@isolated` arms it
-  never breeds but can still ship.
-- **Budget.** Every arm stops at 240,000 charged train records. Ordinary
-  offspring are topped up with retries, and slots still empty are reported per
-  arm. The holdout (read once, at the end) and the 64-record diversity probe are
-  never charged and never guide anything. Deviation: the issue says "Hold
-  evaluation and wall-clock budgets equal". Wall-clock is measured and reported
-  as median ratios, but it is not capped. A wall-clock cap on this shared
-  container would make the runs non-deterministic, and the guidelines'
-  Performance Task Workflow treats container timings as indicative only. The
-  deterministic records budget therefore stands in for equal compute.
+- `delayedLinearSize` holds the base size (24) until `contractionDelayFraction`
+  (50%) of the record budget. It then runs `round((24 − 4)·(1 − progress)) + 4`
+  down to `lpsrMinPopulationSize` = 4 at budget exhaustion. It is wrapped in
+  `Math.min(size, …)`, so the population never grows.
+  - N_min = 4 is L-SHADE's value (Tanabe & Fukunaga 2014).
+  - The 50% delay is this study's choice, because the paper's delay cap was not
+    obtained. Both values were fixed before the 24156 run, and nothing was
+    changed after seeing it.
+- `StudyArm.delayedContraction: boolean` became
+  `contraction: "none" | "adaptive" | "linear"`. The original eight arms' code
+  path and RNG use are unchanged. The ccf3d612 re-run on 14156–14185 reproduced
+  PR #4165's eight contrasts exactly, which is the evidence for this.
+- `USED_SEED_RANGES` now also holds `[14156, 14185]`, and `VALIDATION_BASE_SEED`
+  is 24156. The superseded runs are counted in `PREPARATION_RUNS`.
+- The `paper` manifest field changed shape (`methodRead` went from a boolean to
+  `"partial"`, and fields were added). The artefact is regenerated whole and no
+  code reads it, so no old-shape reader is needed.
 
 ### Undiscoverable Facts
 
-- arXiv 2610.26202 could not be fetched: `curl` returned
-  `CONNECT tunnel failed, response 403`. No method detail or number from the
-  paper is used. The method is this repository's reading of the issue, and the
-  manifest pins that as `paper.methodRead: false`. The issue asks to read and
-  pin the paper's method before reproducing it, so this PR does **not** close
-  the issue: the prerequisite stays open for the owner, who can paste or supply
-  the method. Until then the negative result says nothing about the paper's
-  method.
-- The first full run showed that ordinary breeding leaves many slots empty,
-  because `Offspring.breed` declines clones. As a result the control ran about
-  100 generations while DE arms ran about 33, which mixed a population-fill
-  effect into the DE contrast. The top-up retry fixed that, and that run is not
-  reported.
-- Preparation and search cost. Three runs besides calibration shaped the design,
-  and none of them is in the reported arms: a 3-seed pilot (set the contraction
-  thresholds), the first full run (found the empty slots), and a second full run
-  on 4156–4185 (reported earlier, then discarded because time-to-target ignored
-  shippable creatures that were not the population's best). The seeds and
-  records charged of the pilot and the first full run were not recorded and
-  cannot be recovered; the bound is 240,000 records per run, so at most
-  5,760,000 for the pilot (plus up to 1,200,000 if it ran a calibration phase,
-  which is not known) and 57,600,000 for the first full run plus the 1,200,000
-  calibration phase the CLI has run since its first commit (58,800,000). The
-  second full run's cost is recorded in this PR's earlier artefact at commit
-  `eccc6792`: 57,594,400 validation plus 1,200,000 calibration, 58,794,400. The
-  reported validation charged 57,596,400 records (the sum of `recordsCharged`
-  over its 240 runs), not the 57,600,000 budget. The first full run probably
-  used the CLI default, which was 4156–4185, so those seeds were not untouched.
-  The reported validation was therefore re-run on a fresh range,
-  **14156–14185**, that no earlier run used. The manifest (`preparation`) and
-  the evidence page record all of this. The claim is enforced, not asserted: the
-  CLI refuses a validation range that overlaps 4156–4185 (`USED_SEED_RANGES`),
-  exactly as it refuses one that overlaps the calibration range, and the
-  manifest's `preparation.validationSeedsUntouched` is computed from the seeds
-  actually run. The pilot's seeds were never recorded, so they cannot be listed
-  and are covered only by the bound above.
+- Direct fetches of arxiv.org (abs and pdf, via `curl` and WebFetch) were
+  refused by the proxy. Semantic Scholar, alphaXiv and a reader proxy were also
+  unreachable, and only github.com answered. The paper's method was pinned from
+  WebSearch excerpts retrieved on 2026-11-16.
+- Pinned from those excerpts:
+  - MERLIN is CMA-ES with DE trial vectors added as extra offspring.
+  - RAPTOR is PSO with success-history adaptation, DE injection and local
+    refinement.
+  - L-SHADE-SW is L-SHADE with Solis–Wets local search, whose result replaces
+    the worst member.
+  - The delayed LPSR improves three adaptive DE variants in 40 of 51
+    comparisons.
+  - The budget is a hard cap of 1,200 evaluations, all counted.
+  - Local search pays off only when its result re-enters the population.
+- The harness spends about 600 evaluations per run (240,000 records at 400 per
+  evaluation), the same order as the paper's 1,200.
 
 ## Evidence
 
@@ -105,55 +85,43 @@ This is a script/CLI change; no UI files are touched. The full record is in
 `docs/evidence/differential-weight-4156.md`, and the machine-readable artefact
 is `docs/evidence/differential-weight-4156.json`.
 
-The artefact contains:
+- **Run.** `codeVersion` `23bd8e8f`, NEAT-AI 7.1.22, Deno 2.9.8.
+- **Coverage.** 30/30 seeds for each of the 12 arms, with no failures.
+- **Records.** 86,345,600 validation records charged against a budget of
+  86,400,000. Calibration is unchanged: seeds 94156–94160, threshold 0.01406,
+  1,200,000 records.
+- **No uncommitted code in the run.** `git diff 23bd8e8f HEAD -- scripts test`
+  is empty apart from the later test-only commit that pins the lpsr trace.
 
-- the manifest: code version, NEAT-AI 7.1.18, NEAT-AI-core rev, Deno 2.9.8,
-  corpus id and seed, seeds, settings, criteria, contrasts, policies, the
-  preparation and search cost, and the paper note;
-- per-run results;
-- coverage of 30/30 seeds for every arm, with no failures;
-- the paired comparisons.
+| Contrast (arm vs control)               | Mean diff  | CI95                   | Wins  | Diversity | Verdict    |
+| --------------------------------------- | ---------- | ---------------------- | ----- | --------- | ---------- |
+| `de@reenter`                            | +0.001649  | [−0.004733, +0.007948] | 17/30 | 1.07      | no-benefit |
+| `contraction@reenter`                   | −0.0002824 | [−0.0007422, +2.5e-05] | 9/30  | 0.972     | no-benefit |
+| `lpsr@reenter`                          | +0.001361  | [−0.001069, +0.005618] | 16/30 | 0.723     | no-benefit |
+| `de+lpsr@reenter`                       | +0.002630  | [−0.004513, +0.009868] | 16/30 | 0.846     | no-benefit |
+| `lpsr@isolated`                         | +0.002685  | [−0.000246, +0.006183] | 11/30 | 0.650     | no-benefit |
+| `control@isolated` vs `control@reenter` | +0.002116  | [−0.004805, +0.008168] | 16/30 | 1.01      | no-benefit |
 
-Calibration on the disjoint seeds 94156–94160 set the time-to-target threshold
-at train MSE 0.01406 and cost 1,200,000 records, which are reported separately.
-Validation used the fresh seeds 14156–14185. Time to target is read the moment
-any scored creature (population member or refined descendant, re-entering or
-isolated) reaches the threshold; in every arm the number of seeds with a time
-equals the number of seeds whose shipped `finalTrainMse` is at or below it. The
-diff is the arm's held-out MSE minus the control's, so a negative diff is
-better:
-
-| Contrast                                        | Mean diff | CI95                 | Wins  | Diversity | Verdict      |
-| ----------------------------------------------- | --------- | -------------------- | ----- | --------- | ------------ |
-| `de@reenter` vs `control@reenter`               | +1.01e-3  | [−3.86e-3, +6.06e-3] | 13/30 | ×0.956    | `no-benefit` |
-| `contraction@reenter` vs `control@reenter`      | −4.41e-4  | [−1.05e-3, +2.33e-5] | 12/30 | ×0.911    | `no-benefit` |
-| `de+contraction@reenter` vs `control@reenter`   | +9.07e-4  | [−3.98e-3, +6.00e-3] | 15/30 | ×0.924    | `no-benefit` |
-| `de@isolated` vs `control@isolated`             | +9.09e-3  | [−1.48e-3, +2.13e-2] | 13/30 | ×0.993    | `no-benefit` |
-| `contraction@isolated` vs `control@isolated`    | −3.74e-4  | [−1.04e-3, +7.31e-5] | 8/30  | ×0.980    | `no-benefit` |
-| `de+contraction@isolated` vs `control@isolated` | +9.77e-3  | [−6.34e-4, +2.19e-2] | 12/30 | ×0.970    | `no-benefit` |
-| `control@isolated` vs `control@reenter`         | −2.86e-3  | [−1.14e-2, +3.64e-3] | 12/30 | ×0.914    | `no-benefit` |
-
-Under isolation, DE has about twice the seed-to-seed spread (SD ratio 1.97, CI95
-[1.02, 3.07] for `de@isolated`). DE also reaches the time-to-target threshold on
-fewer seeds (13 against 18 under re-entry, 10 against 16 isolated).
-
-The evidence page also covers variance (SD ratio with CI), time-to-target,
-species ratio, wall-clock ratio, generations, evaluations per generation and
-unfilled slots.
+The evidence page has all 11 contrasts, with SD ratios, time to target, species,
+wall-clock and coverage. The previous range's "about twice the spread for DE
+under isolation" did not replicate (SD ratio 1.106, CI [0.87, 1.28]). Isolation
+reaches the time-to-target threshold on fewer seeds than re-entry (13 against
+18). That is the paper's direction, but it is not established at this sample
+size.
 
 ```mermaid
 flowchart LR
-    E[Evaluate on train<br/>charged] --> R[Rank + Genus species]
-    R --> C{Past 50% budget<br/>and contraction arm?}
-    C -->|yes| S[Existing shrink rule<br/>never grows]
-    C -->|no| F[Fixed size]
-    S --> L[Refine best<br/>charged]
-    F --> L
-    L --> Q{Re-enter?}
-    Q -->|reenter| N[Next population:<br/>elites + refined + DE + ordinary]
-    Q -->|isolated| N
-    N --> E
-    R -.->|end only| H[Holdout MSE<br/>reported, never guides]
+    A[Evaluate, charged] --> B[Rank + Genus species]
+    B --> C{Contraction policy}
+    C -->|none| F[Fixed 24]
+    C -->|adaptive| S[Existing shrink rule<br/>after 50%, floor 12]
+    C -->|linear| L[Delayed L-SHADE LPSR<br/>24 until 50%, then to 4]
+    F --> R[Refine best, charged]
+    S --> R
+    L --> R
+    R --> Q{Re-enter?}
+    Q --> N[Elites + refined + DE + ordinary]
+    N --> A
 ```
 
 To reproduce:
@@ -163,130 +131,159 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
   --json=docs/evidence/differential-weight-4156.json
 ```
 
-The reported run used `--code-version` of `eccc6792` plus the uncommitted
-working-tree changes that answer the review; the manifest's `codeVersion` says
-so.
-
-No independent reviewers were dispatched.
-
-## Test Plan
-
-- Added `test/scripts/DifferentialWeightStudy.ts`, with 21 tests (12 from the
-  first push, 7 added for the first review, 2 for the second):
-  - `deWeightOffspring` with CR=1 sets every homologous gene to a + F(b − c) and
-    leaves the parents unchanged;
-  - with CR=0 it changes exactly one gene;
-  - it leaves a target-only synapse alone and shares only the genes all four
-    carry;
-  - `contractedSize` waits for the delay, then shrinks only on a diverse
-    plateau;
-  - `runArm` is deterministic per seed and restores the caller's generator;
-  - every arm spends its budget without exceeding it and reports its own
-    mechanisms;
-  - `contraction@reenter` really contracts after the delay, and the control
-    never does;
-  - breeding tops the population up to its target size;
-  - the holdout never guides a run: shifted holdout targets give an identical
-    trajectory and a different holdout reading, which is the positive control;
-  - `pairedComparison` and `verdict` follow the predeclared criteria (benefit,
-    harm, no-benefit, low diversity is not benefit, mismatched lengths throw);
-  - `validateSettings` names the offending field;
-  - `calibrateTarget` is the median final training MSE and refuses an empty set;
-  - **new:** time to target, through `runArm` for every arm: a generous target
-    is met at the first scoring (the first 60 charged records), an unreachable
-    target gives `null`, and a target at the run's own `finalTrainMse` is always
-    reached;
-  - **new:** an `@isolated` fixture where the shipped creature is better than
-    every population best ever seen (so only the refined descendant reaches the
-    target) still reports a time;
-  - **new:** `sdRatio` gives 2 for an arm at twice the control's spread (and 0.5
-    at half), an interval that brackets a noisy ratio, and the length-mismatch
-    and empty errors;
-  - **new:** `behaviouralDiversity` is 0 for identical creatures, the
-    hand-computed mean pairwise RMS for known outputs, leaves out a creature
-    with a non-finite output, and is 0 for fewer than two creatures or an empty
-    probe;
-  - **new:** a DE arm on a 24-creature population requests about `deFraction` of
-    its slots as DE (`deSlotsRequested`), `deOffspring + deFallbacks` equals the
-    request, and `deOffspring > 0`; the non-DE control requests none;
-  - **new:** with a population of 3 (no species can hold four) every DE slot
-    falls back and is counted, and `deOffspring` is 0;
-  - **new:** the default validation seeds overlap no used range, and
-    `usedSeedOverlap` reports exactly the seeds inside 4156–4185 (the old CLI
-    default in full, and only the edge seeds of a straddling range), so the CLI
-    can refuse an overlapping range;
-  - **new:** `buildDeChild` (now exported) takes donors only from the parent's
-    own species: with a second species of huge weights in the population the
-    child's genes stay within the five same-species values, and a species of
-    three gives no DE child despite plenty of creatures elsewhere.
-- `scripts/lib/preSelectionAB.ts`: `seedPopulation` and `breedOffspring` are now
-  exported, and `seedPopulation`'s parameter is narrowed. There is no behaviour
-  change, and its 5 existing tests pass. No assertion was removed from any
-  existing test, and no existing test was removed or replaced.
-- Gates run on this fix, all passing: `deno fmt --check`, `deno lint` on
-  `scripts` and `test/scripts`, `deno check`, cspell and markdownlint on the
-  changed files, and `deno test` on `DifferentialWeightStudy.ts` and
-  `PreSelectionAB.ts` (24 passed, 0 failed), plus `test/docs/` (55 passed). The
-  full `./quality.sh` ran on the first push (head 96f6e1ea) with
-  `ok | 10338 passed (5 steps) | 0 failed | 50 ignored (9m12s)`; it was not
-  re-run in full for the review fix.
-- cspell with `docs/cspell.json` reported 0 issues on the changed scripts, test
-  and docs at the first push. Five words were added to the dictionary:
-  `reenter`, `reenters`, `reentered`, `carryover` and `scorings`.
-
 ## Acceptance Criteria
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **missing** — Read and pin the full method before reproducing it — reason:
-  arXiv 2610.26202 could not be fetched (`CONNECT tunnel failed, response 403`),
-  so the paper's method is unread. The DE variant, F, CR and the contraction
-  schedule are this repository's reading of the issue; the manifest records
-  `paper.methodRead: false`. No NEAT-AI change can satisfy this without the
-  method being supplied, so the issue must stay open for the owner.
-- **met** — Controlled experiment: DE only, delayed contraction only, both, and
-  current behaviour, crossed with whether local-refinement descendants re-enter
-  — evidence: `STUDY_ARMS` in `scripts/lib/differentialWeightStudy.ts` (eight
-  arms); `docs/evidence/differential-weight-4156.md` contrasts table.
-- **met** — Opt-in only; no change under `src/`, no default change — evidence:
-  nothing under `src/` is touched and nothing imports the harness.
-- **partial** — Predeclare controls, seeds, sample size, compute limits and
-  success/failure criteria; separate calibration from untouched validation and
-  count preparation cost — reason: the pilot's and the first full run's seeds
-  and records charged were not recorded when they were made, so their cost is
-  bounded (at most 5,760,000 and 58,800,000 records), not counted. Predeclared
-  criteria, seeds and the calibration/validation separation are met: manifest
-  `criteria`, `settings`, `calibrationSeeds`, `validationSeeds` and
-  `preparation`; overlap with the calibration range and with the earlier-run
-  range 4156–4185 is refused;
-  `test/scripts/DifferentialWeightStudy.ts::a validation range inside or touching a used range is reported`.
-- **met** — Deterministic positive/negative correctness tests — evidence:
-  `test/scripts/DifferentialWeightStudy.ts` (21 tests).
-- **partial** — Hold evaluation and wall-clock budgets equal — reason: the
-  charged-record budget is equal and wall-clock is measured and reported, but
-  not capped, because a cap on a shared container would make runs
-  non-deterministic.
-- **met** — Reproducible command/manifest and machine-readable results with
-  paired distributions, uncertainty, failures and coverage — evidence:
-  `docs/evidence/differential-weight-4156.json` (30/30 seeds per arm, no
-  failures).
-- **met** — Record negative findings; do not claim success — evidence: the
-  evidence page records `no-benefit` for every contrast.
+- **partial** — Read and pin the full method before reproducing it — evidence:
+  the `paper` object in `scripts/differential_weight_study.ts`; the "Paper
+  (partly pinned)" section of `docs/evidence/differential-weight-4156.md` —
+  reviewer: partial — reason: only search excerpts could be read, because the
+  proxy refuses arxiv.org. The delay formula and cap, the DE variant, F/CR, the
+  injection fraction and the Solis–Wets parameters are not pinned.
+- **met** — inject approximately 20% differential-evolution weight-only
+  offspring across homologous genes — evidence:
+  `test/scripts/DifferentialWeightStudy.ts` (DE tests from PR #4165, still
+  passing) — reviewer: met
+- **met** — Compare current behaviour, DE only, delayed contraction only and
+  both — evidence: `STUDY_ARMS` in `scripts/lib/differentialWeightStudy.ts`;
+  `test/scripts/DifferentialWeightStudy.ts::the study has 12 distinct arms and 11 contrasts that name real arms`
+  — reviewer: met
+- **met** — explicitly include whether local-refinement descendants re-enter the
+  population — evidence: `@reenter`/`@isolated` on every arm, and the
+  `control@isolated` vs `control@reenter` contrast — reviewer: met
+- **met** — Preserve genome alignment and activation semantics — evidence: the
+  DE operator is unchanged and nothing under `src/` is touched — reviewer: met
+- **partial** — Hold evaluation and wall-clock budgets equal — evidence:
+  `budgetPolicy` in the manifest — reviewer: partial — reason: the charged
+  records are equal, but wall-clock is measured and not capped, because a cap on
+  a shared container would make runs non-deterministic.
+- **met** — measure time-to-target, held-out score, variance and diversity —
+  evidence: `comparisons` in `docs/evidence/differential-weight-4156.json` —
+  reviewer: met
+- **met** — Do not introduce contraction if the existing runner has none merely
+  to manufacture a control — evidence: the adaptive arms reuse
+  `computeAdaptivePopulationSize`, and LPSR is a treatment arm, not a control —
+  reviewer: met
+- **met** — Opt-in experiment only; preserve ordinary behaviour, interfaces,
+  immutable parents and full authoritative acceptance. No automatic deployment
+  or default change — evidence: the diff touches only `scripts/`,
+  `test/scripts/`, `docs/` and `CHANGELOG.md` — reviewer: met
+- **met** — Predeclare controls, seeds, sample size, compute limits and
+  success/failure criteria — evidence: the manifest's `settings`, `criteria`,
+  `validationSeeds` and `contrasts`;
+  `test/scripts/DifferentialWeightStudy.ts::the default validation seeds are 24156..24185 and overlap neither used range`
+  — reviewer: met
+- **met** — Identify code/model/data versions — evidence: the manifest's
+  `codeVersion` `23bd8e8f`, `neatAiVersion`, `neatCoreRev`, `deno` and `corpus`
+  — reviewer: partial — reason: the reviewer could not run `git` to check
+  whether the run used uncommitted code. It did not:
+  `git diff 23bd8e8f HEAD -- scripts test` shows only the later test-only
+  commit, and the run started after `23bd8e8f` was committed.
+- **met** — separate calibration from untouched validation and count all
+  preparation/search costs — evidence: `preparation` in the manifest (the
+  superseded 14156 runs are recorded exactly; the pilot and the first full run
+  stay bounded, as in PR #4165) — reviewer: met
+- **met** — Provide deterministic positive/negative correctness tests for new
+  behaviour and pass the repository's normal quality checks — evidence:
+  `test/scripts/DifferentialWeightStudy.ts::delayedLinearSize holds the base until the delay, then falls linearly to the minimum`,
+  `::validateSettings refuses a bad lpsrMinPopulationSize`, and
+  `::lpsr@reenter holds its size until the delay, then only shrinks`;
+  `./quality.sh` passed — reviewer: partial — reason: the reviewer saw only the
+  diff. The full gate was run here and passed (see Test Plan).
+- **met** — Deliver a reproducible command/manifest and machine-readable results
+  with paired distributions, uncertainty, failures and actual coverage —
+  evidence: `docs/evidence/differential-weight-4156.json` (`failures: []`,
+  12-arm coverage, paired CIs) — reviewer: met
+- **met** — Record negative findings and remove optional code that does not earn
+  its maintenance cost. Do not claim success before representative runs —
+  evidence: the evidence page records `no-benefit` for every contrast —
+  reviewer: partial — reason: the reviewer would remove the LPSR code because
+  its result is negative. It is kept because the harness is the reproducible
+  command the issue requires, and deleting the arms would make the recorded
+  negative result unreproducible. No production code is added.
+- **met** — Keep public implementation and fixtures application-agnostic —
+  evidence: the corpus is synthetic (`synthetic-tanh-quadratic-v1`) — reviewer:
+  met
+- **unrequested** — the delayed L-SHADE LPSR contraction policy and its four
+  arms — reviewer: unrequested — reason: this is the paper's own "delayed
+  contraction" mechanism, which the "read and pin the method before reproducing
+  it" criterion asks to test. The adaptive arms alone tested a different
+  mechanism.
+- **unrequested** — moving validation to 24156–24185 and refusing 14156–14185 —
+  reviewer: unrequested — reason: needed to keep validation untouched, as the
+  issue asks, once the 14156 results had been seen before the LPSR design.
+
+## Standards Review
+
+<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+
+The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
+`docs/ENGINEERING_PRINCIPLES.md`.
+
+- **clean** — It found no violations, and no rule in these documents is marked
+  as enforced by review only. Areas checked:
+  - testing rules: no timing APIs, no `Deno.env.set`, and tests assert outcomes;
+  - TDD, single owner and no dual path;
+  - logging and dependency policy, Australian English, NEAT-AI terminology;
+  - the UUID, semantic-version and synapse-identity invariants;
+  - the correctness of `delayedLinearSize`;
+  - doc and artefact consistency.
+
+  On edited tests, the reviewer found that the `delayedContraction` →
+  `contraction === "none"` guard still fails without the code, and that the
+  added `lpsrMinPopulationSize: 2` only keeps an existing input valid. Its
+  optional note was that the lpsr arm test did not pin the schedule; that was
+  fixed in this diff by asserting each trace size against `delayedLinearSize`.
+
+## Test Plan
+
+- **Tests added** in `test/scripts/DifferentialWeightStudy.ts`:
+  - `delayedLinearSize holds the base until the delay, then falls linearly to the minimum`:
+    literal sizes 24, 24, 14, 4 and 4 (before the delay, at the delay, at 75%,
+    at the budget and past it), and 24 for a delay of 1.
+  - `validateSettings refuses a bad lpsrMinPopulationSize`: equal to elitism,
+    above the population and non-integer each throw, and each error names the
+    field. The default settings pass, which is the allowed control.
+  - `lpsr@reenter holds its size until the delay, then only shrinks`: the size
+    stays at the base before the delay, never grows and ends below the base, and
+    every trace size equals `min(previous, delayedLinearSize(…))`.
+    `control@reenter` on the same seed never changes size.
+  - `the study has 12 distinct arms and 11 contrasts that name real arms`.
+  - `the default validation seeds are 24156..24185 and overlap neither used range`.
+- **Tests edited.**
+  `a validation range inside or touching a used range is reported` gains
+  `usedSeedOverlap([14185, 14186])` → `[14185]`. The existing no-contraction
+  test's guard changed from `!arm.delayedContraction` to
+  `arm.contraction === "none"`, with the same assertions. The DE-fallback test
+  sets `lpsrMinPopulationSize: 2` so its 3-creature settings still validate.
+  - Removed from `test/scripts/DifferentialWeightStudy.ts`:
+    `if (!arm.delayedContraction) {`
+    - Replaced by: `if (arm.contraction === "none") {`, the same guard over the
+      renamed field. The assertions under it are unchanged.
+- **Targeted tests.**
+  `deno test -A test/scripts/DifferentialWeightStudy.ts test/scripts/PreSelectionAB.ts`
+  on the final code: 31 passed, 0 failed.
+- **Full gate.** `./quality.sh --rust-scorer-bin=<built rust_scorer>` passed at
+  head 15115d92 with
+  `ok | 10483 passed (5 steps) | 0 failed | 50 ignored (16m9s)`. `rust_scorer`
+  was built from a fresh clone of NEAT-AI-scorer, because the checkout has none
+  beside it.
+- **Spelling.** cspell is clean on the changed files after adding `lpsr`,
+  `Tanabe`, `Fukunaga` and `Ambrosini` to `docs/cspell.json`. markdownlint
+  reports 0 issues on the edited docs.
 
 ## Not done / risks
 
-- The objective is a synthetic two-input regression with small creatures. The
-  result says nothing about GRQ-scale creatures or private corpora, and no
-  representative production run was made.
-- The paper was not read (see above), so the issue stays open and the result is
-  untested against the paper's method.
-- The pilot's and the first full run's seeds and records were not recorded; the
-  validation was re-run on a fresh range to compensate, and their cost is
-  bounded, not measured (the second full run's cost is recorded exactly).
-- Wall-clock was measured, not held equal (see Essential Design Decisions).
-- The contraction arms use non-default diversity thresholds. Under the
-  production defaults the rule never contracted in this setting.
-- Local refinement is a perturbation stand-in, not the production backprop
-  trainer.
+- The paper's full text is still unread, so the delay cap, the DE variant, F/CR,
+  the injection fraction and the Solis–Wets parameters are not pinned, and the
+  issue stays open.
+- The harness is NEAT-AI's GA-style breeding, not CMA-ES, PSO or L-SHADE. The
+  objective is synthetic and the creatures are small, so the result says nothing
+  about GRQ-scale runs.
+- Wall-clock is measured, not held equal.
+- The pilot's and the first full run's costs remain bounded, not measured.
+- Not checked: whether the 14156-range DE spread finding was noise. The fresh
+  range did not replicate it, and no third range was run.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
