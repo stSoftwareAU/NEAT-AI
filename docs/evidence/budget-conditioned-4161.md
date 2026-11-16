@@ -26,6 +26,19 @@ The conditioned genome does not interpolate between its training budgets. Its
 median validation MSE at 75% (unseen) is 0.1729, worse than at 50% (0.05819) and
 at 100% (0.08455), both of which it was trained on.
 
+A second hypothesis, declared before its first run, is also negative. The
+`budgetInput` arm takes the budget as an input to expression: each candidate
+synapse's priority and weight are linear in the budget. Its pre-declared outcome
+is `failure`, for all three reasons. On the unseen budgets it is **harmful**
+against independent per-budget searches (mean validation MSE difference +0.1598,
+95% CI [0.1151, 0.2100], 0 wins and 20 losses). It is no-benefit against the
+pruned network (+0.03158, CI [-0.03595, 0.1044], 8 wins and 12 losses). At full
+size it is harmful against pruned (+0.1712, CI [0.1398, 0.2033], 0 wins of 20).
+It is also worse than the conditioned arm on the unseen budgets (exploratory:
++0.08140, CI [0.03031, 0.1378], 6 wins and 14 losses, harm). It does not
+interpolate either: its median validation MSE at 75% (unseen) is 0.2755, worse
+than at 50% (0.1073) and at 100% (0.2082).
+
 No genome format, default or `src/` behaviour changes. The harness stays only so
 the finding can be reproduced.
 
@@ -34,20 +47,23 @@ the finding can be reproduced.
 The cited paper is arXiv [2611.06895](https://arxiv.org/abs/2611.06895) v1,
 _Learning Time-Varying Connectomes for Stable Behavior Across Development_
 (Christof Fehrman, Jacob J. Morra, Eva A. Naumann; submitted 2026-11-04;
-q-bio.NC, cross-listed cs.NE). It was read on 2026-11-15 through search-indexed
-excerpts of the abstract page and the
+q-bio.NC, cross-listed cs.NE). It was read on 2026-11-15 and 2026-11-16 through
+search-indexed excerpts of the abstract page and the
 [HTML full text](https://arxiv.org/html/2611.06895). This host's proxy refused a
 direct fetch of arxiv.org. The same pin is in the JSON as `manifest.paper`.
 
-| Paper (as read)                                                                                                                                           | This study                                                                                                  | Fidelity |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------- |
-| One HyperNEAT CPPN takes developmental time as an extra input and generates age-specific recurrent connectivity                                           | One genome with an evolved priority gene; a budget keeps the top-k synapses. The genome has no budget input | departs  |
-| The substrate (neuron birth, position, sensory organisation, time constants) is prescribed per age                                                        | One fixed candidate topology; the budget sets how many of its 44 synapses are expressed                     | analogue |
-| Aware conditions optimise mean fitness over 3, 5 or 15 evenly spaced snapshots                                                                            | Mean calibration MSE over 3 budgets: 25%, 50%, 100% (not evenly spaced)                                     | analogue |
-| Evaluated over the whole interval, at trained and unseen ages, on 20 test trials with unseen start states and stimuli                                     | Validation MSE at trained budgets and at unseen 37.5% and 75%                                               | analogue |
-| Controls: HyperNEAT at the initial substrate only (T=0) and "Reverse" HyperNEAT at the mature substrate only (T=1), time input held at its training value | Independent per-budget searches (including the unseen budgets) and a magnitude-pruned full-size search      | analogue |
-| Five runs per condition, populations of 100 genomes, 200 generations                                                                                      | 20 seeds per arm, stopped by an equal charged-record budget                                                 | departs  |
-| Two substrates (Fish, Ring), two closed-loop visuomotor tasks (optomotor response, phototaxis)                                                            | One synthetic 4-input regression                                                                            | departs  |
+| Paper (as read)                                                                                                                                                                        | This study                                                                                                                                                           | Fidelity |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| One HyperNEAT CPPN takes developmental time as an extra input and generates age-specific recurrent connectivity                                                                        | Conditioned arm: one genome with an evolved priority gene; a budget keeps the top-k synapses. The genome has no budget input                                         | departs  |
+| Developmental time is an input to the generator, so connectivity and weights can change with age rather than only grow or shrink                                                       | Budget-input arm: each synapse's priority and weight are linear in the budget, so the kept set need not nest. A linear rule per synapse, not a CPPN over coordinates | analogue |
+| The substrate (neuron birth, position, sensory organisation, time constants) is prescribed per age                                                                                     | One fixed candidate topology; the budget sets how many of its 44 synapses are expressed                                                                              | analogue |
+| Aware conditions optimise mean fitness over 3, 5 or 15 evenly spaced snapshots                                                                                                         | Mean calibration MSE over 3 budgets: 25%, 50%, 100% (not evenly spaced)                                                                                              | analogue |
+| Evaluated over the whole interval, at trained and unseen ages, on 20 test trials with unseen start states and stimuli                                                                  | Validation MSE at trained budgets and at unseen 37.5% and 75%                                                                                                        | analogue |
+| In testing, the substrate's developmental age and the CPPN time input are set separately; for aware controllers both equal the testing age                                             | Budget-input arm: the budget input equals the evaluation budget, which also sets the synapse count; the two are not separated                                        | analogue |
+| Controls: HyperNEAT at the initial substrate only (T=0) and "Reverse" HyperNEAT at the mature substrate only (T=1), time input held at its training value                              | Independent per-budget searches (including the unseen budgets) and a magnitude-pruned full-size search                                                               | analogue |
+| Five runs per condition, populations of 100 genomes, 200 generations                                                                                                                   | 20 seeds per arm, stopped by an equal charged-record budget                                                                                                          | departs  |
+| Two substrates (Fish, Ring), two closed-loop visuomotor tasks (optomotor response, phototaxis)                                                                                         | One synthetic 4-input regression                                                                                                                                     | departs  |
+| Substrates follow g(T): Fish g(T)=T (cohort ranks outside to inside), Ring g(T)=T² (inside to outside); τ(T)=0.4−0.2T (Fish), 0.4−0.2T² (Ring); coordinates used without normalisation | No developmental substrate: the topology and squashes are fixed; only the number and choice of expressed synapses varies                                             | departs  |
 
 The paper reports that single-age controllers generally failed at other ages,
 and that optimising at only three snapshots was often enough across the
@@ -56,18 +72,21 @@ interval.
 **What the excerpts do not pin:** the CPPN's other inputs, its output activation
 and connection threshold (the paper cites HyperNEAT-LEO, but whether it uses a
 link-expression output was not confirmed), the NEAT settings beyond population
-size and generation count, the task fitness definitions, and the exact unseen
-ages. None of these is guessed here.
+size and generation count, the task fitness definitions, and the values of the
+unseen ages (the excerpts say standard HyperNEAT was tested at three unseen
+developmental times, but not which). None of these is guessed here.
 
 **What this means for the verdict.** The paper's core mechanism is a generator
-that takes the condition as an input. This study does not reproduce that
-mechanism. It tests a simpler idea: a nested, gene-ordered expression of one
-genome. The negative result below is about that idea and is not evidence against
-the paper's generator.
+that takes the condition as an input. The conditioned arm tests a nested,
+gene-ordered expression of one genome. The budget-input arm adds the paper's key
+ingredient, the condition as an input, in its simplest per-synapse linear form.
+It too fails here. Neither is the paper's CPPN over substrate coordinates, so
+the result is evidence against these two encodings on this task, not against the
+paper's generator.
 
 ## What was compared
 
-All three arms share one candidate topology: 4 inputs, 8 hidden neurons and 1
+All four arms share one candidate topology: 4 inputs, 8 hidden neurons and 1
 output, plus input-to-output skips, 44 candidate synapses in all. A budget keeps
 the top share of candidates, then drops any hidden neuron left without an
 inbound or an outbound kept synapse. Budgets map to synapse counts: 25% is 11,
@@ -76,15 +95,20 @@ inbound or an outbound kept synapse. Budgets map to synapse counts: 25% is 11,
 - **Conditioned**: one search. Fitness is the mean calibration MSE over the
   training budgets (25%, 50%, 100%). The champion is expressed at all five
   budgets by its evolved priority gene, including the two unseen ones.
+- **Budget input**: searched exactly like conditioned (training budgets 25%,
+  50%, 100%). Each candidate synapse's priority and weight are linear in the
+  budget (priority + slope × budget, weight + slope × budget), so the budget is
+  an input to expression and the kept sets need not nest. The champion is
+  expressed at all five budgets, including the two unseen ones.
 - **Independent**: five separate searches, one per evaluation budget, each with
   a fifth of the records.
 - **Pruned**: one full-size search. The champion is expressed at smaller budgets
   by ranking its frozen weights by magnitude, with no retraining.
 
 Each arm is charged the same calibration records per seed, 300,000. The runs
-charged 299,700 for conditioned (333 evaluations at 900 records each, the three
-budgets per candidate), and 300,000 for independent (1,000 evaluations across
-its five searches) and for pruned (1,000 evaluations).
+charged 299,700 for conditioned and for budgetInput (333 evaluations at 900
+records each, the three budgets per candidate), and 300,000 for independent
+(1,000 evaluations across its five searches) and for pruned (1,000 evaluations).
 
 This is a generative experiment, distinct from NEAT-AI-Ockham's frozen-weight
 pruning. Ockham prunes a finished network's frozen weights; here the expression
@@ -115,6 +139,13 @@ flowchart LR
   no-benefit. Success iff benefit against both independent and pruned controls
   and the full-size (100%) validation MSE against pruned is not harm. Per-budget
   comparisons are exploratory."
+- Second criterion for the `budgetInput` arm, verbatim from the manifest
+  (`criteriaBudgetInput`), declared before that arm's first run: "Second
+  hypothesis, declared on 2026-11-16 before the budgetInput arm's first run: the
+  same rule as CRITERIA applied to budgetInput in place of conditioned (benefit
+  against both independent and pruned on the unseen-budget mean, and full-size
+  validation MSE against pruned not harm). budgetInput minus conditioned on the
+  unseen-budget mean is exploratory."
 
 ## Results
 
@@ -128,6 +159,11 @@ percentile of validation MSE; expressivity is the mean over seeds.
 | conditioned | 50%    | 0.05819           | 0.07929                   | 13                        | 0.6364            | 0       |
 | conditioned | 75%    | 0.1729            | 0.2748                    | 28                        | 0.8394            | 0       |
 | conditioned | 100%   | 0.08455           | 0.1054                    | 44                        | 1.000             | 0       |
+| budgetInput | 25%    | 0.1151            | 0.1560                    | 6                         | 0.4864            | 0       |
+| budgetInput | 37.5%  | 0.09627           | 0.1822                    | 8                         | 0.5235            | 0       |
+| budgetInput | 50%    | 0.1073            | 0.1351                    | 13.5                      | 0.6227            | 0       |
+| budgetInput | 75%    | 0.2755            | 0.4044                    | 27.5                      | 0.8409            | 0       |
+| budgetInput | 100%   | 0.2082            | 0.2609                    | 44                        | 1.000             | 0       |
 | independent | 25%    | 0.02642           | 0.02815                   | 3                         | 0.3227            | 0       |
 | independent | 37.5%  | 0.03093           | 0.03852                   | 6                         | 0.3824            | 0       |
 | independent | 50%    | 0.03945           | 0.05163                   | 10.5                      | 0.4545            | 0       |
@@ -147,11 +183,19 @@ benefits at 25%, 37.5% and 50% (differences -0.3210, -0.2344 and -0.1405, with
 20, 20 and 17 wins) and is harmful at 75% and 100%. The pruned network's
 collapse at small budgets drives the unseen-budget benefit against it.
 
+Exploratory per-budget comparisons for budgetInput (budgetInput minus control):
+against independent it is harmful at every budget (mean differences +0.09596 at
+25%, +0.09391 at 37.5%, +0.06352 at 50%, +0.2257 at 75% and +0.1169 at 100%).
+Against pruned it benefits at 25%, 37.5% and 50% (differences -0.2528, -0.1658
+and -0.09978, with 19, 17 and 15 wins) and is harmful at 75% (+0.2290) and 100%
+(+0.1712). As with conditioned, the pruned network's collapse at small budgets
+produces those benefits.
+
 ## Expressivity, size and latency
 
 Expressivity is the effective synapses divided by the kept synapses, after
 dangling hidden neurons are dropped. Every expression was validated; the
-`invalid` count is 0 in every cell. Coverage was complete: 60 of 60 runs, no
+`invalid` count is 0 in every cell. Coverage was complete: 80 of 80 runs, no
 failures.
 
 Latency figures in the JSON are microseconds per activation, taken on a shared
@@ -161,27 +205,30 @@ verdict, and are excluded from the reproducibility comparison.
 ## Reproducibility
 
 ```bash
-deno task budget-conditioned-study --code-version=429f66b9 \
+deno task budget-conditioned-study --code-version=35e22395 \
   --json=docs/evidence/budget-conditioned-4161.json
 ```
 
-The run takes about 19 s of wall time (indicative). It was run twice at the same
+The run takes about 20 s of wall time (indicative). It was run twice at the same
 commit and the two JSON files were identical apart from the latency fields.
-Versions, from the manifest: NEAT-AI 7.1.19, Deno 2.9.8, code commit `429f66b9`.
-Since `f6c60651`, the code changes only add the pinned source method to the
-manifest. Its results match the first run, at `f6c60651`, exactly, ignoring
-latency, `codeVersion` and `paper`.
+Versions, from the manifest: NEAT-AI 7.1.22, Deno 2.9.8, code commit `35e22395`.
+The three original arms reproduce the previous artefact, at `429f66b9`, exactly:
+their runs, and their primary, full-size, per-budget and outcome results, are
+identical ignoring latency, `codeVersion`, versions and the manifest's `paper`
+and `criteriaBudgetInput` fields.
 
 ## Limitations
 
 - A synthetic 4-input regression with tiny networks.
 - The genome and the (μ+λ) search are harness-level, not NEAT-AI's
   `Offspring.breed` or `Mutator`.
-- arXiv 2611.06895 was read from search-indexed excerpts, not a direct download;
-  the unpinned details are listed under
+- arXiv 2611.06895 was read from search-indexed excerpts on 2026-11-15 and
+  2026-11-16, not a direct download; the unpinned details are listed under
   [Source method (pinned)](#source-method-pinned).
-- The paper's generator, which takes the condition as an input, is not
-  reproduced; see the departures in that table.
+- The paper's generator, a CPPN over substrate coordinates, is not reproduced.
+  The `budgetInput` arm takes the budget as an input in the simplest linear
+  per-synapse form, which is closer but is not that generator; see the
+  departures in that table.
 - A single host, and no production corpus.
 
 ---
