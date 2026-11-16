@@ -12,6 +12,7 @@ import {
 import type { TrainingTaskHandle } from "@neat/TrainingTaskHandle.ts";
 import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 import { EpisodeAdapter, type StepResult } from "@creature/EpisodeAdapter.ts";
+import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**
@@ -366,6 +367,64 @@ Deno.test({
         assert(
           !joined.includes("Hard deadline"),
           "the hard cap must not be what ends the run",
+        );
+      },
+      { deps: { overrunEnforcementFactor: 1 } },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveRL: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    run(
+      "over-run merge pass",
+      async (call, neat, original, h) => {
+        if (call > 2) {
+          throw new Error(
+            "only one merge generation may run after the over-run",
+          );
+        }
+        if (call === 2) return await original(undefined as never);
+        const r = await original(undefined as never);
+        neat.trainingComplete.push({
+          taskID: 4099,
+          duration: 1,
+          train: {
+            ID: "late4099",
+            creature: new Creature(1, 1).exportJSON(),
+            error: 0,
+          },
+        } as ResponseData);
+        // Past timeoutMinutes x factor 1, still before the hard cap.
+        h.state.nowMS = START_MS + TIMEOUT_MINUTES * 60_000 + 30_000;
+        return r;
+      },
+      (result, h) => {
+        assertEquals(result.terminationReason, "overrun");
+        assertEquals(result.generation, 2);
+        assertEquals(h.state.evolveCalls, 2);
+        const joined = h.lines.join("\n").replace(
+          new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
+          "",
+        );
+        assertEquals(
+          joined.split("\n").filter((l) =>
+            /Training\s+late4099\s+completed/.test(l)
+          ).length,
+          1,
+        );
+        assert(
+          joined.includes(
+            "running one more generation to merge 1 settled result(s)",
+          ),
+          "the merge pass must be logged",
+        );
+        assert(
+          !joined.includes("Training late4099 discarded"),
+          "the settled result must not be discarded",
         );
       },
       { deps: { overrunEnforcementFactor: 1 } },
