@@ -159,6 +159,10 @@ Tuning guides and benchmark research.
   the 30-seed study of lineage-informed and stratum-targeted offspring against
   ordinary mutation at an equal record budget (Issue #4155): no benefit, and
   lower behavioural diversity.
+- **[evidence/admission-persistence-4163.md](evidence/admission-persistence-4163.md)**
+  — the 20-seed study of offspring admission against durable lineage
+  contribution (Issue #4163): a negative result; a capped 2:1 parent bias gave
+  no benefit, and individual survival is 0 at 100 and 1000 generations.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
