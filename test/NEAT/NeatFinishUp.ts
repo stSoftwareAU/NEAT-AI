@@ -650,7 +650,6 @@ Deno.test("claimOverrunMergePass: grants one pass only while a settled result is
     const neat = new Neat(2, 1, options, workers);
 
     assertEquals(neat.claimOverrunMergePass(), false, "nothing is queued");
-    assertEquals(neat.overrunMergePassUsed, false, "no pass was spent");
 
     neat.trainingComplete.push(settledTraining(1, "abc12345"));
     log = captureLog();
@@ -687,7 +686,6 @@ Deno.test("claimOverrunMergePass: a failed training result does not claim the pa
     failed.train!.error = Number.POSITIVE_INFINITY;
     neat.trainingComplete.push(failed);
     assertEquals(neat.claimOverrunMergePass(), false);
-    assertEquals(neat.overrunMergePassUsed, false);
 
     neat.trainingComplete.push(settledTraining(2, "def12345"));
     assertEquals(neat.claimOverrunMergePass(), true);

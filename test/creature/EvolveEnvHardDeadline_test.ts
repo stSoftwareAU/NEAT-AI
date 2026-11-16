@@ -367,9 +367,11 @@ Deno.test({
       "over-run merge pass",
       async (call, neat, original, h) => {
         if (call > 2) {
-          throw new Error(
-            "only one merge generation may run after the over-run",
-          );
+          // Only the one merge generation is expected. A regression that runs
+          // further generations is cut off by the hard cap so the test fails
+          // on the generation count and termination reason, not by hanging.
+          h.state.nowMS = computeHardDeadlineTS(START_MS, TIMEOUT_MINUTES)! +
+            1;
         }
         if (call === 2) return await original(undefined as never);
         const r = await original(undefined as never);
@@ -389,7 +391,6 @@ Deno.test({
       (result, h) => {
         assertEquals(result.terminationReason, "overrun");
         assertEquals(result.generation, 2);
-        assertEquals(h.state.evolveCalls, 2);
         const joined = h.lines.join("\n").replace(
           new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
           "",

@@ -257,8 +257,15 @@ Run results on the final head:
   `test/creature/EvolveFailureNamesInFlightTasks_test.ts` and
   `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts`: passed
   (`ok | 81 passed | 0 failed`).
-- `./quality.sh` passed at `bc2133a3` (10,482 passed). The last commit adds only
-  the env and RL test files, which were run separately as above.
+- `./quality.sh` passed at `bc2133a3` (10,482 passed). Later commits changed
+  only tests: the env and RL test files, and the review fix below. The files
+  they touch were run separately (`ok | 48 passed | 0 failed`).
+- Review fix: the new tests no longer assert the internal `overrunMergePassUsed`
+  flag or the number of calls to the patched `neat.evolve`. They assert the
+  returned generation count and termination reason, the exactly-one
+  `Training <id> completed` line and no `discarded` line. The env and RL tests
+  still fail with the loop's claim replaced by `if (true)` (same two lines as
+  above), so the wiring is still pinned by behaviour.
 
 Docs updated:
 
