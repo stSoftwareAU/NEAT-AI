@@ -84,11 +84,13 @@ is `docs/evidence/admission-persistence-4163.json`, with the per-species table
 in `docs/evidence/admission-persistence-4163-species.csv`. The artefact holds
 the manifest, the definitions, the per-seed paired differences, the bootstrap
 CIs, the per-species digests, `failuresRun` (empty) and coverage of 20/20 paired
-seeds. The manifest records commit `e131ebfe`, `dirty: false`, NEAT-AI 7.1.22,
-the NEAT-AI-core rev, Deno 2.9.8 and seeds 4163–4182. The re-run with the
-species breakdown gave per-seed results and paired comparisons identical to the
-first run at `308ae6ee`, because recording the species key draws no random
-numbers. To reproduce:
+seeds. Records-to-target was not measured: the harness declares no target
+threshold, so the artefact records `recordsToTarget` as `"not-measured"` rather
+than as zero seeds reaching a target. The manifest records commit `e131ebfe`,
+`dirty: false`, NEAT-AI 7.1.22, the NEAT-AI-core rev, Deno 2.9.8 and seeds
+4163–4182. The re-run with the species breakdown gave per-seed results and
+paired comparisons identical to the first run at `308ae6ee`, because recording
+the species key draws no random numbers. To reproduce:
 
 ```bash
 deno task admission-persistence-study \
@@ -199,8 +201,9 @@ mechanisms" or to the reproducible command, as described above.
   - `validateSettings` names the bad setting;
   - `persistenceSummary` on a hand-built run (per founder and per species), and
     with no offspring;
-  - `pooledBySpecies` sums a species across runs from counts, and
-    `speciesDigest` / `speciesCsv` account for every species;
+  - `pooledBySpecies` sums a species across runs from counts (the same species
+    has different admission counts in the two runs, so a mean of per-run rates
+    would fail), and `speciesDigest` / `speciesCsv` account for every species;
   - a run is deterministic, and the caller's generator is restored;
   - holdout never guides a decision: holdout targets shifted give an identical
     trace and persistence, and the holdout MSE differs as the positive control;

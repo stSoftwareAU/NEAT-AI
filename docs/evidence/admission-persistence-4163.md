@@ -247,8 +247,11 @@ Persistence across seeds (part a) is reported only as pooled rates with the
 per-seed median, minimum and maximum; there is no interval for those. Only the
 paired holdout comparisons carry a bootstrap 95% CI.
 
-Neither arm reached the records-to-target threshold in any seed, so no
-records-to-target comparison exists.
+Records-to-target was not measured. The harness declares no target threshold, so
+there is no records-to-target comparison, and the artefact records
+`recordsToTarget` as `"not-measured"` rather than as zero seeds reaching a
+target. The absence of a comparison says nothing about whether either arm would
+have reached one.
 
 ### Coverage and failures
 

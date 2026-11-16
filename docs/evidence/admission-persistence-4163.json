@@ -1085,11 +1085,7 @@
         0.0010638907231750748,
         0.0018427562697655871
       ],
-      "recordsToTarget": {
-        "armReached": 0,
-        "controlReached": 0,
-        "pairedMedianDiff": null
-      },
+      "recordsToTarget": "not-measured",
       "diversityRatio": 0.9122392612937024,
       "verdict": "no-benefit"
     },
@@ -1125,11 +1121,7 @@
         0.001030999341106175,
         0.0017730764697430497
       ],
-      "recordsToTarget": {
-        "armReached": 0,
-        "controlReached": 0,
-        "pairedMedianDiff": null
-      },
+      "recordsToTarget": "not-measured",
       "diversityRatio": 0.9122392612937024,
       "verdict": "no-benefit"
     }

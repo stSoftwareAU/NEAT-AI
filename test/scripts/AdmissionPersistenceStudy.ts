@@ -298,15 +298,17 @@ Deno.test("admission study - pooledBySpecies sums each species across runs", () 
   const pooled = pooledBySpecies([
     row("A", 10, 4, 1),
     row("B", 3, 0, 0),
-    row("A", 6, 4, 3),
+    row("A", 12, 8, 3),
   ]);
   assertEquals(pooled.map((p) => p.species), ["A", "B"]);
   assertEquals(pooled[0].seeds, 2);
-  assertEquals(pooled[0].offspring, 16);
-  assertEquals(pooled[0].admitted, 8);
+  assertEquals(pooled[0].offspring, 22);
+  assertEquals(pooled[0].admitted, 12);
   assertEquals(pooled[0].contributorsAdmitted, 4);
-  // Pooled from counts (4 / 8), not the mean of the per-run rates.
-  assertEquals(pooled[0].contributionRateGivenAdmitted, 0.5);
+  // Pooled from counts (4 / 12 = 1/3). The mean of the per-run rates
+  // (1/4 and 3/8) would be 0.3125, so the unequal admission counts tell the
+  // two calculations apart.
+  assertAlmostEquals(pooled[0].contributionRateGivenAdmitted!, 1 / 3, 1e-12);
   assertEquals(pooled[0].survivalRateGivenAdmitted, 0);
   // A species never admitted has no rate, and is kept apart from A.
   assertEquals(pooled[1].seeds, 1);

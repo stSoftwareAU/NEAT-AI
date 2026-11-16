@@ -402,7 +402,15 @@ export async function main(args: string[]): Promise<number> {
       2000,
       4163,
     );
-    return { ...comparison, verdict: verdict(comparison) };
+    // This harness declares no target threshold, so `toTarget` is a
+    // placeholder and the shared comparison's reached counts would read as
+    // zero. Say it was not measured rather than report those zeros.
+    const { recordsToTarget: _placeholder, ...measured } = comparison;
+    return {
+      ...measured,
+      recordsToTarget: "not-measured" as const,
+      verdict: verdict(comparison),
+    };
   };
   const comparisons = {
     bestHoldout: compare((r) => r.finalHoldoutMse),
