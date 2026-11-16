@@ -780,6 +780,14 @@
     "messageerror",
     "dorny",
     "retr",
-    "unexportable"
+    "unexportable",
+    "libc",
+    "libdl",
+    "msvcrt",
+    "DTRAINER",
+    "dynamiclib",
+    "mkfifo",
+    "dlclose",
+    "evolvedir"
   ]
 }
