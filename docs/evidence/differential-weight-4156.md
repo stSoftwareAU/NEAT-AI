@@ -1,14 +1,17 @@
 # Differential-weight offspring and delayed contraction (Issue #4156)
 
-**Finding: negative, and the paper's method is untested.** No arm meets the
-benefit criterion and none is harm. On a synthetic objective,
-differential-weight (DE) offspring were not better on held-out error and, in the
-`@isolated` arms, had about twice the spread across seeds. Delayed population
-contraction was about neutral. Do not read this as evidence for either idea; do
-not read it as evidence against them at GRQ scale either (see
-[Limits](#limits)). The paper the issue cites was never read, so this is a test
-of this repository's reading of the issue, **not** of the paper's method (see
-[Paper not read](#paper-not-read)).
+**Finding: negative on fresh validation seeds, and the paper's method is only
+partly pinned.** No arm meets the benefit criterion and none is harm. On a
+synthetic objective, differential-weight (DE) offspring were not better on
+held-out error. Delayed population contraction, by the existing adaptive rule,
+was about neutral. The paper's own mechanism, a delayed linear population-size
+reduction (LPSR, section 3.3 of
+[arXiv 2610.26202](https://arxiv.org/abs/2610.26202)), was tested as well and
+was not better here either: it also cut behavioural diversity below the 0.8
+floor. Do not read this as evidence for any of these ideas; do not read it as
+evidence against them at GRQ scale either (see [Limits](#limits)). The paper's
+full text could not be fetched, so only part of its method is pinned (see
+[Paper (partly pinned)](#paper-partly-pinned)).
 
 Harness:
 [`scripts/differential_weight_study.ts`](../../scripts/differential_weight_study.ts).
@@ -22,17 +25,26 @@ it.
 
 ## What was asked
 
-A 2×2 of two opt-in ideas:
+Two opt-in ideas, with the second taken in three policies:
 
 - **DE weight-only offspring** — about 20% of offspring slots are built by
-  differential evolution, within a species, over homologous genes.
+  differential evolution, within a species, over homologous genes. Two settings:
+  off or on.
 - **Delayed contraction** — shrink the population once the run is well advanced,
-  rather than from the start.
+  rather than from the start. Three policies: none, the repository's existing
+  adaptive rule, and the paper's delayed L-SHADE linear population-size
+  reduction.
 
-Each cell is crossed with whether **local-refinement descendants re-enter the
-population** (`@reenter`) or are kept aside (`@isolated`). That gives eight
-arms. The budget is equal: every arm is charged the same number of training
-records.
+That is 2 DE settings × 3 contraction policies. Each cell is crossed with
+whether **local-refinement descendants re-enter the population** (`@reenter`) or
+are kept aside (`@isolated`), which gives twelve arms: per re-entry setting,
+`control`, `de`, `contraction`, `de+contraction`, `lpsr` and `de+lpsr`. The
+budget is equal: every arm is charged the same number of training records.
+
+The LPSR arms were added to test the paper's mechanism alongside the existing
+rule. The issue asks for existing mechanisms to be reused, which the adaptive
+rule does; the paper's delayed LPSR is a different schedule and is tested
+separately so that neither stands in for the other.
 
 ## Method
 
@@ -41,7 +53,7 @@ records.
   `(fromUUID, toUUID, type)`. F = 0.5, CR = 0.9. Topology, squashes and uuids
   are unchanged, so genome alignment and activation semantics are preserved.
   Parents are cloned through export and never modified.
-- **Delayed contraction.** Reuses the runner's existing shrink rule,
+- **Delayed contraction (adaptive).** Reuses the runner's existing shrink rule,
   `computeAdaptivePopulationSize` in
   [`src/NEAT/AdaptivePopulationSizer.ts`](../../src/NEAT/AdaptivePopulationSizer.ts),
   with `detectPlateau`. It is gated until 50% of the record budget, can never
@@ -55,6 +67,14 @@ records.
   production values the contraction arms would have been identical to the
   control.
 
+- **Delayed LPSR.** The paper's delayed L-SHADE linear population-size reduction
+  (`delayedLinearSize`). The population is held at the base size of 24 until 50%
+  of the record budget (`contractionDelayFraction`), then N = round((24 − 4) ·
+  (1 − progress)) + 4, where progress runs from 0 at the delay to 1 at budget
+  exhaustion. It falls linearly to N_min = 4 (`lpsrMinPopulationSize`, L-SHADE's
+  N_min per Tanabe & Fukunaga 2014) and never grows. Every LPSR run therefore
+  ends at size 4. The 50% delay is this study's choice, because the paper's
+  delay cap was not obtained.
 - **Local refinement** is a stand-in for production backprop: 4 Gaussian weight
   perturbations of the best creature each generation (σ = 0.1), charged in every
   arm. `@reenter` arms let the improved descendant join the population, as
@@ -67,9 +87,12 @@ records.
 flowchart TD
     A["Evaluate population<br/>(charged)"] --> B["Rank and speciate"]
     B --> C{"Past 50% of<br/>record budget?"}
-    C -- "yes (contraction arms)" --> D["Contraction decision<br/>(shrink only, floor 0.5x)"]
+    C -- "yes (contraction arms)" --> D{"Contraction policy"}
     C -- "no" --> E
-    D --> E["Refine best creature<br/>(4 perturbations, charged)"]
+    D -- "adaptive" --> D1["Shrink only, floor 0.5x"]
+    D -- "linear LPSR" --> D2["Shrink linearly to 4<br/>at budget end"]
+    D1 --> E["Refine best creature<br/>(4 perturbations, charged)"]
+    D2 --> E
     E --> F{"Re-enter?"}
     F -- "@reenter" --> G["Descendant joins population"]
     F -- "@isolated" --> H["Descendant kept aside<br/>(can ship, never breeds)"]
@@ -81,13 +104,20 @@ flowchart TD
 
 ## Predeclared
 
-- **Seeds.** Validation seeds are 14156–14185 (30), a range no earlier run used
-  (see [Preparation and search cost](#preparation-and-search-cost)); the CLI
-  refuses any validation range that overlaps 4156–4185, the range the earlier
-  runs used. Calibration seeds are 94156–94160 (5), a disjoint range, used only
-  to set the time-to-target threshold: the median final train MSE of
-  `control@reenter`, which came out at **0.01406**. Calibration cost 1,200,000
+- **Seeds.** Validation seeds are 24156–24185 (30), a fresh range. The CLI
+  refuses any validation range that overlaps 4156–4185 or 14156–14185, because
+  both were seen: 4156–4185 shaped the harness, and 14156–14185 produced PR
+  #4165's reported 8-arm validation and a 12-arm re-run (see
+  [Preparation and search cost](#preparation-and-search-cost)). Calibration
+  seeds are 94156–94160 (5), a disjoint range, used only to set the
+  time-to-target threshold: the median final train MSE of `control@reenter`,
+  which came out at **0.01406** and is unchanged. Calibration cost 1,200,000
   records and is reported separately from the arms.
+- **LPSR settings.** The delay (50% of the record budget) and N_min (4) were
+  fixed from the paper and from L-SHADE before the 24156 run, and nothing was
+  changed after seeing it. The 8-arm results on 14156–14185 were known before
+  the LPSR arms were designed; that is disclosed here and is why validation
+  moved to a fresh range.
 - **Budget.** 240,000 charged train records per run, population 24, elitism 2,
   400 train and 400 holdout records. The diversity probe uses 64 train records
   and is uncharged.
@@ -100,33 +130,36 @@ flowchart TD
 
 ## Versions
 
-| Item              | Value                                                                  |
-| ----------------- | ---------------------------------------------------------------------- |
-| NEAT-AI           | 7.1.18                                                                 |
-| NEAT-AI-core      | rev `1d44889e405e4e0cfb553321b44cc39e7d771f5f`                         |
-| Deno              | 2.9.8                                                                  |
-| Corpus            | `synthetic-tanh-quadratic-v1`, seed 4156                               |
-| Run `codeVersion` | `eccc679237c09bcb231ea31e1b746f26a9d28d0d+review-fix-4165-uncommitted` |
+| Item              | Value                                          |
+| ----------------- | ---------------------------------------------- |
+| NEAT-AI           | 7.1.22                                         |
+| NEAT-AI-core      | rev `1d44889e405e4e0cfb553321b44cc39e7d771f5f` |
+| Deno              | 2.9.8                                          |
+| Corpus            | `synthetic-tanh-quadratic-v1`, seed 4156       |
+| Run `codeVersion` | `23bd8e8f`                                     |
 
-The run was made from commit `eccc6792` plus the working-tree changes that
-answer the review of PR #4165 (the time-to-target fix and the new tests); those
-changes are the PR head. Re-running on the PR head reproduces the artefact apart
-from `wallMs` and the version fields (`codeVersion`, `neatAiVersion`).
+The run was made from commit `23bd8e8f`. Re-running on that commit reproduces
+the artefact apart from `wallMs` and the version fields. The evidence for this
+is that a re-run at `ccf3d612` reproduced PR #4165's 8-arm contrasts exactly.
 
 ## Results
 
 Held-out MSE, arm minus control; negative is better. Values are from the
 `comparisons` array of the JSON, at 4 significant figures.
 
-| Contrast                                        |  Mean diff |                     CI95 |  Wins | SD ratio [CI95]        | Time to target (arm / control; median paired diff) | Diversity | Species | Wall median | Verdict    |
-| ----------------------------------------------- | ---------: | -----------------------: | ----: | ---------------------- | -------------------------------------------------- | --------: | ------: | ----------: | ---------- |
-| `de@reenter` vs `control@reenter`               |  +0.001011 |   [−0.003855, +0.006055] | 13/30 | 1.083 [0.8564, 1.591]  | 13 / 18; −29,600 records (12 pairs)                |     0.956 |   0.842 |       1.018 | no-benefit |
-| `contraction@reenter` vs `control@reenter`      | −0.0004414 | [−0.001045, +0.00002327] | 12/30 | 1.003 [0.9730, 1.028]  | 20 / 18; 0 records (18 pairs)                      |     0.911 |   0.930 |       1.052 | no-benefit |
-| `de+contraction@reenter` vs `control@reenter`   | +0.0009067 |   [−0.003977, +0.005996] | 15/30 | 1.087 [0.8590, 1.600]  | 13 / 18; −29,600 records (12 pairs)                |     0.924 |   0.788 |       1.013 | no-benefit |
-| `de@isolated` vs `control@isolated`             |  +0.009092 |    [−0.001477, +0.02131] | 13/30 | 1.967 [1.022, 3.071]   | 10 / 16; −42,000 records (8 pairs)                 |     0.993 |   0.889 |       0.872 | no-benefit |
-| `contraction@isolated` vs `control@isolated`    | −0.0003739 | [−0.001037, +0.00007308] |  8/30 | 0.9728 [0.8907, 1.027] | 17 / 16; 0 records (16 pairs)                      |     0.980 |   0.991 |       1.085 | no-benefit |
-| `de+contraction@isolated` vs `control@isolated` |  +0.009771 |   [−0.0006339, +0.02190] | 12/30 | 1.970 [1.056, 3.062]   | 10 / 16; −42,000 records (8 pairs)                 |     0.970 |   0.867 |       0.814 | no-benefit |
-| `control@isolated` vs `control@reenter`         |  −0.002859 |    [−0.01138, +0.003644] | 12/30 | 0.6739 [0.4014, 1.243] | 16 / 18; +34,000 records (12 pairs)                |     0.914 |   1.081 |       1.272 | no-benefit |
+| Contrast                                        |  Mean diff |                      CI95 |  Wins | SD ratio [CI95]        | Time to target (arm / control; median paired diff) | Diversity | Species | Wall median | Verdict    |
+| ----------------------------------------------- | ---------: | ------------------------: | ----: | ---------------------- | -------------------------------------------------- | --------: | ------: | ----------: | ---------- |
+| `de@reenter` vs `control@reenter`               |  +0.001649 |    [−0.004733, +0.007948] | 17/30 | 0.878 [0.4918, 4.010]  | 18 / 18; +9,200 records (15 pairs)                 |      1.07 |   0.866 |       1.042 | no-benefit |
+| `contraction@reenter` vs `control@reenter`      | −0.0002824 | [−0.0007422, +0.00002502] |  9/30 | 1.008 [0.9957, 1.074]  | 18 / 18; 0 records (18 pairs)                      |     0.972 |   0.973 |       1.053 | no-benefit |
+| `de+contraction@reenter` vs `control@reenter`   |  +0.002744 |    [−0.003932, +0.009217] | 16/30 | 0.9034 [0.5141, 4.240] | 17 / 18; +7,000 records (14 pairs)                 |      1.03 |   0.831 |       1.091 | no-benefit |
+| `lpsr@reenter` vs `control@reenter`             |  +0.001361 |    [−0.001069, +0.005618] | 16/30 | 1.150 [0.9956, 3.489]  | 19 / 18; 0 records (18 pairs)                      |     0.723 |   0.686 |       1.114 | no-benefit |
+| `de+lpsr@reenter` vs `control@reenter`          |  +0.002630 |    [−0.004513, +0.009868] | 16/30 | 0.9899 [0.4911, 4.921] | 18 / 18; +7,000 records (16 pairs)                 |     0.846 |   0.630 |      0.9695 | no-benefit |
+| `de@isolated` vs `control@isolated`             |  +0.001957 |    [−0.001639, +0.005254] |  7/30 | 1.106 [0.8699, 1.282]  | 12 / 13; +24,400 records (11 pairs)                |      1.07 |   0.857 |      0.9437 | no-benefit |
+| `contraction@isolated` vs `control@isolated`    | +0.0001788 |    [−0.001087, +0.001201] |  3/30 | 0.9682 [0.8291, 1.110] | 12 / 13; 0 records (12 pairs)                      |     0.957 |   0.969 |       1.013 | no-benefit |
+| `de+contraction@isolated` vs `control@isolated` |  +0.001967 |    [−0.001602, +0.005188] |  6/30 | 1.100 [0.8623, 1.274]  | 11 / 13; +14,600 records (10 pairs)                |      1.07 |   0.835 |       1.083 | no-benefit |
+| `lpsr@isolated` vs `control@isolated`           |  +0.002685 |   [−0.0002460, +0.006183] | 11/30 | 1.167 [1.012, 1.445]   | 13 / 13; 0 records (11 pairs)                      |     0.650 |   0.652 |       1.068 | no-benefit |
+| `de+lpsr@isolated` vs `control@isolated`        |  +0.002231 |    [−0.001424, +0.006005] | 11/30 | 1.066 [0.7866, 1.387]  | 14 / 13; +15,000 records (12 pairs)                |     0.875 |   0.628 |       1.016 | no-benefit |
+| `control@isolated` vs `control@reenter`         |  +0.002116 |    [−0.004805, +0.008168] | 16/30 | 0.7495 [0.4521, 3.746] | 13 / 18; +14,000 records (11 pairs)                |      1.01 |    1.09 |       1.097 | no-benefit |
 
 "Wins" counts the seeds on which the arm beat its control. Time to target counts
 the seeds (of 30) that reached the 0.01406 train-MSE threshold; the median
@@ -139,10 +172,10 @@ it re-enters or is kept aside. It is read when the creature is scored, at the
 records charged by then. Every creature that can ship is therefore covered, and
 a run whose shipped creature has `finalTrainMse` at or below the threshold
 always reports a time. In the JSON, the number of seeds with a time equals the
-number of seeds with `finalTrainMse` at or below 0.01406 in every arm (18, 13,
-20, 13, 16, 10, 17 and 10 across the arms in coverage order). An earlier
-reading, which looked only at the breeding population's best, missed creatures
-that shipped from an isolated refinement; that run is counted under
+number of seeds with `finalTrainMse` at or below 0.01406 in every arm (18, 18,
+18, 17, 19, 18, 13, 12, 12, 11, 13 and 14 across the arms in coverage order). An
+earlier reading, which looked only at the breeding population's best, missed
+creatures that shipped from an isolated refinement; that run is counted under
 [preparation cost](#preparation-and-search-cost) and not reported.
 
 ## Coverage
@@ -151,46 +184,59 @@ Every arm completed 30/30 seeds with no failures.
 
 | Arm                       | Completed | Generations | Evals per generation | Unfilled slots |
 | ------------------------- | --------: | ----------: | -------------------: | -------------: |
-| `control@reenter`         |     30/30 |         720 |                 25.0 |             46 |
-| `de@reenter`              |     30/30 |         798 |                 22.6 |          2,088 |
-| `contraction@reenter`     |     30/30 |         817 |                 22.0 |            724 |
-| `de+contraction@reenter`  |     30/30 |         864 |                 20.8 |          1,527 |
-| `control@isolated`        |     30/30 |         700 |                 25.7 |            124 |
-| `de@isolated`             |     30/30 |         693 |                 26.0 |             26 |
-| `contraction@isolated`    |     30/30 |         724 |                 24.9 |            139 |
-| `de+contraction@isolated` |     30/30 |         717 |                 25.1 |             53 |
+| `control@reenter`         |     30/30 |         726 |                 24.8 |            169 |
+| `de@reenter`              |     30/30 |         721 |                 25.0 |             22 |
+| `contraction@reenter`     |     30/30 |         755 |                 23.8 |            312 |
+| `de+contraction@reenter`  |     30/30 |         766 |                 23.5 |            159 |
+| `lpsr@reenter`            |     30/30 |       1,161 |                 15.5 |          1,606 |
+| `de+lpsr@reenter`         |     30/30 |       1,075 |                 16.7 |            674 |
+| `control@isolated`        |     30/30 |         700 |                 25.7 |            135 |
+| `de@isolated`             |     30/30 |         695 |                 25.9 |             14 |
+| `contraction@isolated`    |     30/30 |         751 |                 24.0 |            544 |
+| `de+contraction@isolated` |     30/30 |         717 |                 25.1 |             21 |
+| `lpsr@isolated`           |     30/30 |       1,207 |                 14.9 |          2,261 |
+| `de+lpsr@isolated`        |     30/30 |       1,045 |                 17.2 |            591 |
 
-Unfilled slots are concentrated in a few seeds whose population has converged,
-where `Offspring.breed` returns clones and declines them. One `de@reenter` seed
-runs 101 generations and accounts for 2,038 of that arm's 2,088 unfilled slots;
-a `de+contraction@reenter` seed accounts for 1,167 of 1,527. Generations and
-evaluations per generation differ between arms for the same reason, so the
-equal-records budget does not mean equal generations.
+Unfilled slots are concentrated in seeds whose population has converged or has
+shrunk, where `Offspring.breed` returns clones and declines them; the largest
+single-seed count is 367 (`contraction@isolated`, seed 24161). The LPSR arms run
+more generations, with fewer evaluations per generation, because the population
+shrinks to 4: every LPSR run ends at size 4, and the first contraction came
+between 123,200 and 133,200 records charged. Adaptive-contraction runs end
+between 12 and 24. Generations and evaluations per generation differ between
+arms for these reasons, so the equal-records budget does not mean equal
+generations.
 
-DE slots: across `de@reenter`, 3,076 slots were requested, 2,348 became DE
-children and 728 fell back to ordinary breeding because no species held four
+DE slots: across `de@reenter`, 2,764 slots were requested, 2,459 became DE
+children and 305 fell back to ordinary breeding because no species held four
 scored members.
 
 ## Finding
 
-- **DE is not better on held-out MSE** (+0.001011 for `de@reenter` and +0.009092
-  for `de@isolated`, each CI spanning 0). It has more spread across seeds under
-  isolation: the SD ratio is 1.97 for `de@isolated` and
-  `de+contraction@isolated` and its CI excludes 1 ([1.022, 3.071] and [1.056,
-  3.062]); under re-entry it is 1.08–1.09 with CIs spanning 1. DE reaches the
-  time-to-target threshold on fewer seeds (13 against 18 under re-entry, 10
-  against 16 isolated), and when both reach it, DE takes fewer records (−29,600
-  and −42,000 median paired). Behavioural diversity is held (ratios 0.92–0.99,
-  all above the 0.8 floor).
-- **Delayed contraction is about neutral.** Under re-entry the difference is
-  −0.0004414 with CI [−0.001045, +0.00002327], and it wins on 12/30 seeds;
-  isolated it is −0.0003739 with CI [−0.001037, +0.00007308], 8/30. The upper
-  ends are just above zero and the win fractions are well under 0.6, so neither
-  meets the benefit criterion, however small the absolute effect.
-- **Isolating refinement descendants versus re-entry is not distinguishable.**
-  The difference is −0.002859 (isolated slightly better), CI [−0.01138,
-  +0.003644]. The earlier discarded run on seeds 4156–4185 had the opposite sign
-  for this contrast, which is what noise looks like here.
+- **DE is not better on held-out MSE in any arm.** The differences are +0.001649
+  (`de@reenter`) and +0.001957 (`de@isolated`), every CI spans 0, and it wins on
+  17/30 seeds under re-entry and 7/30 isolated. The earlier range's "about twice
+  the spread under isolation" did **not** replicate: `de@isolated` has an SD
+  ratio of 1.106 [0.8699, 1.282]. When both arms reach the target, DE takes more
+  records, not fewer (+9,200 under re-entry and +24,400 isolated, median
+  paired).
+- **Adaptive delayed contraction is about neutral.** Under re-entry the
+  difference is −0.0002824 with CI [−0.0007422, +0.00002502], so the upper end
+  is just above zero, and it wins on 9/30 seeds; isolated it is +0.0001788,
+  3/30. Neither meets the benefit criterion.
+- **The paper's delayed LPSR is not better.** The differences are +0.001361
+  (`lpsr@reenter`) and +0.002685 (`lpsr@isolated`), both CIs span 0. It cuts
+  behavioural diversity to 0.723 and 0.650 of control, below the 0.8 floor, and
+  the species count to about 0.65–0.69. `lpsr@isolated` also has more spread
+  across seeds: SD ratio 1.167, CI [1.012, 1.445], which excludes 1. This does
+  not reproduce the paper's improvement of three adaptive DE variants in 40 of
+  51 comparisons. The caveats are real: a different problem class, a delay cap
+  that differs from the paper's, and a harness that is not an L-SHADE.
+- **Re-entry versus isolation is not distinguishable on held-out MSE.** The
+  difference is +0.002116 for isolated, CI [−0.004805, +0.008168]. Isolation
+  does reach the time-to-target threshold on fewer seeds (13 against 18), the
+  same direction as the paper's ablation, but that is not established at this
+  sample size.
 - No contrast meets the benefit criterion, and no contrast meets the harm
   criterion, since every CI spans 0.
 
@@ -209,9 +255,11 @@ through it paid that phase as well.
 | Pilot that set `contractionHighDiversityThreshold` to 0                                                                          | **not recorded**                                     | **not recorded**; at most 3 × 8 × 240,000 = 5,760,000, plus up to 1,200,000 for a calibration phase if it ran through the CLI (not known) |
 | First full run, discarded: ordinary breeding left slots empty, so the top-up retry was added                                     | **not recorded**; the CLI default then was 4156–4185 | **not recorded**; at most 30 × 8 × 240,000 = 57,600,000, plus 1,200,000 calibration = 58,800,000                                          |
 | Second full run on 4156–4185, discarded: time to target ignored shippable creatures that were not the population's best (review) | 4156–4185                                            | **recorded** (artefact at commit `eccc6792`): 57,594,400 validation + 1,200,000 calibration = 58,794,400                                  |
-| Reported validation                                                                                                              | 14156–14185                                          | 57,596,400 (the sum of `recordsCharged` over the 240 runs; the budget was 30 × 8 × 240,000 = 57,600,000)                                  |
+| PR #4165's reported validation on 14156–14185 (8 arms), superseded                                                               | 14156–14185                                          | 57,596,400 validation + 1,200,000 calibration (the sum of `recordsCharged` over 240 runs)                                                 |
+| 12-arm re-run at `ccf3d612` on 14156–14185, superseded                                                                           | 14156–14185                                          | 86,337,200 + 1,200,000 = 87,537,200                                                                                                       |
+| Reported validation 24156–24185 (12 arms)                                                                                        | 24156–24185                                          | 86,345,600 (budget 30 × 12 × 240,000 = 86,400,000) + 1,200,000 calibration                                                                |
 
-So the preparation cost is **not fully counted**: the second full run and the
+So the preparation cost is **not fully counted**: the later runs and the
 calibration are exact, but the pilot's and the first full run's costs are
 bounded, not measured.
 
@@ -220,25 +268,62 @@ when they were made, and cannot be recovered. The honest reading is that the
 earlier full runs probably used the CLI default, which was the validation range
 4156–4185. The pilot and those runs shaped three decisions: the contraction
 thresholds, the top-up retry and the time-to-target reading. So the original
-validation seeds had been seen before the harness was finalised. The reported
-validation was therefore **re-run on a fresh range, 14156–14185, which no
-earlier run used**, rather than defending the claim that 4156–4185 was
-untouched. Nothing was changed after seeing the 14156–14185 results.
+validation seeds had been seen before the harness was finalised, and the
+reported validation was re-run on 14156–14185. That range was then seen too: it
+produced PR #4165's 8-arm validation, and the 12-arm re-run at `ccf3d612`
+reproduced that PR's 8 original arms exactly. Validation therefore moved to the
+fresh range 24156–24185, and the CLI now refuses both seen ranges. Nothing was
+changed after seeing the 24156–24185 results.
 
 The calibration threshold (0.01406) was set on 94156–94160 and is unchanged by
 the time-to-target fix: that fix changes what is measured, not any trajectory.
 
-## Paper not read
+## Paper (partly pinned)
 
-The issue says to read and pin the paper's full method before reproducing it.
-That was not done: arXiv 2610.26202 could not be fetched (proxy 403). The DE
-variant (DE/rand/1/bin), F = 0.5, CR = 0.9, the 20% share, the contraction
-schedule and the refinement stand-in are this repository's own reading of the
-issue. The manifest records `paper.methodRead: false`. This PR therefore does
-**not** close the issue: it is part of #4156, and the prerequisite stays open
-until the paper's method is obtained, pinned, and either confirmed against this
-harness or the harness adjusted. Until then the negative result applies to this
-reading and says nothing about the paper's method.
+The paper is arXiv 2610.26202, "Hybrid metaheuristics for architectural design
+optimization under small evaluation and wall-clock budgets", Luciano Ambrosini,
+v1 submitted 2026-10-19, 39 pages.
+
+**What was read.** Search-engine excerpts of the abstract page and of the PDF
+text, retrieved 2026-11-16. Direct fetches of arxiv.org (abstract and PDF) were
+refused by the container proxy (`CONNECT tunnel failed, response 403`), so the
+full text was **not** read. The manifest records `paper.methodRead: "partial"`.
+
+**Pinned.**
+
+- MERLIN is CMA-ES whose sampling is enriched with DE trial vectors added as
+  extra offspring; removing them leaves CMA-ES.
+- RAPTOR is a particle swarm with success-history parameter adaptation, DE
+  injection and local refinement.
+- L-SHADE-SW is L-SHADE with interleaved Solis–Wets local search whose result
+  replaces the worst population member.
+- A budget-aware delay of L-SHADE's linear population-size reduction (section
+  3.3, figure 2) improves three adaptive DE variants in 40 of 51 comparisons
+  with no loss.
+- A hard cap of 1,200 evaluations, all counted (the finite-element problem is at
+  equal wall-clock, 15 minutes per run).
+- Ablations attribute the gain to the injection and find that local search pays
+  off only when its result re-enters the population.
+
+**Not pinned.** The delay formula and delay cap, the DE variant, F and CR, the
+injection fraction, and the Solis–Wets parameters.
+
+**How the harness maps.**
+
+- DE injection maps to the issue's 20% DE weight-only slots (DE/rand/1/bin, F =
+  0.5, CR = 0.9, this repository's choices).
+- Delayed contraction maps to both the existing adaptive rule and the paper's
+  delayed LPSR. The 50% delay is this study's choice.
+- Re-entry: `@reenter` puts the refined descendant into the next population in
+  place of one ordinary child. This is close to the paper's "replaces the worst
+  member", since the population size is fixed.
+- The refinement is Gaussian perturbation, not Solis–Wets.
+- Budget scale: 240,000 records at 400 per evaluation is about 600 evaluations
+  per run, the same order as the paper's 1,200.
+
+The full text still needs reading to pin the delay cap, F and CR, and the
+injection fraction. The issue's paper-method criterion is therefore only partly
+met, and this work does **not** close the issue.
 
 ## Limits
 
@@ -247,8 +332,12 @@ reading and says nothing about the paper's method.
 - Local refinement is a perturbation stand-in, not backprop.
 - The contraction arms use deviated diversity thresholds (above), so they test
   the policy's shape, not production's tuning.
-- The paper (<https://arxiv.org/abs/2610.26202>) was not read, so the method is
-  this repository's reading of the issue and **untested against the paper**.
+- The paper (<https://arxiv.org/abs/2610.26202>) is only partly pinned and its
+  full text was not read (see [Paper (partly pinned)](#paper-partly-pinned)).
+  The LPSR delay cap is this study's choice, and DE variant, F, CR and injection
+  fraction are this repository's reading of the issue.
+- The harness is not CMA-ES, PSO or L-SHADE, so DE injection is tested in
+  NEAT-AI's GA-style breeding, not in the paper's optimisers.
 - Seeds and records of the pilot and the first full run were not recorded (see
   [Preparation and search cost](#preparation-and-search-cost)).
 - Wall-clock was measured but not capped; the budget held equal is records.
