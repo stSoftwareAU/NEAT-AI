@@ -139,6 +139,10 @@ Tuning guides and benchmark research.
   island-exchange study (Issue #4159): a neighbour-only ring against the global
   champion broadcast on equal budgets. A negative finding: the ring keeps
   topology diverse but does not beat the broadcast on held-out error.
+- **[evidence/census-restart-4157.md](evidence/census-restart-4157.md)** — the
+  offspring-census restart study (Issue #4157): census-triggered against
+  plateau-triggered restarts on a synthetic objective. Negative result; run it
+  with `deno task census-restart-study`.
 - **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
   — initial connectivity and input fan-out as priors (Issue #4160): a negative
   result; no sparse start beat the current initialisation.

@@ -280,6 +280,7 @@ worker.postMessage({
   breachLine: "[Neat] watchdog-test failed-kill breach at generation {generation}",
   generationBuffer,
   heartbeatBuffer: new SharedArrayBuffer(8),
+  heapBuffer: new SharedArrayBuffer(16),
   phaseNames: ["untracked"],
   heartbeatIntervalMS: 100,
 });
@@ -303,7 +304,8 @@ worker.postMessage({
     "lastHeartbeatAgeMs=";
   const breachAt = result.stderr.indexOf(breachPrefix);
   assert(breachAt >= 0, `breach line missing from stderr: ${result.stderr}`);
-  const suffix = "inFlightPhase=untracked heartbeatIntervalMS=100\n";
+  const suffix = "inFlightPhase=untracked heartbeatIntervalMS=100 " +
+    "lastHeartbeatHeapUsedMB=unknown heapLimitMB=unknown\n";
   const suffixAt = result.stderr.indexOf(suffix, breachAt);
   assert(
     suffixAt >= 0,
@@ -833,6 +835,8 @@ Deno.test("EventLoopWatchdogPhase: every listed phase is named as itself in the 
     "mutation",
     "pre-warm",
     "deduplication",
+    "parent-selection",
+    "result-processing",
   ];
   assertEquals([...EVENT_LOOP_WATCHDOG_PHASES], expectedPhases);
   const results = await Promise.all(
@@ -864,6 +868,136 @@ for (;;) {}
       `${phase}: stderr: ${result.stderr}`,
     );
   }
+});
+
+/** Run a direct-to-Worker arm message with the given heap slots (bytes). */
+async function runDirectWorker(
+  used: bigint,
+  limit: bigint,
+): Promise<FixtureResult> {
+  return await runFixture(
+    `
+const generationBuffer = new SharedArrayBuffer(8);
+Atomics.store(new Int32Array(generationBuffer), 0, 4);
+const heapBuffer = new SharedArrayBuffer(16);
+const heap = new BigInt64Array(heapBuffer);
+Atomics.store(heap, 0, ${used}n);
+Atomics.store(heap, 1, ${limit}n);
+const worker = new Worker(new URL("./wrapper.ts", import.meta.url), {
+  type: "module",
+});
+worker.addEventListener("error", (event) => {
+  event.preventDefault();
+  worker.terminate();
+  console.log("worker error: " + event.message);
+});
+worker.postMessage({
+  deadlineEpochMS: Date.now() - 1_000,
+  breachLine: "[Neat] watchdog-test heap breach",
+  generationBuffer,
+  heartbeatBuffer: new SharedArrayBuffer(8),
+  heapBuffer,
+  phaseNames: ["untracked"],
+  heartbeatIntervalMS: 100,
+});
+`,
+    ["--allow-read"],
+    {
+      "patch.ts": `Object.defineProperty(Deno, "kill", {
+  value: () => {
+    throw new Error("staged kill failure");
+  },
+});
+`,
+      "wrapper.ts": `import "./patch.ts";\nimport "${WORKER_MODULE_URL}";\n`,
+    },
+  );
+}
+
+Deno.test("EventLoopWatchdogHeap: the breach line reports heap used and the heap limit in MiB", async () => {
+  const result = await runDirectWorker(536870912n, 2147483648n);
+  assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+  assert(
+    result.stderr.includes(
+      "heartbeatIntervalMS=100 lastHeartbeatHeapUsedMB=512 heapLimitMB=2048\n",
+    ),
+    `heap fields missing from stderr: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdogHeap: unmeasured heap slots are reported as unknown", async () => {
+  const result = await runDirectWorker(0n, 0n);
+  assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+  assert(
+    result.stderr.includes(
+      "lastHeartbeatHeapUsedMB=unknown heapLimitMB=unknown\n",
+    ),
+    `unknown heap fields missing from stderr: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdogHeap: a busy-looping main thread reports real heap readings taken at arm", async () => {
+  const result = await runFixture(
+    `
+Deno.addSignalListener("SIGTERM", () => {});
+armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 1_500,
+  breachLine: "[Neat] watchdog-test heap busy breach",
+  heartbeatIntervalMS: 100,
+});
+for (;;) {}
+`,
+    ["--allow-read"],
+  );
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
+  assertEquals(result.code, 137, `stderr: ${result.stderr}`);
+  assertEquals(result.signal, "SIGKILL");
+  const match = /lastHeartbeatHeapUsedMB=(\d+) heapLimitMB=(\d+)/.exec(
+    result.stderr,
+  );
+  assert(match !== null, `heap fields missing from stderr: ${result.stderr}`);
+  const used = Number(match[1]);
+  const limit = Number(match[2]);
+  assert(used > 0, `heap used must be positive: ${result.stderr}`);
+  assert(limit > 0, `heap limit must be positive: ${result.stderr}`);
+  assert(used <= limit, `heap used exceeds the limit: ${result.stderr}`);
+});
+
+Deno.test("EventLoopWatchdogPhase: parent-selection is named in the breach line and result-processing is accepted", async () => {
+  const watchdog = armEventLoopWatchdog({
+    deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+    breachLine: "[Neat] watchdog-test in-process breach",
+  });
+  try {
+    watchdog.setPhase("result-processing");
+  } finally {
+    watchdog.disarm();
+  }
+  const result = await runFixture(
+    `
+Deno.addSignalListener("SIGTERM", () => {});
+const w = armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 1_500,
+  breachLine: "[Neat] watchdog-test parent-selection breach",
+  heartbeatIntervalMS: 100,
+});
+w.setPhase("parent-selection");
+for (;;) {}
+`,
+    ["--allow-read"],
+  );
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
+  assertEquals(result.code, 137, `stderr: ${result.stderr}`);
+  assert(
+    result.stderr.includes("inFlightPhase=parent-selection"),
+    `stderr: ${result.stderr}`,
+  );
 });
 
 Deno.test("EventLoopWatchdogDisarm: disarm() can be called twice", () => {
