@@ -807,6 +807,9 @@
     "dynamiclib",
     "mkfifo",
     "dlclose",
-    "evolvedir"
+    "evolvedir",
+    "Calamita",
+    "Mendicini",
+    "Bertamini"
   ]
 }
