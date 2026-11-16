@@ -13,7 +13,10 @@
  * ## What is real and what is a stand-in
  *
  * Real: the creatures, the {@link Mutator} operators and repair step (through
- * `breedPair`) and the {@link Genus} speciation count.
+ * `breedPair`) and the {@link Genus} speciation. Every individual records its
+ * species key ({@link Species.calculateKey}, the key `Genus` groups by) at
+ * birth, and persistence is broken down by that species as well as by founder
+ * clade.
  *
  * Stand-ins: the corpus is the small synthetic regression of
  * `lineageTargetingStudy.ts`. Cost is counted in records scored. The harness
@@ -37,6 +40,7 @@
 import type { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Genus } from "@neat/Genus.ts";
+import { Species } from "@neat/Species.ts";
 import {
   createSeededRng,
   getRandomNumberGenerator,
@@ -140,6 +144,8 @@ export interface IndividualRecord {
   parent: number | null;
   /** Id of the generation-0 seed this individual descends from. */
   founder: number;
+  /** {@link Genus} species key ({@link Species.calculateKey}) at birth. */
+  species: string;
   /** Generation of birth; 0 for seeds. */
   birth: number;
   /** 0 for seeds, parent depth + 1 otherwise. */
@@ -206,6 +212,63 @@ export interface HorizonPersistence {
     admitted: number;
     contributors: number;
   }[];
+  /** Eligible offspring grouped by their Genus species at birth. */
+  bySpecies: SpeciesPersistence[];
+}
+
+/** Persistence at one horizon of the eligible offspring of one species. */
+export interface SpeciesPersistence {
+  /** {@link Genus} species key at birth; the same key in every seed and arm. */
+  species: string;
+  offspring: number;
+  admitted: number;
+  survived: number;
+  survivedAdmitted: number;
+  contributors: number;
+  contributorsAdmitted: number;
+  survivalRateGivenAdmitted: number | null;
+  contributionRateGivenAdmitted: number | null;
+}
+
+/**
+ * Persistence counts of `eligible` grouped by species at birth, sorted by
+ * offspring count (descending) then key.
+ */
+export function speciesPersistence(
+  eligible: readonly IndividualRecord[],
+  horizon: number,
+): SpeciesPersistence[] {
+  const groups = new Map<string, IndividualRecord[]>();
+  for (const r of eligible) {
+    const own = groups.get(r.species);
+    if (own === undefined) groups.set(r.species, [r]);
+    else own.push(r);
+  }
+  return [...groups.entries()].map(([species, own]) => {
+    const admitted = own.filter((r) => r.admitted);
+    const survives = (r: IndividualRecord) => r.survival[horizon] === true;
+    const contributes = (r: IndividualRecord) =>
+      (r.descendants[horizon] ?? 0) > 0;
+    const survivedAdmitted = admitted.filter(survives).length;
+    const contributorsAdmitted = admitted.filter(contributes).length;
+    return {
+      species,
+      offspring: own.length,
+      admitted: admitted.length,
+      survived: own.filter(survives).length,
+      survivedAdmitted,
+      contributors: own.filter(contributes).length,
+      contributorsAdmitted,
+      survivalRateGivenAdmitted: ratio(survivedAdmitted, admitted.length),
+      contributionRateGivenAdmitted: ratio(
+        contributorsAdmitted,
+        admitted.length,
+      ),
+    };
+  }).sort((a, b) =>
+    b.offspring - a.offspring ||
+    (a.species < b.species ? -1 : a.species > b.species ? 1 : 0)
+  );
 }
 
 export interface PersistenceSummary {
@@ -296,6 +359,7 @@ export function persistenceSummary(
           contributors: own.filter(contributes).length,
         };
       }),
+      bySpecies: speciesPersistence(eligible, horizon),
     };
   });
   return {
@@ -463,6 +527,7 @@ function runSeeded(
   const turnovers: number[] = [];
 
   const newRecord = (
+    creature: Creature,
     parent: IndividualRecord | null,
     birth: number,
   ): IndividualRecord => {
@@ -471,6 +536,7 @@ function runSeeded(
       id,
       parent: parent?.id ?? null,
       founder: parent?.founder ?? id,
+      species: Species.calculateKey(creature),
       birth,
       depth: parent === null ? 0 : parent.depth + 1,
       admitted: parent === null,
@@ -519,7 +585,7 @@ function runSeeded(
   };
 
   let population: Member[] = seedPopulation(settings, rng).map((creature) =>
-    evaluate(creature, newRecord(null, 0))
+    evaluate(creature, newRecord(creature, null, 0))
   );
   measure(0, population, 0);
 
@@ -555,7 +621,9 @@ function runSeeded(
           keepIndividuals &&
           before !== JSON.stringify(parent.creature.exportJSON())
         ) modifiedParents++;
-        children.push(evaluate(bred.child, newRecord(parent.record, g)));
+        children.push(
+          evaluate(bred.child, newRecord(bred.child, parent.record, g)),
+        );
         offspring++;
       } catch (error) {
         failures++;

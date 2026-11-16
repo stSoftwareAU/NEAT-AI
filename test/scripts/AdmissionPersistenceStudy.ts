@@ -3,8 +3,8 @@
  *
  * The harness answers a research question, so its arithmetic is tested rather
  * than trusted: the product-limit estimate, the parent weights, the
- * persistence summary, the settings validation and the leakage policy (holdout
- * never guides a decision).
+ * persistence summary (by founder clade and by Genus species at birth), the
+ * settings validation and the leakage policy (holdout never guides a decision).
  */
 
 import {
@@ -23,8 +23,10 @@ import {
   parentWeights,
   persistenceSummary,
   runArm,
+  type SpeciesPersistence,
   validateSettings,
 } from "../../scripts/lib/admissionPersistenceStudy.ts";
+import { pooledBySpecies } from "../../scripts/admission_persistence_study.ts";
 import {
   buildStratifiedCorpus,
   type Split,
@@ -119,6 +121,7 @@ function rec(
   return {
     parent: fields.id === 0 ? null : 0,
     founder: 0,
+    species: "S0",
     depth: 1,
     admitted: true,
     admissionRank: null,
@@ -151,6 +154,7 @@ Deno.test("admission study - persistenceSummary on a hand-built run", () => {
       id: 3,
       birth: 3,
       founder: 1,
+      species: "S1",
       admitted: false,
       removed: 3,
       survival: { 2: false, 5: false },
@@ -159,6 +163,7 @@ Deno.test("admission study - persistenceSummary on a hand-built run", () => {
     rec({
       id: 4,
       birth: 7,
+      species: "S1",
       admissionRank: 1,
       survival: { 2: true, 5: null },
       descendants: { 2: 1, 5: null },
@@ -212,6 +217,96 @@ Deno.test("admission study - persistenceSummary on a hand-built run", () => {
     { founder: 0, offspring: 2, admitted: 2, contributors: 1 },
     { founder: 1, offspring: 1, admitted: 0, contributors: 0 },
   ]);
+
+  // Per species at birth: S0 holds ids 1 and 2, S1 holds ids 3 and 4.
+  assertEquals(h2.bySpecies, [
+    {
+      species: "S0",
+      offspring: 2,
+      admitted: 2,
+      survived: 1,
+      survivedAdmitted: 1,
+      contributors: 2,
+      contributorsAdmitted: 2,
+      survivalRateGivenAdmitted: 0.5,
+      contributionRateGivenAdmitted: 1,
+    },
+    {
+      species: "S1",
+      offspring: 2,
+      admitted: 1,
+      survived: 1,
+      survivedAdmitted: 1,
+      contributors: 1,
+      contributorsAdmitted: 1,
+      survivalRateGivenAdmitted: 1,
+      contributionRateGivenAdmitted: 1,
+    },
+  ]);
+  // At horizon 5 id 4 is censored, leaving S1 with one never-admitted
+  // offspring: its rates are null, not NaN.
+  assertEquals(h5.bySpecies, [
+    {
+      species: "S0",
+      offspring: 2,
+      admitted: 2,
+      survived: 1,
+      survivedAdmitted: 1,
+      contributors: 1,
+      contributorsAdmitted: 1,
+      survivalRateGivenAdmitted: 0.5,
+      contributionRateGivenAdmitted: 0.5,
+    },
+    {
+      species: "S1",
+      offspring: 1,
+      admitted: 0,
+      survived: 0,
+      survivedAdmitted: 0,
+      contributors: 0,
+      contributorsAdmitted: 0,
+      survivalRateGivenAdmitted: null,
+      contributionRateGivenAdmitted: null,
+    },
+  ]);
+});
+
+Deno.test("admission study - pooledBySpecies sums each species across runs", () => {
+  const row = (
+    species: string,
+    offspring: number,
+    admitted: number,
+    contributorsAdmitted: number,
+  ): SpeciesPersistence => ({
+    species,
+    offspring,
+    admitted,
+    survived: 0,
+    survivedAdmitted: 0,
+    contributors: contributorsAdmitted,
+    contributorsAdmitted,
+    survivalRateGivenAdmitted: admitted === 0 ? null : 0,
+    contributionRateGivenAdmitted: admitted === 0
+      ? null
+      : contributorsAdmitted / admitted,
+  });
+  const pooled = pooledBySpecies([
+    row("A", 10, 4, 1),
+    row("B", 3, 0, 0),
+    row("A", 6, 4, 3),
+  ]);
+  assertEquals(pooled.map((p) => p.species), ["A", "B"]);
+  assertEquals(pooled[0].seeds, 2);
+  assertEquals(pooled[0].offspring, 16);
+  assertEquals(pooled[0].admitted, 8);
+  assertEquals(pooled[0].contributorsAdmitted, 4);
+  // Pooled from counts (4 / 8), not the mean of the per-run rates.
+  assertEquals(pooled[0].contributionRateGivenAdmitted, 0.5);
+  assertEquals(pooled[0].survivalRateGivenAdmitted, 0);
+  // A species never admitted has no rate, and is kept apart from A.
+  assertEquals(pooled[1].seeds, 1);
+  assertEquals(pooled[1].contributionRateGivenAdmitted, null);
+  assertEquals(pooledBySpecies([]), []);
 });
 
 Deno.test("admission study - persistenceSummary has no NaN with no offspring", () => {
@@ -309,6 +404,23 @@ Deno.test("admission study - persistence bookkeeping is consistent", async () =>
       assertEquals(
         result.persistence.horizons[index].censored,
         offspring.filter((i) => i.birth > SMALL.generations - h).length,
+      );
+    }
+    // Every individual carries a Genus species key from birth, and the
+    // per-species rows partition each horizon's eligible offspring.
+    assert(individuals.every((i) => i.species.length > 0));
+    for (const h of result.persistence.horizons) {
+      const sum = (pick: (s: SpeciesPersistence) => number) =>
+        h.bySpecies.reduce((t, s) => t + pick(s), 0);
+      assertEquals(sum((s) => s.offspring), h.eligible);
+      assertEquals(sum((s) => s.admitted), h.admittedEligible);
+      assertEquals(sum((s) => s.survived), h.survived);
+      assertEquals(sum((s) => s.survivedAdmitted), h.survivedAdmitted);
+      assertEquals(sum((s) => s.contributors), h.contributors);
+      assertEquals(sum((s) => s.contributorsAdmitted), h.contributorsAdmitted);
+      assertEquals(
+        new Set(h.bySpecies.map((s) => s.species)).size,
+        h.bySpecies.length,
       );
     }
     // Every generation keeps between one and N founder clades alive.

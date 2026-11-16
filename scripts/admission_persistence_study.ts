@@ -27,6 +27,7 @@ import {
   PREDECLARED_FIRST_SEED,
   PREDECLARED_SEEDS,
   runArm,
+  type SpeciesPersistence,
 } from "./lib/admissionPersistenceStudy.ts";
 import {
   buildStratifiedCorpus,
@@ -84,9 +85,50 @@ function pooled(runs: readonly AdmissionArmResult[]) {
           max: Math.max(...rates),
           seeds: rates.length,
         },
+        bySpecies: pooledBySpecies(rows.flatMap((h) => h.bySpecies)),
       };
     }),
   };
+}
+
+/**
+ * Sum per-species persistence rows from several runs by species key. The key
+ * is derived from architecture alone, so the same key names the same species
+ * in every seed. `seeds` counts the runs the species appeared in.
+ */
+export function pooledBySpecies(rows: readonly SpeciesPersistence[]) {
+  const groups = new Map<string, SpeciesPersistence[]>();
+  for (const row of rows) {
+    const own = groups.get(row.species);
+    if (own === undefined) groups.set(row.species, [row]);
+    else own.push(row);
+  }
+  return [...groups.entries()].map(([species, own]) => {
+    const sum = (pick: (r: SpeciesPersistence) => number) =>
+      own.reduce((s, r) => s + pick(r), 0);
+    const admitted = sum((r) => r.admitted);
+    return {
+      species,
+      seeds: own.length,
+      offspring: sum((r) => r.offspring),
+      admitted,
+      survived: sum((r) => r.survived),
+      survivedAdmitted: sum((r) => r.survivedAdmitted),
+      contributors: sum((r) => r.contributors),
+      contributorsAdmitted: sum((r) => r.contributorsAdmitted),
+      survivalRateGivenAdmitted: ratio(
+        sum((r) => r.survivedAdmitted),
+        admitted,
+      ),
+      contributionRateGivenAdmitted: ratio(
+        sum((r) => r.contributorsAdmitted),
+        admitted,
+      ),
+    };
+  }).sort((a, b) =>
+    b.offspring - a.offspring ||
+    (a.species < b.species ? -1 : a.species > b.species ? 1 : 0)
+  );
 }
 
 type RunFailure = { seed: number; arm: AdmissionArm; message: string };
@@ -320,6 +362,27 @@ export async function main(args: string[]): Promise<number> {
         ).join("  "),
     );
   }
+  console.log("\nPersistence per Genus species at birth (largest 5 per arm):");
+  for (const arm of ADMISSION_ARMS) {
+    for (const h of summary[arm].horizons) {
+      if (h.horizon < 100) continue;
+      for (const sp of h.bySpecies.slice(0, 5)) {
+        console.log(
+          `  ${arm.padEnd(8)} @${h.horizon} species ${
+            sp.species.slice(0, 8)
+          }  offspring ${sp.offspring}  admitted ${sp.admitted}  ` +
+            `survival|admitted ${
+              sp.survivalRateGivenAdmitted?.toFixed(3) ?? "n/a"
+            }  contribution|admitted ${
+              sp.contributionRateGivenAdmitted?.toFixed(3) ?? "n/a"
+            }  (${sp.seeds} seeds)`,
+        );
+      }
+      console.log(
+        `  ${arm.padEnd(8)} @${h.horizon} ${h.bySpecies.length} species in all`,
+      );
+    }
+  }
   if (failuresRun.length > 0) {
     console.log(`\n${failuresRun.length} run(s) failed and were not paired.`);
   }
@@ -361,7 +424,9 @@ export async function main(args: string[]): Promise<number> {
             "excluded from that horizon's rates and counted as censored",
           turnover: "admitted offspring in a generation / N",
           lineageDepth: "0 for a seed, parent depth + 1 for an offspring",
-          team: "founder clade (Genus species reported as a count only)",
+          team: "both groupings are reported: the Genus species key " +
+            "(Species.calculateKey) of the offspring at birth, and its " +
+            "founder clade (the generation-0 seed it descends from)",
         },
         holdoutPolicy:
           "reporting only, read once at the final generation; never read by " +
