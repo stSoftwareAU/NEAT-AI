@@ -282,6 +282,8 @@ const GENERATION_PHASES: EventLoopWatchdogPhase[] = [
   "untracked",
   "write-scores",
   "untracked",
+  "parent-selection",
+  "result-processing",
   "breeding",
   "mutation",
   "untracked",
