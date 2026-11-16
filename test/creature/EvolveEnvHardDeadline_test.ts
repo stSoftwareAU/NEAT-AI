@@ -365,29 +365,38 @@ Deno.test({
   fn: () =>
     run(
       "over-run merge pass",
-      async (call, neat, original, h) => {
-        if (call > 2) {
-          // Only the one merge generation is expected. A regression that runs
-          // further generations is cut off by the hard cap so the test fails
-          // on the generation count and termination reason, not by hanging.
-          h.state.nowMS = computeHardDeadlineTS(START_MS, TIMEOUT_MINUTES)! +
-            1;
-        }
-        if (call === 2) return await original(undefined as never);
-        const r = await original(undefined as never);
-        neat.trainingComplete.push({
-          taskID: 4099,
-          duration: 1,
-          train: {
-            ID: "late4099",
-            creature: new Creature(1, 1).exportJSON(),
-            error: 0,
-          },
-        } as ResponseData);
-        // Past timeoutMinutes x factor 1, still before the hard cap.
-        h.state.nowMS = START_MS + TIMEOUT_MINUTES * 60_000 + 30_000;
-        return r;
-      },
+      // The late result settles once, after the first generation returns. No
+      // fixture below depends on how many times evolve() is called: the run's
+      // returned generation count and its terminal log lines are the behaviour.
+      (() => {
+        let settled = false;
+        return async (
+          _call: number,
+          neat: Neat,
+          original: Neat["evolve"],
+          h: Harness,
+        ) => {
+          const r = await original(undefined as never);
+          if (!settled) {
+            settled = true;
+            // The worker answers through the recording seam the production
+            // response handler uses.
+            neat.trainingInProgress.set("late4099", Promise.resolve());
+            neat.recordTrainingComplete("late4099", neat.abandonEpoch, {
+              taskID: 4099,
+              duration: 1,
+              train: {
+                ID: "late4099",
+                creature: new Creature(1, 1).exportJSON(),
+                error: 0,
+              },
+            } as ResponseData);
+            // Past timeoutMinutes x factor 1, still before the hard cap.
+            h.state.nowMS = START_MS + TIMEOUT_MINUTES * 60_000 + 30_000;
+          }
+          return r;
+        };
+      })(),
       (result, h) => {
         assertEquals(result.terminationReason, "overrun");
         assertEquals(result.generation, 2);

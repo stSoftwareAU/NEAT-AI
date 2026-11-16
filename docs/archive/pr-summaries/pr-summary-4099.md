@@ -88,11 +88,17 @@ flowchart TD
   `Training 022d17fc discarded at
   teardown: it settled after the last generation's results were processed`.
   It passes at head.
-- **Wiring checks:** for each of `evolveEnv` and `evolveRL`, I replaced that
-  loop's `if (!neat.claimOverrunMergePass())` with `if (true)` and ran its file.
-  The new test failed in both, at `EvolveEnvHardDeadline_test.ts:360` and
-  `EvolveRLHardDeadline_test.ts:376`. Both files were restored afterwards
-  (`git status --short src/` empty).
+- **Wiring checks:** I replaced each loop's `if (!neat.claimOverrunMergePass())`
+  with `if (true)` in all three loops (`evolveDir`, `evolveEnv`, `evolveRL`) and
+  ran the evolveDir, evolveEnv and evolveRL files. Four tests failed: the
+  evolveDir training and discovery over-run tests
+  (`EvolveDirLateTrainingResult.ts:464` and `:540`), the evolveEnv test
+  (`EvolveEnvHardDeadline_test.ts:360`) and the evolveRL test
+  (`EvolveRLHardDeadline_test.ts:376`). The failed-training evolveDir test
+  correctly still passes, because a failed result must not claim the pass.
+  `src/creature/CreatureTraining.ts` was restored afterwards
+  (`git diff HEAD
+  --stat -- src` empty).
 - **Full gate:**
   `./quality.sh --rust-scorer-bin=<locally built NEAT-AI-scorer
   rust_scorer>`
@@ -142,13 +148,15 @@ change is needed before one can.
   either merged or explicitly logged as discarded with its id. — evidence:
   `src/NEAT/Neat.ts` (`claimOverrunMergePass`, `finishUp`),
   `src/creature/CreatureTraining.ts` (three over-run branches);
-  `test/NEAT/NeatFinishUp.ts::claimOverrunMergePass: grants one pass only while a settled result is queued (Issue #4099)`
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`
+  and
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a discovery result settled when the time budget runs out is merged by one over-run pass (Issue #4099)`
   — reviewer: met
 - **met** — Every scheduled training task ends with exactly one terminal line
   (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
   evidence: the new evolveDir, evolveEnv and evolveRL over-run tests each assert
   exactly one `Training <id> completed` and no `discarded` line;
-  `test/NEAT/NeatFinishUp.ts::claimOverrunMergePass: a failed training result does not claim the pass (Issue #4099)`
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a failed training task at the time budget end is reported as failed and starts no merge generation (Issue #4099)`
   — reviewer: met
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
@@ -208,22 +216,29 @@ change is needed before one can.
 
 ## Test Plan
 
-Tests added:
+Tests added. All assert through the public `evolveDir`, `evolveEnv` or
+`evolveRL` entry point, with the result settled at the worker boundary (a
+stubbed `WorkerHandler` training promise, or the `recordTrainingComplete` /
+`recordDiscoveryComplete` recording seam the response handler uses). None
+asserts an internal flag or the number of `evolve()` calls:
 
-- `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`.
-  It drives the real scheduler, worker-response handler, `evolve()`, commit and
-  creature store, and asserts:
-  - `terminationReason === "overrun"` and `generation === 2`;
-  - one `completed` line and one merge-pass line;
-  - no `discarded` line;
-  - the trained creature is in both the population and the store.
+- `test/creature/EvolveDirLateTrainingResult.ts`, three over-run cases that
+  share one fixture:
+  - `evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`.
+    It drives the real scheduler, worker-response handler, `evolve()`, commit
+    and creature store, and asserts `terminationReason === "overrun"`,
+    `generation === 2`, exactly one `completed` line, no `discarded` line, and
+    the trained creature in both the population and the store;
+  - `evolveDir: a failed training task at the time budget end is reported as failed and starts no merge generation (Issue #4099)`:
+    the worker rejects, `generation === 1`, the task is named once as failed,
+    and no creature is contributed;
+  - `evolveDir: a discovery result settled when the time budget runs out is merged by one over-run pass (Issue #4099)`:
+    `generation === 2`, one `discovery_complete` event, no `discarded` line.
 - `test/creature/EvolveEnvHardDeadline_test.ts::evolveEnv: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
 - `test/creature/EvolveRLHardDeadline_test.ts::evolveRL: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
-- `test/NEAT/NeatFinishUp.ts`, three tests on the claim:
-  - `claimOverrunMergePass: grants one pass only while a settled result is queued (Issue #4099)`:
-    empty queues refused, granted once, refused a second time;
-  - `claimOverrunMergePass: a failed training result does not claim the pass (Issue #4099)`;
-  - `claimOverrunMergePass: a queued discovery result alone earns the pass (Issue #4099)`.
+  Both settle the result once, after the first generation, and assert the
+  returned generation count and termination reason, one `completed` line, the
+  merge-pass log line and no `discarded` line.
 
 Existing tests edited (no assertion removed):
 
@@ -234,6 +249,9 @@ Existing tests edited (no assertion removed):
 - `test/NEAT/NeatFinishUp.ts`: the stale comment in
   `finishUp: an over-run stop does not wait on results it will never merge (Issue #4099)`
   is reworded. Its assertions are unchanged; `finishUp()` itself is unchanged.
+  This PR added no test that calls `claimOverrunMergePass()` directly: the
+  empty, failed-only, discovery-only and bounded cases are covered through
+  `evolveDir` as listed above.
 
 Callers and siblings checked:
 
@@ -256,16 +274,16 @@ Run results on the final head:
   `test/creature/BoundedEvolveTeardown.ts`,
   `test/creature/EvolveFailureNamesInFlightTasks_test.ts` and
   `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts`: passed
-  (`ok | 81 passed | 0 failed`).
+  (`ok | 80 passed | 0 failed`). `deno fmt --check` and `deno lint` are clean.
 - `./quality.sh` passed at `bc2133a3` (10,482 passed). Later commits changed
-  only tests: the env and RL test files, and the review fix below. The files
-  they touch were run separately (`ok | 48 passed | 0 failed`).
-- Review fix: the new tests no longer assert the internal `overrunMergePassUsed`
-  flag or the number of calls to the patched `neat.evolve`. They assert the
-  returned generation count and termination reason, the exactly-one
-  `Training <id> completed` line and no `discarded` line. The env and RL tests
-  still fail with the loop's claim replaced by `if (true)` (same two lines as
-  above), so the wiring is still pinned by behaviour.
+  only tests, so that full gate has not been re-run on the final head; the files
+  they touch were run as above.
+- Review fixes: the tests no longer assert the internal `overrunMergePassUsed`
+  flag, the number of calls to the patched `neat.evolve`, or the clock keyed to
+  an `evolve()` call number. The helper-level `claimOverrunMergePass` cases in
+  `NeatFinishUp.ts` were replaced by the public `evolveDir` cases above. The
+  tests still fail with the claim replaced by `if (true)` (see Wiring checks),
+  so the wiring is pinned by behaviour.
 
 Docs updated:
 
