@@ -19,18 +19,29 @@ also worse than the `conditioned` arm on the unseen budgets (exploratory:
 +0.08140, CI [0.03031, 0.1378]). The three original arms reproduce the previous
 artefact exactly.
 
-This run also pins more of the paper's method from search-indexed excerpts:
+This run also pins more of the paper's method from search-indexed excerpts
+(Sections 2.2, 3.3, 3.4 and 3.5, Tables 1 and 3):
 
+- **Generator:** a HyperNEAT-LEO CPPN, queried per permitted source–target pair
+  with seven inputs: source and target coordinates at age T, half their
+  differences, and T. It starts with 2 hidden nodes and 2 tanh outputs (weight
+  and expression gate). A link is expressed iff the expression output is > 0.
+  Connection parameters start from N(0, 1), biases from N(0, 0.1²).
+- **Search settings seen in Table 3:** add-connection and add-node probabilities
+  0.10 per offspring, and speciation compatibility threshold 1.0.
 - **Testing age:** in testing, the paper sets the substrate's age and the
-  generator's time input separately; for aware controllers both equal the
-  testing age.
+  generator's time input separately. For aware controllers both equal the
+  testing age; the endpoint controls hold it at T=0 or T=1.
 - **Substrates:** each follows an interpolation g(T), with time constants τ(T),
   and substrate coordinates are not normalised.
-- **Unseen ages:** standard HyperNEAT was tested at three unseen developmental
-  times, but the excerpts don't say which.
+- **Tasks:** the optomotor response follows moving gratings; phototaxis
+  approaches a light within a detection radius growing from 20 to 40. Behaviour
+  is shown as heading error and distance to the emitter.
 
-The full text still cannot be fetched from this host, so that part of the issue
-stays open. Part of #4161.
+Still unpinned, and listed in `SOURCE_METHOD.unpinned`: the rest of Table 3, the
+fitness equations, and the values of the three unseen ages. The full text still
+cannot be fetched from this host, so the manifest now records
+`fullTextRead: false`, and that part of the issue stays open. Part of #4161.
 
 ## Spec
 
@@ -67,7 +78,9 @@ stays open. Part of #4161.
 - **Paper access:** this host's proxy still refuses arxiv.org, its SciRate
   mirror and Semantic Scholar: curl gives `CONNECT tunnel failed, response 403`,
   and WebFetch gives `proxy refused the connection`. The new method details come
-  from search-indexed excerpts read on 2026-11-16.
+  from search-indexed excerpts read on 2026-11-16. A retry on 2026-11-16 also
+  found arxiv.org's HTML and PDF, alphaXiv, Hugging Face and r.jina.ai refused
+  with the same 403.
 - **Scorer:** `./quality.sh` needs the native `rust_scorer`, and this worktree
   has none next to it. It was built from a fresh clone of NEAT-AI-scorer,
   outside the checkout, and passed with `--rust-scorer-bin`.
@@ -76,7 +89,7 @@ stays open. Part of #4161.
 
 This is a backend research harness only, with no UI. Artefact:
 `docs/evidence/budget-conditioned-4161.json`, regenerated at code commit
-`35e22395` (NEAT-AI 7.1.22, Deno 2.9.8): 80 of 80 runs, 0 failures. Write-up:
+`37dfc1bb` (NEAT-AI 7.1.22, Deno 2.9.8): 80 of 80 runs, 0 failures. Write-up:
 `docs/evidence/budget-conditioned-4161.md`.
 
 | Comparison (arm − control), unseen budgets unless noted | Mean diff | 95% CI             | Wins / 20 | Verdict    |
@@ -96,8 +109,10 @@ flowchart LR
 
 Reproducibility:
 
-- **Two runs at `35e22395`:** identical, compared with `jq -S` after deleting
+- **Two runs at `37dfc1bb`:** identical, compared with `jq -S` after deleting
   `latencyMicros` and `medianLatencyMicros`.
+- **Against the `35e22395` artefact:** identical except latency, `codeVersion`
+  and the manifest's `paper` block, which `37dfc1bb` extends.
 - **Against the previous artefact (`429f66b9`):** the runs of the three original
   arms, and the `primary`, `fullSize`, `perBudget` and `outcome` blocks, are
   identical.
@@ -105,7 +120,7 @@ Reproducibility:
 Command:
 
 ```bash
-deno task budget-conditioned-study --code-version=35e22395 \
+deno task budget-conditioned-study --code-version=37dfc1bb \
   --json=docs/evidence/budget-conditioned-4161.json
 ```
 
@@ -140,6 +155,11 @@ deno task budget-conditioned-study --code-version=35e22395 \
   - **Draw order:** `a budget-input genome adds slopes after the fixed draws`.
     This pins that fixed genomes keep their draws, and that the slope arrays
     have length 44.
+  - **Partial reading declared:**
+    `a manifest that did not read the full text
+    names what it could not pin`.
+    It asserts that `fullTextRead` is `false`, that `unpinned` is non-empty, and
+    that no paper element is pinned twice.
 - Existing tests edited:
   - **Updated calls:** `evolve` calls now pass `"fixed"` and `studyOutcome`
     calls pass `"conditioned"`.

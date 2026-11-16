@@ -49,32 +49,37 @@ _Learning Time-Varying Connectomes for Stable Behavior Across Development_
 (Christof Fehrman, Jacob J. Morra, Eva A. Naumann; submitted 2026-11-04;
 q-bio.NC, cross-listed cs.NE). It was read on 2026-11-15 and 2026-11-16 through
 search-indexed excerpts of the abstract page and the
-[HTML full text](https://arxiv.org/html/2611.06895). This host's proxy refused a
-direct fetch of arxiv.org. The same pin is in the JSON as `manifest.paper`.
+[HTML full text](https://arxiv.org/html/2611.06895), covering Sections 2.2, 3.3,
+3.4 and 3.5 and Tables 1 and 3. This host's proxy refused a direct fetch of
+arxiv.org, its HTML and PDF, and the SciRate, alphaXiv, Hugging Face and
+Semantic Scholar mirrors. The full text was never read whole, so the JSON
+records `manifest.paper.fullTextRead: false`. The same pin is in the JSON as
+`manifest.paper`.
 
-| Paper (as read)                                                                                                                                                                        | This study                                                                                                                                                           | Fidelity |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| One HyperNEAT CPPN takes developmental time as an extra input and generates age-specific recurrent connectivity                                                                        | Conditioned arm: one genome with an evolved priority gene; a budget keeps the top-k synapses. The genome has no budget input                                         | departs  |
-| Developmental time is an input to the generator, so connectivity and weights can change with age rather than only grow or shrink                                                       | Budget-input arm: each synapse's priority and weight are linear in the budget, so the kept set need not nest. A linear rule per synapse, not a CPPN over coordinates | analogue |
-| The substrate (neuron birth, position, sensory organisation, time constants) is prescribed per age                                                                                     | One fixed candidate topology; the budget sets how many of its 44 synapses are expressed                                                                              | analogue |
-| Aware conditions optimise mean fitness over 3, 5 or 15 evenly spaced snapshots                                                                                                         | Mean calibration MSE over 3 budgets: 25%, 50%, 100% (not evenly spaced)                                                                                              | analogue |
-| Evaluated over the whole interval, at trained and unseen ages, on 20 test trials with unseen start states and stimuli                                                                  | Validation MSE at trained budgets and at unseen 37.5% and 75%                                                                                                        | analogue |
-| In testing, the substrate's developmental age and the CPPN time input are set separately; for aware controllers both equal the testing age                                             | Budget-input arm: the budget input equals the evaluation budget, which also sets the synapse count; the two are not separated                                        | analogue |
-| Controls: HyperNEAT at the initial substrate only (T=0) and "Reverse" HyperNEAT at the mature substrate only (T=1), time input held at its training value                              | Independent per-budget searches (including the unseen budgets) and a magnitude-pruned full-size search                                                               | analogue |
-| Five runs per condition, populations of 100 genomes, 200 generations                                                                                                                   | 20 seeds per arm, stopped by an equal charged-record budget                                                                                                          | departs  |
-| Two substrates (Fish, Ring), two closed-loop visuomotor tasks (optomotor response, phototaxis)                                                                                         | One synthetic 4-input regression                                                                                                                                     | departs  |
-| Substrates follow g(T): Fish g(T)=T (cohort ranks outside to inside), Ring g(T)=T² (inside to outside); τ(T)=0.4−0.2T (Fish), 0.4−0.2T² (Ring); coordinates used without normalisation | No developmental substrate: the topology and squashes are fixed; only the number and choice of expressed synapses varies                                             | departs  |
+| Paper (as read)                                                                                                                                                                                                                                                                                                                                                                   | This study                                                                                                                                                                                                     | Fidelity |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| One HyperNEAT CPPN takes developmental time as an extra input and generates age-specific recurrent connectivity                                                                                                                                                                                                                                                                   | Conditioned arm: one genome with an evolved priority gene; a budget keeps the top-k synapses. The genome has no budget input                                                                                   | departs  |
+| The CPPN (HyperNEAT-LEO) is queried per permitted source–target pair with seven inputs: source and target coordinates at age T, half their differences, and T. It starts with 2 hidden nodes and 2 tanh outputs (weight, expression gate); a link is expressed iff the expression output is > 0. Connection parameters start from N(0, 1), biases from N(0, 0.1²)                 | No CPPN and no coordinates: each synapse has its own uniformly initialised genes. A budget keeps the top-k by priority, so the budget sets the expressed count; there is no expression output thresholded at 0 | departs  |
+| Developmental time is an input to the generator, so connectivity and weights can change with age rather than only grow or shrink. T reached an output in 58 of the 60 aware runs                                                                                                                                                                                                  | Budget-input arm: each synapse's priority and weight are linear in the budget, so the kept set need not nest. A linear rule per synapse, not a CPPN over coordinates                                           | analogue |
+| The substrate (neuron birth, position, sensory organisation, time constants) is prescribed per age                                                                                                                                                                                                                                                                                | One fixed candidate topology; the budget sets how many of its 44 synapses are expressed                                                                                                                        | analogue |
+| Aware conditions optimise mean fitness over 3, 5 or 15 evenly spaced snapshots                                                                                                                                                                                                                                                                                                    | Mean calibration MSE over 3 budgets: 25%, 50%, 100% (not evenly spaced)                                                                                                                                        | analogue |
+| Evaluated over the whole interval, at trained and unseen ages, on 20 test trials with unseen start states and stimuli                                                                                                                                                                                                                                                             | Validation MSE at trained budgets and at unseen 37.5% and 75%                                                                                                                                                  | analogue |
+| In testing, the substrate's developmental age and the CPPN time input are set separately; for aware controllers both equal the testing age                                                                                                                                                                                                                                        | Budget-input arm: the budget input equals the evaluation budget, which also sets the synapse count; the two are not separated                                                                                  | analogue |
+| Controls: HyperNEAT at the initial substrate only (T=0) and "Reverse" HyperNEAT at the mature substrate only (T=1), time input held at its training value (T=0 and T=1). Both fail at the three unseen times                                                                                                                                                                      | Independent per-budget searches (including the unseen budgets) and a magnitude-pruned full-size search                                                                                                         | analogue |
+| Five runs per condition, populations of 100 genomes, 200 generations. Table 3: add-connection and add-node probabilities 0.10 per offspring, compatibility threshold 1.0                                                                                                                                                                                                          | 20 seeds per arm, stopped by an equal charged-record budget; a (μ+λ) search with μ = λ = 10, uniform crossover, Gaussian gene mutation (rate 0.2, σ 0.3), no structural mutation, no speciation                | departs  |
+| Two substrates (Fish, Ring), two closed-loop visuomotor tasks: optomotor response (follow moving gratings) and phototaxis (approach a stationary light within a detection radius that grows from 20 to 40). Each step the agent turns by ωΔt, then moves vΔt, clipped at the boundaries. Behaviour is shown as heading error (optomotor) and distance to the emitter (phototaxis) | One synthetic 4-input regression                                                                                                                                                                               | departs  |
+| Substrates follow g(T): Fish g(T)=T (cohort ranks outside to inside), Ring g(T)=T² (inside to outside); τ(T)=0.4−0.2T (Fish), 0.4−0.2T² (Ring); coordinates used without normalisation                                                                                                                                                                                            | No developmental substrate: the topology and squashes are fixed; only the number and choice of expressed synapses varies                                                                                       | departs  |
 
 The paper reports that single-age controllers generally failed at other ages,
 and that optimising at only three snapshots was often enough across the
 interval.
 
-**What the excerpts do not pin:** the CPPN's other inputs, its output activation
-and connection threshold (the paper cites HyperNEAT-LEO, but whether it uses a
-link-expression output was not confirmed), the NEAT settings beyond population
-size and generation count, the task fitness definitions, and the values of the
-unseen ages (the excerpts say standard HyperNEAT was tested at three unseen
-developmental times, but not which). None of these is guessed here.
+**What the excerpts do not pin:** the rest of Table 3 (weight mutation rate and
+power, survival threshold, elitism, stagnation, and the hidden CPPN nodes'
+activation set); the fitness equations of Section 3.4 (the excerpts show what is
+plotted, but not how fitness is computed from it); and the values of the three
+unseen ages. The full text was never read whole, so this list may be incomplete.
+None of these is guessed here.
 
 **What this means for the verdict.** The paper's core mechanism is a generator
 that takes the condition as an input. The conditioned arm tests a nested,
@@ -205,17 +210,18 @@ verdict, and are excluded from the reproducibility comparison.
 ## Reproducibility
 
 ```bash
-deno task budget-conditioned-study --code-version=35e22395 \
+deno task budget-conditioned-study --code-version=37dfc1bb \
   --json=docs/evidence/budget-conditioned-4161.json
 ```
 
 The run takes about 20 s of wall time (indicative). It was run twice at the same
 commit and the two JSON files were identical apart from the latency fields.
-Versions, from the manifest: NEAT-AI 7.1.22, Deno 2.9.8, code commit `35e22395`.
+Versions, from the manifest: NEAT-AI 7.1.22, Deno 2.9.8, code commit `37dfc1bb`.
 The three original arms reproduce the previous artefact, at `429f66b9`, exactly:
 their runs, and their primary, full-size, per-budget and outcome results, are
 identical ignoring latency, `codeVersion`, versions and the manifest's `paper`
-and `criteriaBudgetInput` fields.
+and `criteriaBudgetInput` fields. Against the `35e22395` artefact, only latency,
+`codeVersion` and the manifest's `paper` field differ.
 
 ## Limitations
 
