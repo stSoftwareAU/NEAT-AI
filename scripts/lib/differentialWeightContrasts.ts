@@ -81,9 +81,29 @@ function mean(values: readonly number[]): number {
 }
 
 /**
+ * Mean arm / mean control over the seeds where both are finite, with how many
+ * seeds that was. `NaN` when no seed has both.
+ */
+function pairedRatio(
+  arm: readonly number[],
+  control: readonly number[],
+): { readonly ratio: number; readonly seeds: number } {
+  const keep = arm.flatMap((value, i) =>
+    Number.isFinite(value) && Number.isFinite(control[i]) ? [i] : []
+  );
+  return {
+    ratio: mean(keep.map((i) => arm[i])) / mean(keep.map((i) => control[i])),
+    seeds: keep.length,
+  };
+}
+
+/**
  * The predeclared contrasts over the seeds on which both arms of each contrast
  * completed. A contrast with no paired seed has the verdict `insufficient-data`
- * — there is nothing to conclude, so `no-benefit` would claim too much.
+ * — there is nothing to conclude, so `no-benefit` would claim too much. So does
+ * a contrast where a paired seed lacks the diversity or species measurement (a
+ * run stopped inside its first generation): its held-out MSE is kept, but the
+ * verdict needs the diversity ratio, and its `reason` says what is missing.
  *
  * @param runs - Completed runs by arm name, then seed.
  * @param seeds - The seeds that were attempted.
@@ -129,11 +149,31 @@ export function compareContrasts(
       const y = c[i].result.timeToTargetRecords;
       return x !== null && y !== null ? [x - y] : [];
     });
-    const diversityRatio = mean(
+    // A run stopped inside its first generation has scored creatures but no
+    // generation-2 trace, so its diversity and species means are unavailable
+    // (`NaN`). Each ratio is taken over the seeds where both arms measured it,
+    // and the coverage is reported alongside.
+    const diversity = pairedRatio(
       a.map((r) => r.result.meanBehaviouralDiversity),
-    ) / mean(c.map((r) => r.result.meanBehaviouralDiversity));
-    const speciesRatio = mean(a.map((r) => r.result.meanSpeciesCount)) /
-      mean(c.map((r) => r.result.meanSpeciesCount));
+      c.map((r) => r.result.meanBehaviouralDiversity),
+    );
+    const species = pairedRatio(
+      a.map((r) => r.result.meanSpeciesCount),
+      c.map((r) => r.result.meanSpeciesCount),
+    );
+    const diversityRatio = diversity.ratio;
+    const speciesRatio = species.ratio;
+    const missing: string[] = [];
+    if (diversity.seeds < paired.length) {
+      missing.push(
+        `behavioural diversity measured on ${diversity.seeds} of ${paired.length} paired seeds`,
+      );
+    }
+    if (species.seeds < paired.length) {
+      missing.push(
+        `species count measured on ${species.seeds} of ${paired.length} paired seeds`,
+      );
+    }
     const wallClockMedianRatio = median(a.map((r) => r.wallMs)) /
       median(c.map((r) => r.wallMs));
     return {
@@ -155,8 +195,17 @@ export function compareContrasts(
       },
       diversityRatio,
       speciesCountRatio: speciesRatio,
+      diversitySeeds: diversity.seeds,
+      speciesSeeds: species.seeds,
       wallClockMedianRatio,
-      verdict: verdict(holdout, diversityRatio, SUCCESS_CRITERIA),
+      ...(missing.length === 0
+        ? { verdict: verdict(holdout, diversityRatio, SUCCESS_CRITERIA) }
+        : {
+          verdict: "insufficient-data" as const,
+          reason: `a required measurement is unavailable: ${
+            missing.join("; ")
+          }`,
+        }),
     };
   });
 }

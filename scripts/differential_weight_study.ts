@@ -305,7 +305,7 @@ if (import.meta.main) {
         fmt(c.diversityRatio, 3)
       } species x${fmt(c.speciesCountRatio, 3)} wall x${
         fmt(c.wallClockMedianRatio, 3)
-      } -> ${c.verdict}`,
+      } -> ${c.verdict}${"reason" in c ? ` (${c.reason})` : ""}`,
     );
   }
 
@@ -440,7 +440,9 @@ if (import.meta.main) {
           fmt(h.ci95[0])
         }, ${fmt(h.ci95[1])}] wins ${h.wins}/${h.n} diversity x${
           fmt(c.diversityRatio, 3)
-        } wall x${fmt(c.wallClockMedianRatio, 3)} -> ${c.verdict}`,
+        } wall x${fmt(c.wallClockMedianRatio, 3)} -> ${c.verdict}${
+          "reason" in c ? ` (${c.reason})` : ""
+        }`,
       );
     }
     for (const row of wallCoverage) {

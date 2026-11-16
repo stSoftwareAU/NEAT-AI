@@ -33,6 +33,16 @@ study on fresh validation seeds:
   The preparation ledger now holds the two superseded runs on 24156–24185. The
   wall-clock phase moved to fresh seeds 44156–44185, because the first version's
   seeds 34156–34185 were seen before the fix.
+- **Review fixes (round 4).** A run the clock stops inside its first generation
+  has a scored creature but no generation-2 trace, so its diversity and species
+  means are unavailable. `compareContrasts` now keeps its held-out MSE, takes
+  each ratio only over the paired seeds where both arms measured it, reports
+  that coverage (`diversitySeeds`, `speciesSeeds`), and gives the verdict
+  `insufficient-data` with a `reason` when any paired seed lacks one, instead of
+  a `no-benefit` or `harm` judged on a missing value. The refinement test no
+  longer asserts how often the stop predicate or the scoring fake was called.
+  The committed evidence is unchanged: every run in it spans more than one
+  generation, so no contrast in it takes the new path.
 
 The result is negative at equal records. No contrast is benefit or harm, and
 every held-out MSE CI95 spans zero. At equal wall-clock it is **mixed**:
@@ -239,8 +249,13 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
   the whole refinement batch, so up to three further candidates were scored
   after the deadline. Fixed in this push and the phase re-run on fresh seeds.
 - **met** — measure time-to-target, held-out score, variance and diversity —
-  evidence: `comparisons` in `docs/evidence/differential-weight-4156.json` —
-  reviewer: met
+  evidence: `comparisons` in `docs/evidence/differential-weight-4156.json`,
+  where every paired seed measured diversity and species count; a contrast whose
+  paired seed was stopped inside its first generation reports its coverage and
+  is `insufficient-data` rather than judged
+  (`::runs stopped inside their first generation keep their held-out MSE but give no conclusive verdict`)
+  — reviewer: partial — reason: the previous head judged such a contrast
+  `no-benefit` on `NaN` diversity and species ratios. Fixed in this push.
 - **met** — Do not introduce contraction if the existing runner has none merely
   to manufacture a control — evidence: the adaptive arms reuse
   `computeAdaptivePopulationSize`, and LPSR is a treatment arm, not a control —
@@ -278,6 +293,7 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
   `::lpsr@reenter holds its size until the delay, then only shrinks`,
   `::a deadline that expires during refinement scores no further candidate and keeps the one scored`,
   `::a run with no scored candidate is censored, kept out of every paired statistic, and not called no-benefit`
+  `::runs stopped inside their first generation keep their held-out MSE but give no conclusive verdict`
   and `::a completed run is collected, not censored`; the targeted tests and the
   repository's formatter, linter and type-check pass (see Test Plan) — reviewer:
   partial — reason: the full `./quality.sh` gate is not re-run in this fix (see
@@ -289,10 +305,17 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
   and `censored` per arm, `attempted` per contrast, paired CIs). A run with no
   scored candidate is censored with its reason and costs, left out of every
   paired statistic, and a contrast with no paired seed is `insufficient-data`,
-  not `no-benefit`; the test above covers that path — reviewer: partial —
-  reason: the previous head counted a run with no scored candidate as completed,
-  so a small `--wall-clock-ms` produced non-finite statistics written as `null`.
-  Fixed in this push.
+  not `no-benefit`; a contrast where a paired seed was stopped inside its first
+  generation keeps its held-out MSE and reports `diversitySeeds` and
+  `speciesSeeds`, and its verdict is `insufficient-data` with a reason. The
+  tests
+  `::a run with no scored candidate is censored, kept out of every paired statistic, and not called no-benefit`
+  and
+  `::runs stopped inside their first generation keep their held-out MSE but give no conclusive verdict`
+  cover those paths — reviewer: partial — reason: the earlier heads counted a
+  run with no scored candidate as completed, and then judged a verdict on `NaN`
+  diversity and species means from a one-generation run, both written as `null`.
+  Both are fixed in this push.
 - **met** — Record negative findings and remove optional code that does not earn
   its maintenance cost. Do not claim success before representative runs —
   evidence: the evidence page records the mixed equal-wall-clock result:
@@ -354,8 +377,10 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
 - **Tests added for the review fixes:**
   - `refineWeights stops before the next candidate once told to, keeping what it scored`:
     with scores 5, 9, 7 and 8, an unstopped batch scores 4 and keeps 9; a stop
-    asked from the second candidate scores 1 and keeps 5; a stop before the
-    first scores 0 and keeps nothing. The parent is not modified.
+    from the second candidate scores 1 and keeps 5; a stop before the first
+    scores 0 and keeps nothing. The parent is not modified. It asserts only the
+    returned `candidatesScored` and `best`, not how often the stop predicate or
+    the scoring fake was called.
   - `a deadline that expires during refinement scores no further candidate and keeps the one scored`:
     for `control@reenter` and `control@isolated`, a clock that never runs out
     charges 8 + 4 evaluations; one spent before refinement charges 8; one spent
@@ -368,7 +393,17 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
     censored with `evaluations` 0, `recordsCharged` 0 and the reason "no
     creature was scored before the wall-clock budget ended". A contrast then
     pairs 1 of 2 seeds with finite statistics, and a contrast with no paired
-    seed has `seeds` 0 and the verdict `insufficient-data`.
+    seed has `seeds` 0 and the verdict `insufficient-data`. A contrast that lost
+    no seed reports `diversitySeeds` and `speciesSeeds` of 2, a finite diversity
+    ratio, no `reason`, and a verdict other than `insufficient-data`.
+  - `runs stopped inside their first generation keep their held-out MSE but give no conclusive verdict`:
+    for all 12 arms and two seeds, a clock spent after the first population is
+    scored gives 1 generation with `NaN` diversity and species means, and the
+    runs are collected, not censored. All 11 contrasts then pair 2 of 2 seeds
+    with finite held-out statistics, `diversitySeeds` 0 and `speciesSeeds` 0,
+    the verdict `insufficient-data` and the reason "a required measurement is
+    unavailable: behavioural diversity measured on 0 of 2 paired seeds; species
+    count measured on 0 of 2 paired seeds".
   - `a completed run is collected, not censored`.
 - **Tests added for the equal wall-clock budget:**
   - `an equal wall-clock budget stops every arm on the clock, before its record budget`:
@@ -400,7 +435,7 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
       renamed field. The assertions under it are unchanged.
 - **Targeted tests.**
   `deno test -A test/scripts/DifferentialWeightStudy.ts < /dev/null` on the
-  final code: 35 passed, 0 failed. `deno fmt --check` and `deno lint` on
+  final code: 36 passed, 0 failed. `deno fmt --check` and `deno lint` on
   `scripts` and `test/scripts` and `deno check` on the changed files are clean.
 - **Full gate.** `./quality.sh` was not re-run in this fix. It last passed at
   head 15115d92 (`ok | 10483 passed (5 steps) | 0 failed | 50 ignored`), before
