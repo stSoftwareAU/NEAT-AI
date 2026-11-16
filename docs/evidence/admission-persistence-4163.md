@@ -7,7 +7,9 @@ suggests helps at the same cost. Produced by
 (library
 [`scripts/lib/admissionPersistenceStudy.ts`](../../scripts/lib/admissionPersistenceStudy.ts));
 the machine-readable artefact is
-[`admission-persistence-4163.json`](admission-persistence-4163.json).
+[`admission-persistence-4163.json`](admission-persistence-4163.json), and the
+full per-species table is
+[`admission-persistence-4163-species.csv`](admission-persistence-4163-species.csv).
 
 ## Question and scope
 
@@ -16,16 +18,26 @@ quality of an offspring at admission predict how much of the population descends
 from it many generations later, and would weighting parents by that signal beat
 choosing them uniformly?
 
-The issue cites arXiv 2611.06522. That paper could not be fetched from this host
-(`curl` returned nothing), so no method detail and no number from it is used.
-The harness implements this repository's own reading of the issue text. It is
+The issue cites arXiv 2611.06522. Neither the abstract page nor the HTML or API
+(application programming interface) copy could be fetched from this host: the
+egress proxy refused `arxiv.org` and `export.arxiv.org` (HTTP 403). A web search
+identifies the paper as "From Admission to Retention: Predicting Durable
+Offspring in Quality-Diversity Search" (Calamita, Mendicini, Ferrari and
+Bertamini, submitted 4 November 2026). According to the search result, it builds
+on Dominated Novelty Search in an unstructured quality-diversity archive, uses a
+capacity of 1024 and a retention horizon of H = 1000 generations, and reports
+that some selection signals reverse direction between entry and retention. That
+description comes from a search engine's summary, not from the paper, and the
+full method was **not** read. No method detail or number from it is used. The
+harness implements this repository's own reading of the issue text. It is
 **not** a reproduction of the paper.
 
 ## Reproduce
 
 ```bash
 deno task admission-persistence-study \
-  --json=docs/evidence/admission-persistence-4163.json
+  --json=docs/evidence/admission-persistence-4163.json \
+  --species-csv=docs/evidence/admission-persistence-4163-species.csv
 ```
 
 Each seed runs in its own child process. The 20 predeclared seeds are the
@@ -35,7 +47,7 @@ default.
 
 | Item         | Value                                         |
 | ------------ | --------------------------------------------- |
-| Code commit  | `308ae6ee21227569d8774b0cc0ec28d1465ed458`    |
+| Code commit  | `e131ebfe2df4f35e18ade97c2dc03506c6f34d00`    |
 | Dirty tree   | `false`                                       |
 | NEAT-AI      | 7.1.22                                        |
 | NEAT-AI-core | `1d44889e405e4e0cfb553321b44cc39e7d771f5f`    |
@@ -93,7 +105,7 @@ Taken from the artefact's `manifest.definitions`.
 | Right-censoring         | An individual born after G - h has no h-generation reading. It is excluded from that horizon's rates and counted as censored. |
 | Turnover                | Admitted offspring in a generation divided by N.                                                                              |
 | Lineage depth           | 0 for a seed, parent depth + 1 for an offspring.                                                                              |
-| Team                    | Founder clade. Genus species is reported as a count only.                                                                     |
+| Species / team          | Both groupings are reported: the Genus species key (`Species.calculateKey`) at birth, and the founder clade.                  |
 
 ### Leakage and calibration policy
 
@@ -192,6 +204,34 @@ founder. The founder-clade breakdown is reported as a count only. A per-founder
 table (`byFounder`, offspring, admitted and contributors) is in
 `runs[].persistence.horizons[]`.
 
+#### Persistence per Genus species
+
+Each individual records at birth the species key that `Genus` groups by
+(`Species.calculateKey`: hidden-neuron count bucket, connectivity bucket and
+squash mix). The key depends only on architecture, so the same key names the
+same species in every seed, and rows are pooled across seeds by key. The JSON
+artefact holds a digest per arm and horizon in
+`summary.<arm>.horizons[].bySpecies`. The full table, one row per species with
+at least one admitted offspring, is the CSV. The spread columns cover species
+with at least 30 admitted eligible offspring.
+
+| Arm     | Horizon | Species | With an admission | Never admitted (offspring) | In 2+ seeds | Species in spread | Contribution given admitted: min / median / max |
+| ------- | ------- | ------- | ----------------- | -------------------------- | ----------- | ----------------- | ----------------------------------------------- |
+| uniform | 100     | 9,969   | 2,748             | 7,221 (12,527)             | 252         | 338               | 0 / 0.130 / 0.333                               |
+| uniform | 1000    | 1,253   | 497               | 756 (1,261)                | 171         | 59                | 0 / 0.125 / 0.333                               |
+| biased  | 100     | 10,382  | 2,844             | 7,538 (12,474)             | 176         | 368               | 0 / 0.131 / 0.367                               |
+| biased  | 1000    | 1,257   | 524               | 733 (1,078)                | 140         | 68                | 0 / 0.134 / 0.275                               |
+
+Individual survival given admission is 0 in every species at 100 and 1000
+generations, as it is pooled. Speciation by architecture bucket splits the
+offspring into many small species: most are seen in one seed only, and most
+never have an offspring admitted. Contribution rates per species centre on the
+pooled rate (about 0.11 to 0.13), and the spread across species is wide. It is
+not tested against chance, so it does not show that any species persists better
+than another. The final population holds only 1 to 5 species (see the table
+above): architecture changes under mutation, so species turn over faster than
+founder clades do.
+
 ### (b) Comparison: biased against uniform
 
 Final holdout MSE, `biased` minus `uniform`, paired by seed (n = 20); negative
@@ -253,6 +293,11 @@ establish that admission, rank or lineage membership has causal value.
   changed to run each seed in its own process and the full run was repeated. The
   11 seeds the first attempt completed printed identical per-seed numbers, so
   the change did not alter results.
+- The per-species breakdown was added after the first reported run, and the
+  predeclared 20 seeds were run again from a clean tree at the commit above.
+  Recording the species key reads the creature and draws no random numbers, so
+  every per-seed number and both paired comparisons are identical to the first
+  reported run (commit `308ae6ee`).
 
 ## Preparation and search costs
 
@@ -263,6 +308,12 @@ counted:
 - A 2-seed, 60-generation smoke run of the per-seed child-process mode.
 - The aborted first 20-seed attempt: 11 seeds completed and part of the 12th ran
   before the heap ran out (see Deviations).
+- The first complete 20-seed run (commit `308ae6ee`), before the per-species
+  breakdown.
+- A 1-seed, 1100-generation run used to estimate how long the re-run would take.
+- A 20-seed run with the per-species breakdown that kept every species row per
+  run, which made a 38 MB artefact. It was discarded and the output was changed
+  to the digest and the CSV, then run again for the reported result.
 
 The settings (1100 generations, N = 12, lambda = 12, 100 records per split) were
 chosen before any run and not tuned on results. Unit-test runs are synthetic and
@@ -279,7 +330,8 @@ the shared helper `scripts/lib/gitProvenance.ts`.
 
 - **Nothing about production-scale creatures.** This is a synthetic task with
   small creatures and no private corpus.
-- **Nothing about the paper.** It was not read.
+- **Nothing about the paper.** Its full method was not read, only a search
+  engine's summary of it.
 - **Nothing that changes ordinary behaviour.** Interfaces and defaults are
   untouched.
 

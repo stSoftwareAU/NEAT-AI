@@ -1,8 +1,8 @@
 {
   "issue": 4163,
   "manifest": {
-    "command": "--json=docs/evidence/admission-persistence-4163.json",
-    "codeVersion": "308ae6ee21227569d8774b0cc0ec28d1465ed458",
+    "command": "--json=docs/evidence/admission-persistence-4163.json --species-csv=docs/evidence/admission-persistence-4163-species.csv",
+    "codeVersion": "e131ebfe2df4f35e18ade97c2dc03506c6f34d00",
     "dirty": false,
     "neatAiVersion": "7.1.22",
     "neatCoreRev": "1d44889e405e4e0cfb553321b44cc39e7d771f5f",
@@ -64,7 +64,7 @@
       "censoring": "an individual born after G - h has no h-generation reading; it is excluded from that horizon's rates and counted as censored",
       "turnover": "admitted offspring in a generation / N",
       "lineageDepth": "0 for a seed, parent depth + 1 for an offspring",
-      "team": "founder clade (Genus species reported as a count only)"
+      "team": "both groupings are reported: the Genus species key (Species.calculateKey) of the offspring at birth, and its founder clade (the generation-0 seed it descends from)"
     },
     "holdoutPolicy": "reporting only, read once at the final generation; never read by selection, mutation or parent weighting",
     "costPolicy": "recordsScored charges train + calibration records for every evaluation, seeds included; holdout records are reported separately and never charged; the behavioural-diversity probe activations are counted as diagnosticRecords and also never charged",
@@ -93,6 +93,150 @@
             "min": 0.21772078111337803,
             "max": 0.38448074679113187,
             "seeds": 20
+          },
+          "bySpecies": {
+            "species": 10649,
+            "speciesWithAdmitted": 2909,
+            "speciesInSeveralSeeds": 252,
+            "neverAdmitted": {
+              "species": 7740,
+              "offspring": 13503
+            },
+            "spreadMinAdmitted": 30,
+            "survivalRateGivenAdmitted": {
+              "species": 356,
+              "min": 0,
+              "median": 0.09090909090909091,
+              "max": 0.5225225225225225
+            },
+            "contributionRateGivenAdmitted": {
+              "species": 356,
+              "min": 0,
+              "median": 0.2951129086619481,
+              "max": 0.65625
+            },
+            "largest": [
+              {
+                "species": "9acf748b-03d6-5709-b166-b611460f63d9",
+                "seeds": 1,
+                "offspring": 3073,
+                "admitted": 308,
+                "survived": 125,
+                "survivedAdmitted": 125,
+                "contributors": 163,
+                "contributorsAdmitted": 163,
+                "survivalRateGivenAdmitted": 0.40584415584415584,
+                "contributionRateGivenAdmitted": 0.5292207792207793
+              },
+              {
+                "species": "b8ba63fc-597d-5b66-b7cc-2257c55f7c30",
+                "seeds": 1,
+                "offspring": 2495,
+                "admitted": 315,
+                "survived": 103,
+                "survivedAdmitted": 103,
+                "contributors": 142,
+                "contributorsAdmitted": 142,
+                "survivalRateGivenAdmitted": 0.326984126984127,
+                "contributionRateGivenAdmitted": 0.4507936507936508
+              },
+              {
+                "species": "cf0dbb41-af13-55e3-89ae-56d4b40a02b9",
+                "seeds": 1,
+                "offspring": 2307,
+                "admitted": 425,
+                "survived": 68,
+                "survivedAdmitted": 68,
+                "contributors": 135,
+                "contributorsAdmitted": 135,
+                "survivalRateGivenAdmitted": 0.16,
+                "contributionRateGivenAdmitted": 0.3176470588235294
+              },
+              {
+                "species": "98413fbf-7253-5bee-94b5-50b60a026682",
+                "seeds": 1,
+                "offspring": 2158,
+                "admitted": 450,
+                "survived": 47,
+                "survivedAdmitted": 47,
+                "contributors": 125,
+                "contributorsAdmitted": 125,
+                "survivalRateGivenAdmitted": 0.10444444444444445,
+                "contributionRateGivenAdmitted": 0.2777777777777778
+              },
+              {
+                "species": "98d337d0-4d65-5223-9a0c-1e7b7b4d750a",
+                "seeds": 1,
+                "offspring": 2147,
+                "admitted": 275,
+                "survived": 97,
+                "survivedAdmitted": 97,
+                "contributors": 136,
+                "contributorsAdmitted": 136,
+                "survivalRateGivenAdmitted": 0.3527272727272727,
+                "contributionRateGivenAdmitted": 0.49454545454545457
+              },
+              {
+                "species": "fb137ca5-9504-5512-a09b-10648617839d",
+                "seeds": 1,
+                "offspring": 2078,
+                "admitted": 485,
+                "survived": 25,
+                "survivedAdmitted": 25,
+                "contributors": 146,
+                "contributorsAdmitted": 146,
+                "survivalRateGivenAdmitted": 0.05154639175257732,
+                "contributionRateGivenAdmitted": 0.30103092783505153
+              },
+              {
+                "species": "c0cf8ae7-1a35-5792-a6a5-9c3dde474712",
+                "seeds": 1,
+                "offspring": 1954,
+                "admitted": 313,
+                "survived": 57,
+                "survivedAdmitted": 57,
+                "contributors": 106,
+                "contributorsAdmitted": 106,
+                "survivalRateGivenAdmitted": 0.18210862619808307,
+                "contributionRateGivenAdmitted": 0.33865814696485624
+              },
+              {
+                "species": "c0277cc3-7066-5c5e-9bf7-75bb3cc014d7",
+                "seeds": 1,
+                "offspring": 1859,
+                "admitted": 225,
+                "survived": 50,
+                "survivedAdmitted": 50,
+                "contributors": 96,
+                "contributorsAdmitted": 96,
+                "survivalRateGivenAdmitted": 0.2222222222222222,
+                "contributionRateGivenAdmitted": 0.4266666666666667
+              },
+              {
+                "species": "e1ce9b25-8f69-5c55-9a4c-da0ec8685ed7",
+                "seeds": 1,
+                "offspring": 1854,
+                "admitted": 221,
+                "survived": 70,
+                "survivedAdmitted": 70,
+                "contributors": 114,
+                "contributorsAdmitted": 114,
+                "survivalRateGivenAdmitted": 0.3167420814479638,
+                "contributionRateGivenAdmitted": 0.5158371040723982
+              },
+              {
+                "species": "f4b9b54b-3cd4-5572-9640-049003e4a71a",
+                "seeds": 1,
+                "offspring": 1795,
+                "admitted": 484,
+                "survived": 18,
+                "survivedAdmitted": 18,
+                "contributors": 111,
+                "contributorsAdmitted": 111,
+                "survivalRateGivenAdmitted": 0.0371900826446281,
+                "contributionRateGivenAdmitted": 0.22933884297520662
+              }
+            ]
           }
         },
         {
@@ -109,6 +253,150 @@
             "min": 0.10354711572912935,
             "max": 0.11759301791456132,
             "seeds": 20
+          },
+          "bySpecies": {
+            "species": 9969,
+            "speciesWithAdmitted": 2748,
+            "speciesInSeveralSeeds": 252,
+            "neverAdmitted": {
+              "species": 7221,
+              "offspring": 12527
+            },
+            "spreadMinAdmitted": 30,
+            "survivalRateGivenAdmitted": {
+              "species": 338,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            },
+            "contributionRateGivenAdmitted": {
+              "species": 338,
+              "min": 0,
+              "median": 0.12982056111827103,
+              "max": 0.3333333333333333
+            },
+            "largest": [
+              {
+                "species": "b8ba63fc-597d-5b66-b7cc-2257c55f7c30",
+                "seeds": 1,
+                "offspring": 2494,
+                "admitted": 315,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 48,
+                "contributorsAdmitted": 48,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1523809523809524
+              },
+              {
+                "species": "98d337d0-4d65-5223-9a0c-1e7b7b4d750a",
+                "seeds": 1,
+                "offspring": 2147,
+                "admitted": 275,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 36,
+                "contributorsAdmitted": 36,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.13090909090909092
+              },
+              {
+                "species": "9acf748b-03d6-5709-b166-b611460f63d9",
+                "seeds": 1,
+                "offspring": 2137,
+                "admitted": 224,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 23,
+                "contributorsAdmitted": 23,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.10267857142857142
+              },
+              {
+                "species": "fb137ca5-9504-5512-a09b-10648617839d",
+                "seeds": 1,
+                "offspring": 2078,
+                "admitted": 485,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 63,
+                "contributorsAdmitted": 63,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.12989690721649486
+              },
+              {
+                "species": "c0cf8ae7-1a35-5792-a6a5-9c3dde474712",
+                "seeds": 1,
+                "offspring": 1954,
+                "admitted": 313,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 44,
+                "contributorsAdmitted": 44,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14057507987220447
+              },
+              {
+                "species": "c0277cc3-7066-5c5e-9bf7-75bb3cc014d7",
+                "seeds": 1,
+                "offspring": 1859,
+                "admitted": 225,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 26,
+                "contributorsAdmitted": 26,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.11555555555555555
+              },
+              {
+                "species": "e1ce9b25-8f69-5c55-9a4c-da0ec8685ed7",
+                "seeds": 1,
+                "offspring": 1854,
+                "admitted": 221,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 33,
+                "contributorsAdmitted": 33,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1493212669683258
+              },
+              {
+                "species": "98413fbf-7253-5bee-94b5-50b60a026682",
+                "seeds": 1,
+                "offspring": 1838,
+                "admitted": 388,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 49,
+                "contributorsAdmitted": 49,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.12628865979381443
+              },
+              {
+                "species": "f4b9b54b-3cd4-5572-9640-049003e4a71a",
+                "seeds": 1,
+                "offspring": 1795,
+                "admitted": 484,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 56,
+                "contributorsAdmitted": 56,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.11570247933884298
+              },
+              {
+                "species": "f8d26065-a9f9-5cf0-ad3f-3f5f6831715f",
+                "seeds": 1,
+                "offspring": 1740,
+                "admitted": 369,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 53,
+                "contributorsAdmitted": 53,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14363143631436315
+              }
+            ]
           }
         },
         {
@@ -125,6 +413,150 @@
             "min": 0.08253968253968254,
             "max": 0.13358778625954199,
             "seeds": 20
+          },
+          "bySpecies": {
+            "species": 1253,
+            "speciesWithAdmitted": 497,
+            "speciesInSeveralSeeds": 171,
+            "neverAdmitted": {
+              "species": 756,
+              "offspring": 1261
+            },
+            "spreadMinAdmitted": 30,
+            "survivalRateGivenAdmitted": {
+              "species": 59,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            },
+            "contributionRateGivenAdmitted": {
+              "species": 59,
+              "min": 0,
+              "median": 0.125,
+              "max": 0.3333333333333333
+            },
+            "largest": [
+              {
+                "species": "e3b7db7a-b04f-549c-8943-a84d1d63ab7e",
+                "seeds": 3,
+                "offspring": 734,
+                "admitted": 160,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 32,
+                "contributorsAdmitted": 32,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.2
+              },
+              {
+                "species": "26c947b4-4ad7-5248-bda8-9808eaeeffde",
+                "seeds": 1,
+                "offspring": 688,
+                "admitted": 117,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 17,
+                "contributorsAdmitted": 17,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1452991452991453
+              },
+              {
+                "species": "7f6e73d0-bf0d-5818-9955-bd5e0a694ed0",
+                "seeds": 1,
+                "offspring": 681,
+                "admitted": 181,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 30,
+                "contributorsAdmitted": 30,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.16574585635359115
+              },
+              {
+                "species": "00027656-292a-5742-ab5b-38166f1435ef",
+                "seeds": 1,
+                "offspring": 602,
+                "admitted": 199,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 29,
+                "contributorsAdmitted": 29,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1457286432160804
+              },
+              {
+                "species": "20c07a29-bf72-53e7-b18a-1179ffad7f4d",
+                "seeds": 1,
+                "offspring": 580,
+                "admitted": 176,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 22,
+                "contributorsAdmitted": 22,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.125
+              },
+              {
+                "species": "fa137ea2-35af-5b4f-8546-328d07de3723",
+                "seeds": 1,
+                "offspring": 568,
+                "admitted": 208,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 24,
+                "contributorsAdmitted": 24,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.11538461538461539
+              },
+              {
+                "species": "4def6277-142c-56e8-912d-d52fe2a7a6e3",
+                "seeds": 3,
+                "offspring": 538,
+                "admitted": 114,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 11,
+                "contributorsAdmitted": 11,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.09649122807017543
+              },
+              {
+                "species": "1c4a4740-79d2-56c1-8cc7-b3add19c100a",
+                "seeds": 1,
+                "offspring": 517,
+                "admitted": 146,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 18,
+                "contributorsAdmitted": 18,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1232876712328767
+              },
+              {
+                "species": "df105c79-3bcb-5fab-a07c-44048cc597e3",
+                "seeds": 2,
+                "offspring": 512,
+                "admitted": 109,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 16,
+                "contributorsAdmitted": 16,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14678899082568808
+              },
+              {
+                "species": "ca3045e7-02c7-5b70-9b2e-4e0d23d18df7",
+                "seeds": 1,
+                "offspring": 506,
+                "admitted": 84,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 14,
+                "contributorsAdmitted": 14,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.16666666666666666
+              }
+            ]
           }
         }
       ]
@@ -150,6 +582,150 @@
             "min": 0.18905601659751037,
             "max": 0.33633633633633636,
             "seeds": 20
+          },
+          "bySpecies": {
+            "species": 11071,
+            "speciesWithAdmitted": 2994,
+            "speciesInSeveralSeeds": 176,
+            "neverAdmitted": {
+              "species": 8077,
+              "offspring": 13455
+            },
+            "spreadMinAdmitted": 30,
+            "survivalRateGivenAdmitted": {
+              "species": 394,
+              "min": 0,
+              "median": 0.08559337459046232,
+              "max": 0.5208333333333334
+            },
+            "contributionRateGivenAdmitted": {
+              "species": 394,
+              "min": 0.02857142857142857,
+              "median": 0.2885969664138678,
+              "max": 0.640625
+            },
+            "largest": [
+              {
+                "species": "0d797638-33e3-5176-83f7-cfaa91aba793",
+                "seeds": 1,
+                "offspring": 2954,
+                "admitted": 551,
+                "survived": 75,
+                "survivedAdmitted": 75,
+                "contributors": 188,
+                "contributorsAdmitted": 188,
+                "survivalRateGivenAdmitted": 0.13611615245009073,
+                "contributionRateGivenAdmitted": 0.3411978221415608
+              },
+              {
+                "species": "90b7dcef-a32a-5bee-bebe-6cbbfe966563",
+                "seeds": 1,
+                "offspring": 2763,
+                "admitted": 662,
+                "survived": 37,
+                "survivedAdmitted": 37,
+                "contributors": 163,
+                "contributorsAdmitted": 163,
+                "survivalRateGivenAdmitted": 0.055891238670694864,
+                "contributionRateGivenAdmitted": 0.24622356495468278
+              },
+              {
+                "species": "7f493ca4-ce88-566a-ad9f-4ff298c0743b",
+                "seeds": 1,
+                "offspring": 2457,
+                "admitted": 360,
+                "survived": 83,
+                "survivedAdmitted": 83,
+                "contributors": 155,
+                "contributorsAdmitted": 155,
+                "survivalRateGivenAdmitted": 0.23055555555555557,
+                "contributionRateGivenAdmitted": 0.4305555555555556
+              },
+              {
+                "species": "d8b50a00-99f7-5b97-b682-31dd25a1a89e",
+                "seeds": 1,
+                "offspring": 2457,
+                "admitted": 378,
+                "survived": 82,
+                "survivedAdmitted": 82,
+                "contributors": 147,
+                "contributorsAdmitted": 147,
+                "survivalRateGivenAdmitted": 0.21693121693121692,
+                "contributionRateGivenAdmitted": 0.3888888888888889
+              },
+              {
+                "species": "7e934822-905a-542c-8c0a-a4ba279b352c",
+                "seeds": 1,
+                "offspring": 2335,
+                "admitted": 322,
+                "survived": 88,
+                "survivedAdmitted": 88,
+                "contributors": 130,
+                "contributorsAdmitted": 130,
+                "survivalRateGivenAdmitted": 0.2732919254658385,
+                "contributionRateGivenAdmitted": 0.40372670807453415
+              },
+              {
+                "species": "0183dde1-7d63-5310-95f3-6c454dddb954",
+                "seeds": 1,
+                "offspring": 2224,
+                "admitted": 508,
+                "survived": 48,
+                "survivedAdmitted": 48,
+                "contributors": 126,
+                "contributorsAdmitted": 126,
+                "survivalRateGivenAdmitted": 0.09448818897637795,
+                "contributionRateGivenAdmitted": 0.24803149606299213
+              },
+              {
+                "species": "51317568-23cf-52e4-82b5-63606d8b0230",
+                "seeds": 1,
+                "offspring": 2068,
+                "admitted": 443,
+                "survived": 40,
+                "survivedAdmitted": 40,
+                "contributors": 119,
+                "contributorsAdmitted": 119,
+                "survivalRateGivenAdmitted": 0.09029345372460497,
+                "contributionRateGivenAdmitted": 0.2686230248306998
+              },
+              {
+                "species": "f572c520-4eea-5fbd-bac2-083a488bf0b1",
+                "seeds": 1,
+                "offspring": 1881,
+                "admitted": 260,
+                "survived": 81,
+                "survivedAdmitted": 81,
+                "contributors": 103,
+                "contributorsAdmitted": 103,
+                "survivalRateGivenAdmitted": 0.31153846153846154,
+                "contributionRateGivenAdmitted": 0.39615384615384613
+              },
+              {
+                "species": "cfd854e8-6a3a-583c-a039-16a1fb574ac5",
+                "seeds": 1,
+                "offspring": 1833,
+                "admitted": 219,
+                "survived": 74,
+                "survivedAdmitted": 74,
+                "contributors": 106,
+                "contributorsAdmitted": 106,
+                "survivalRateGivenAdmitted": 0.3378995433789954,
+                "contributionRateGivenAdmitted": 0.4840182648401826
+              },
+              {
+                "species": "ec2880e6-cda7-577c-b3dd-13d55a054825",
+                "seeds": 1,
+                "offspring": 1793,
+                "admitted": 312,
+                "survived": 54,
+                "survivedAdmitted": 54,
+                "contributors": 124,
+                "contributorsAdmitted": 124,
+                "survivalRateGivenAdmitted": 0.17307692307692307,
+                "contributionRateGivenAdmitted": 0.3974358974358974
+              }
+            ]
           }
         },
         {
@@ -166,6 +742,150 @@
             "min": 0.10177514792899409,
             "max": 0.12791299844640083,
             "seeds": 20
+          },
+          "bySpecies": {
+            "species": 10382,
+            "speciesWithAdmitted": 2844,
+            "speciesInSeveralSeeds": 176,
+            "neverAdmitted": {
+              "species": 7538,
+              "offspring": 12474
+            },
+            "spreadMinAdmitted": 30,
+            "survivalRateGivenAdmitted": {
+              "species": 368,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            },
+            "contributionRateGivenAdmitted": {
+              "species": 368,
+              "min": 0,
+              "median": 0.13119877049180328,
+              "max": 0.36666666666666664
+            },
+            "largest": [
+              {
+                "species": "90b7dcef-a32a-5bee-bebe-6cbbfe966563",
+                "seeds": 1,
+                "offspring": 2603,
+                "admitted": 634,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 83,
+                "contributorsAdmitted": 83,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1309148264984227
+              },
+              {
+                "species": "7f493ca4-ce88-566a-ad9f-4ff298c0743b",
+                "seeds": 1,
+                "offspring": 2457,
+                "admitted": 360,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 46,
+                "contributorsAdmitted": 46,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.12777777777777777
+              },
+              {
+                "species": "7e934822-905a-542c-8c0a-a4ba279b352c",
+                "seeds": 1,
+                "offspring": 2335,
+                "admitted": 322,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 44,
+                "contributorsAdmitted": 44,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.13664596273291926
+              },
+              {
+                "species": "0d797638-33e3-5176-83f7-cfaa91aba793",
+                "seeds": 1,
+                "offspring": 2158,
+                "admitted": 422,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 59,
+                "contributorsAdmitted": 59,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.13981042654028436
+              },
+              {
+                "species": "51317568-23cf-52e4-82b5-63606d8b0230",
+                "seeds": 1,
+                "offspring": 2068,
+                "admitted": 443,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 53,
+                "contributorsAdmitted": 53,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.11963882618510158
+              },
+              {
+                "species": "f572c520-4eea-5fbd-bac2-083a488bf0b1",
+                "seeds": 1,
+                "offspring": 1881,
+                "admitted": 260,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 31,
+                "contributorsAdmitted": 31,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.11923076923076924
+              },
+              {
+                "species": "cfd854e8-6a3a-583c-a039-16a1fb574ac5",
+                "seeds": 1,
+                "offspring": 1798,
+                "admitted": 213,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 28,
+                "contributorsAdmitted": 28,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.13145539906103287
+              },
+              {
+                "species": "ca547c1d-962b-5ca0-9da9-4a15b5c5553a",
+                "seeds": 1,
+                "offspring": 1750,
+                "admitted": 363,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 55,
+                "contributorsAdmitted": 55,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.15151515151515152
+              },
+              {
+                "species": "97250877-ed5d-5b23-bec6-3fe480f1721b",
+                "seeds": 1,
+                "offspring": 1744,
+                "admitted": 253,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 37,
+                "contributorsAdmitted": 37,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14624505928853754
+              },
+              {
+                "species": "b9ff8cd4-5dab-5ebc-b839-60ba0d5393f7",
+                "seeds": 1,
+                "offspring": 1643,
+                "admitted": 330,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 48,
+                "contributorsAdmitted": 48,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14545454545454545
+              }
+            ]
           }
         },
         {
@@ -182,11 +902,156 @@
             "min": 0.09404388714733543,
             "max": 0.13725490196078433,
             "seeds": 20
+          },
+          "bySpecies": {
+            "species": 1257,
+            "speciesWithAdmitted": 524,
+            "speciesInSeveralSeeds": 140,
+            "neverAdmitted": {
+              "species": 733,
+              "offspring": 1078
+            },
+            "spreadMinAdmitted": 30,
+            "survivalRateGivenAdmitted": {
+              "species": 68,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            },
+            "contributionRateGivenAdmitted": {
+              "species": 68,
+              "min": 0,
+              "median": 0.13427827306420914,
+              "max": 0.275
+            },
+            "largest": [
+              {
+                "species": "ce33e017-1bec-5336-8c93-56e7ca471fc4",
+                "seeds": 3,
+                "offspring": 734,
+                "admitted": 187,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 25,
+                "contributorsAdmitted": 25,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.13368983957219252
+              },
+              {
+                "species": "f8c7f459-f8d9-58e5-9f1f-2bbd7967a55a",
+                "seeds": 4,
+                "offspring": 692,
+                "admitted": 145,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 20,
+                "contributorsAdmitted": 20,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.13793103448275862
+              },
+              {
+                "species": "6eac8059-02ed-52c9-94d8-c34d3a26877f",
+                "seeds": 1,
+                "offspring": 546,
+                "admitted": 159,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 20,
+                "contributorsAdmitted": 20,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.12578616352201258
+              },
+              {
+                "species": "9a6a283b-ed09-5c40-aabc-a60869454dfc",
+                "seeds": 1,
+                "offspring": 544,
+                "admitted": 204,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 35,
+                "contributorsAdmitted": 35,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1715686274509804
+              },
+              {
+                "species": "8f49c736-d231-5039-913b-e8619dd1eb74",
+                "seeds": 1,
+                "offspring": 521,
+                "admitted": 149,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 21,
+                "contributorsAdmitted": 21,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14093959731543623
+              },
+              {
+                "species": "223c652d-ae53-58a4-b24a-e0f1dc094211",
+                "seeds": 1,
+                "offspring": 517,
+                "admitted": 183,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 26,
+                "contributorsAdmitted": 26,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14207650273224043
+              },
+              {
+                "species": "21212697-4a2c-57dd-ae54-1f125239f79d",
+                "seeds": 4,
+                "offspring": 506,
+                "admitted": 104,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 13,
+                "contributorsAdmitted": 13,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.125
+              },
+              {
+                "species": "701dc726-0d49-5cea-acb2-a1c32c4db53c",
+                "seeds": 1,
+                "offspring": 496,
+                "admitted": 142,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 21,
+                "contributorsAdmitted": 21,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.14788732394366197
+              },
+              {
+                "species": "a7679e1d-d238-53c0-b96a-a232640263b3",
+                "seeds": 2,
+                "offspring": 493,
+                "admitted": 149,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 20,
+                "contributorsAdmitted": 20,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1342281879194631
+              },
+              {
+                "species": "08f5d443-fbf5-5ef3-a8c3-fa8a3874cf95",
+                "seeds": 1,
+                "offspring": 405,
+                "admitted": 116,
+                "survived": 0,
+                "survivedAdmitted": 0,
+                "contributors": 14,
+                "contributorsAdmitted": 14,
+                "survivalRateGivenAdmitted": 0,
+                "contributionRateGivenAdmitted": 0.1206896551724138
+              }
+            ]
           }
         }
       ]
     }
   },
+  "speciesCsv": "docs/evidence/admission-persistence-4163-species.csv",
   "comparisons": {
     "bestHoldout": {
       "n": 20,
@@ -608,7 +1473,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 546
           },
           {
             "horizon": 100,
@@ -702,7 +1568,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 507
           },
           {
             "horizon": 1000,
@@ -796,7 +1663,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 66
           }
         ]
       }
@@ -1130,7 +1998,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 601
           },
           {
             "horizon": 100,
@@ -1224,7 +2093,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 565
           },
           {
             "horizon": 1000,
@@ -1318,7 +2188,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 67
           }
         ]
       }
@@ -1646,7 +2517,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 508
           },
           {
             "horizon": 100,
@@ -1734,7 +2606,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 465
           },
           {
             "horizon": 1000,
@@ -1822,7 +2695,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 77
           }
         ]
       }
@@ -2138,7 +3012,8 @@
                 "admitted": 2,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 527
           },
           {
             "horizon": 100,
@@ -2214,7 +3089,8 @@
                 "admitted": 2,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 493
           },
           {
             "horizon": 1000,
@@ -2290,7 +3166,8 @@
                 "admitted": 2,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 72
           }
         ]
       }
@@ -2624,7 +3501,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 443
           },
           {
             "horizon": 100,
@@ -2718,7 +3596,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 425
           },
           {
             "horizon": 1000,
@@ -2812,7 +3691,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 60
           }
         ]
       }
@@ -3152,7 +4032,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 537
           },
           {
             "horizon": 100,
@@ -3252,7 +4133,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 518
           },
           {
             "horizon": 1000,
@@ -3352,7 +4234,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 70
           }
         ]
       }
@@ -3698,7 +4581,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 648
           },
           {
             "horizon": 100,
@@ -3804,7 +4688,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 593
           },
           {
             "horizon": 1000,
@@ -3910,7 +4795,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 91
           }
         ]
       }
@@ -4250,7 +5136,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 585
           },
           {
             "horizon": 100,
@@ -4350,7 +5237,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 541
           },
           {
             "horizon": 1000,
@@ -4450,7 +5338,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 80
           }
         ]
       }
@@ -4796,7 +5685,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 598
           },
           {
             "horizon": 100,
@@ -4902,7 +5792,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 561
           },
           {
             "horizon": 1000,
@@ -5008,7 +5899,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 78
           }
         ]
       }
@@ -5354,7 +6246,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 634
           },
           {
             "horizon": 100,
@@ -5460,7 +6353,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 590
           },
           {
             "horizon": 1000,
@@ -5566,7 +6460,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 69
           }
         ]
       }
@@ -5906,7 +6801,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 540
           },
           {
             "horizon": 100,
@@ -6006,7 +6902,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 508
           },
           {
             "horizon": 1000,
@@ -6106,7 +7003,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 92
           }
         ]
       }
@@ -6440,7 +7338,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 569
           },
           {
             "horizon": 100,
@@ -6534,7 +7433,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 541
           },
           {
             "horizon": 1000,
@@ -6628,7 +7528,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 87
           }
         ]
       }
@@ -6974,7 +7875,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 568
           },
           {
             "horizon": 100,
@@ -7080,7 +7982,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 547
           },
           {
             "horizon": 1000,
@@ -7186,7 +8089,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 79
           }
         ]
       }
@@ -7526,7 +8430,8 @@
                 "admitted": 4,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 577
           },
           {
             "horizon": 100,
@@ -7626,7 +8531,8 @@
                 "admitted": 4,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 535
           },
           {
             "horizon": 1000,
@@ -7726,7 +8632,8 @@
                 "admitted": 4,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 72
           }
         ]
       }
@@ -8066,7 +8973,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 592
           },
           {
             "horizon": 100,
@@ -8166,7 +9074,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 555
           },
           {
             "horizon": 1000,
@@ -8266,7 +9175,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 73
           }
         ]
       }
@@ -8594,7 +9504,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 507
           },
           {
             "horizon": 100,
@@ -8682,7 +9593,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 476
           },
           {
             "horizon": 1000,
@@ -8770,7 +9682,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 61
           }
         ]
       }
@@ -9104,7 +10017,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 474
           },
           {
             "horizon": 100,
@@ -9198,7 +10112,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 456
           },
           {
             "horizon": 1000,
@@ -9292,7 +10207,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 77
           }
         ]
       }
@@ -9632,7 +10548,8 @@
                 "admitted": 4,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 562
           },
           {
             "horizon": 100,
@@ -9732,7 +10649,8 @@
                 "admitted": 4,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 528
           },
           {
             "horizon": 1000,
@@ -9832,7 +10750,8 @@
                 "admitted": 4,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 72
           }
         ]
       }
@@ -10172,7 +11091,8 @@
                 "admitted": 2,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 490
           },
           {
             "horizon": 100,
@@ -10272,7 +11192,8 @@
                 "admitted": 2,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 466
           },
           {
             "horizon": 1000,
@@ -10372,7 +11293,8 @@
                 "admitted": 2,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 72
           }
         ]
       }
@@ -10712,7 +11634,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 589
           },
           {
             "horizon": 100,
@@ -10812,7 +11735,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 536
           },
           {
             "horizon": 1000,
@@ -10912,7 +11836,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 72
           }
         ]
       }
@@ -11246,7 +12171,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 464
           },
           {
             "horizon": 100,
@@ -11340,7 +12266,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 449
           },
           {
             "horizon": 1000,
@@ -11434,7 +12361,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 83
           }
         ]
       }
@@ -11762,7 +12690,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 542
           },
           {
             "horizon": 100,
@@ -11850,7 +12779,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 510
           },
           {
             "horizon": 1000,
@@ -11938,7 +12868,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 85
           }
         ]
       }
@@ -12272,7 +13203,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 562
           },
           {
             "horizon": 100,
@@ -12366,7 +13298,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 542
           },
           {
             "horizon": 1000,
@@ -12460,7 +13393,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 57
           }
         ]
       }
@@ -12776,7 +13710,8 @@
                 "admitted": 3,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 536
           },
           {
             "horizon": 100,
@@ -12852,7 +13787,8 @@
                 "admitted": 3,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 491
           },
           {
             "horizon": 1000,
@@ -12928,7 +13864,8 @@
                 "admitted": 3,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 62
           }
         ]
       }
@@ -13262,7 +14199,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 547
           },
           {
             "horizon": 100,
@@ -13356,7 +14294,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 493
           },
           {
             "horizon": 1000,
@@ -13450,7 +14389,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 67
           }
         ]
       }
@@ -13790,7 +14730,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 579
           },
           {
             "horizon": 100,
@@ -13890,7 +14831,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 546
           },
           {
             "horizon": 1000,
@@ -13990,7 +14932,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 80
           }
         ]
       }
@@ -14330,7 +15273,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 593
           },
           {
             "horizon": 100,
@@ -14430,7 +15374,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 544
           },
           {
             "horizon": 1000,
@@ -14530,7 +15475,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 79
           }
         ]
       }
@@ -14870,7 +15816,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 509
           },
           {
             "horizon": 100,
@@ -14970,7 +15917,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 490
           },
           {
             "horizon": 1000,
@@ -15070,7 +16018,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 94
           }
         ]
       }
@@ -15398,7 +16347,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 609
           },
           {
             "horizon": 100,
@@ -15486,7 +16436,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 565
           },
           {
             "horizon": 1000,
@@ -15574,7 +16525,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 87
           }
         ]
       }
@@ -15902,7 +16854,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 546
           },
           {
             "horizon": 100,
@@ -15990,7 +16943,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 529
           },
           {
             "horizon": 1000,
@@ -16078,7 +17032,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 76
           }
         ]
       }
@@ -16412,7 +17367,8 @@
                 "admitted": 2991,
                 "contributors": 713
               }
-            ]
+            ],
+            "species": 596
           },
           {
             "horizon": 100,
@@ -16506,7 +17462,8 @@
                 "admitted": 2743,
                 "contributors": 297
               }
-            ]
+            ],
+            "species": 565
           },
           {
             "horizon": 1000,
@@ -16600,7 +17557,8 @@
                 "admitted": 346,
                 "contributors": 40
               }
-            ]
+            ],
+            "species": 76
           }
         ]
       }
@@ -16934,7 +17892,8 @@
                 "admitted": 23,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 578
           },
           {
             "horizon": 100,
@@ -17028,7 +17987,8 @@
                 "admitted": 23,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 540
           },
           {
             "horizon": 1000,
@@ -17122,7 +18082,8 @@
                 "admitted": 23,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 67
           }
         ]
       }
@@ -17456,7 +18417,8 @@
                 "admitted": 2359,
                 "contributors": 769
               }
-            ]
+            ],
+            "species": 529
           },
           {
             "horizon": 100,
@@ -17550,7 +18512,8 @@
                 "admitted": 2154,
                 "contributors": 256
               }
-            ]
+            ],
+            "species": 484
           },
           {
             "horizon": 1000,
@@ -17644,7 +18607,8 @@
                 "admitted": 239,
                 "contributors": 35
               }
-            ]
+            ],
+            "species": 68
           }
         ]
       }
@@ -17972,7 +18936,8 @@
                 "admitted": 16,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 606
           },
           {
             "horizon": 100,
@@ -18060,7 +19025,8 @@
                 "admitted": 16,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 564
           },
           {
             "horizon": 1000,
@@ -18148,7 +19114,8 @@
                 "admitted": 16,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 61
           }
         ]
       }
@@ -18482,7 +19449,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 528
           },
           {
             "horizon": 100,
@@ -18576,7 +19544,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 496
           },
           {
             "horizon": 1000,
@@ -18670,7 +19639,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 85
           }
         ]
       }
@@ -18998,7 +19968,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 605
           },
           {
             "horizon": 100,
@@ -19086,7 +20057,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 578
           },
           {
             "horizon": 1000,
@@ -19174,7 +20146,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 81
           }
         ]
       }
@@ -19520,7 +20493,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 627
           },
           {
             "horizon": 100,
@@ -19626,7 +20600,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 594
           },
           {
             "horizon": 1000,
@@ -19732,7 +20707,8 @@
                 "admitted": 0,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 75
           }
         ]
       }
@@ -20066,7 +21042,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 497
           },
           {
             "horizon": 100,
@@ -20160,7 +21137,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 468
           },
           {
             "horizon": 1000,
@@ -20254,7 +21232,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 82
           }
         ]
       }
@@ -20600,7 +21579,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 541
           },
           {
             "horizon": 100,
@@ -20706,7 +21686,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 508
           },
           {
             "horizon": 1000,
@@ -20812,7 +21793,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 70
           }
         ]
       }
@@ -21146,7 +22128,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 654
           },
           {
             "horizon": 100,
@@ -21240,7 +22223,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 612
           },
           {
             "horizon": 1000,
@@ -21334,7 +22318,8 @@
                 "admitted": 1,
                 "contributors": 0
               }
-            ]
+            ],
+            "species": 69
           }
         ]
       }
