@@ -11,10 +11,12 @@ predeclared 20-seed run is a **negative finding**: the bias gives no benefit by
 the predeclared criteria (both held-out comparisons `no-benefit`, and both
 bootstrap 95% CIs span zero). Individual survival is 0 at 100 and 1000
 generations in both arms, so durability shows only as descendant contribution,
-which about 11% of admitted offspring reach. Nothing under `src/` changed.
+which about 11% of admitted offspring reach. Persistence is broken down per
+Genus species at birth (digest in the artefact, full table in a CSV) and per
+founder clade. Nothing under `src/` changed.
 
-The cited paper could not be read, and persistence is broken down by founder
-clade rather than by species (both recorded below), so this is Part of #4163.
+The cited paper's full method could not be read from this host (recorded below),
+so this is Part of #4163.
 
 ## Spec
 
@@ -48,16 +50,26 @@ clade rather than by species (both recorded below), so this is Part of #4163.
   parents share a rank. The best-to-worst odds are therefore exactly 2:1 and
   never more. Train drives admission. Holdout is used only for reporting and is
   never charged.
-- **Assumption:** "per species/team" maps to the founder clade (the seed
-  individual a lineage descends from). Genus species appear only as a count,
-  because UUID-based speciation collapses under mutation-only offspring. Each
-  seed runs in its own child process, because one process ran the V8 JavaScript
-  engine's heap out of memory at seed 12.
+- **Per species/team:** both groupings are reported. Each individual records at
+  birth the key `Genus` groups by (`Species.calculateKey`, which depends only on
+  architecture, so a key means the same species in every seed). Every horizon
+  carries a `bySpecies` breakdown, and the CLI pools it across seeds by key. The
+  founder clade (the seed individual a lineage descends from) is the second
+  grouping. Architecture speciation yields about 10,000 species at birth per
+  arm, so the artefact holds a digest per arm and horizon and `--species-csv`
+  writes the full table. Keeping every row per run made a 38 MB artefact.
+- Each seed runs in its own child process, because one process ran the V8
+  JavaScript engine's heap out of memory at seed 12.
 
 ### Undiscoverable Facts
 
-- arXiv 2611.06522 was unreachable from this host: `curl` to `arxiv.org` and
-  `export.arxiv.org` returned HTTP status 000. No method detail or number from
+- arXiv 2611.06522 was unreachable from this host. `curl` to `arxiv.org` and
+  `export.arxiv.org` was refused by the egress proxy (HTTP 403), and fetching
+  the abstract and HTML pages failed the same way. A web search identifies the
+  paper: "From Admission to Retention: Predicting Durable Offspring in
+  Quality-Diversity Search" (Calamita et al., 4 November 2026), built on
+  Dominated Novelty Search with H = 1000. That is a search engine's summary, not
+  the paper, so the full method is not pinned. No method detail or number from
   the paper is used.
 - The first 20-seed attempt died with "Fatal JavaScript out of memory:
   Ineffective mark-compacts near heap limit" after 11 seeds. Those 11 seeds
@@ -68,16 +80,20 @@ clade rather than by species (both recorded below), so this is Part of #4163.
 
 Purely a script/CLI change; no UI files. The full record is in
 `docs/evidence/admission-persistence-4163.md`, and the machine-readable artefact
-is `docs/evidence/admission-persistence-4163.json`. The artefact holds the
-manifest, the definitions, the per-seed paired differences, the bootstrap CIs,
-`failuresRun` (empty) and coverage of 20/20 paired seeds. The manifest records
-commit `308ae6ee`, `dirty: false`, NEAT-AI 7.1.22, the NEAT-AI-core rev, Deno
-2.9.8 and seeds 4163–4182. Later commits changed only console labels, when
-provenance is read, the `--single-seed` integer check and comments, not the
-measured loop. To reproduce:
+is `docs/evidence/admission-persistence-4163.json`, with the per-species table
+in `docs/evidence/admission-persistence-4163-species.csv`. The artefact holds
+the manifest, the definitions, the per-seed paired differences, the bootstrap
+CIs, the per-species digests, `failuresRun` (empty) and coverage of 20/20 paired
+seeds. The manifest records commit `e131ebfe`, `dirty: false`, NEAT-AI 7.1.22,
+the NEAT-AI-core rev, Deno 2.9.8 and seeds 4163–4182. The re-run with the
+species breakdown gave per-seed results and paired comparisons identical to the
+first run at `308ae6ee`, because recording the species key draws no random
+numbers. To reproduce:
 
 ```bash
-deno task admission-persistence-study --json=docs/evidence/admission-persistence-4163.json
+deno task admission-persistence-study \
+  --json=docs/evidence/admission-persistence-4163.json \
+  --species-csv=docs/evidence/admission-persistence-4163-species.csv
 ```
 
 Observation, pooled over 20 seeds per arm (264,000 offspring per arm, admission
@@ -91,6 +107,17 @@ Observation, pooled over 20 seeds per arm (264,000 offspring per arm, admission
 | biased  | 10      | 0.100                   | 0.274                       |
 | biased  | 100     | 0                       | 0.115                       |
 | biased  | 1000    | 0                       | 0.112                       |
+
+Per Genus species at birth, pooled over seeds. The spread covers species with at
+least 30 admitted offspring. Individual survival given admission is 0 in every
+species at both horizons.
+
+| Arm     | Horizon | Species | With an admission | Contribution given admitted: min / median / max |
+| ------- | ------- | ------- | ----------------- | ----------------------------------------------- |
+| uniform | 100     | 9,969   | 2,748             | 0 / 0.130 / 0.333                               |
+| uniform | 1000    | 1,253   | 497               | 0 / 0.125 / 0.333                               |
+| biased  | 100     | 10,382  | 2,844             | 0 / 0.131 / 0.367                               |
+| biased  | 1000    | 1,257   | 524               | 0 / 0.134 / 0.275                               |
 
 Comparison, biased minus uniform held-out MSE (negative is better), with the
 criteria from #4155 fixed before the run:
@@ -125,14 +152,19 @@ mechanisms" or to the reproducible command, as described above.
 
 ## Acceptance Criteria
 
-- **missing** — "Read and pin the full method before reproducing it" — reason:
-  arXiv 2611.06522 was unreachable from this host (HTTP 000), so the harness
-  implements this repository's reading of the issue text and is not a
-  reproduction of the paper.
-- **missing** — "persistence after 100/1000 generations per species/team" (the
-  per-species breakdown) — reason: persistence is broken down by founder clade.
-  Genus species appear only as a count, because UUID-based speciation collapses
-  under mutation-only offspring (about 2 species at the end of a run).
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **missing** — "Read and pin the full method before reproducing it" — reviewer:
+  missing — reason: the egress proxy refuses arXiv (HTTP 403), so the paper was
+  identified only from a web-search summary and its full method is not read or
+  pinned. The harness is not a reproduction of the paper.
+- **met** — "persistence after 100/1000 generations per species/team" (the
+  per-species breakdown) — evidence:
+  `test/scripts/AdmissionPersistenceStudy.ts::persistenceSummary on a hand-built run`,
+  `::pooledBySpecies sums each species across runs`,
+  `::persistence bookkeeping is consistent`,
+  `::speciesDigest and speciesCsv cover every species`,
+  `docs/evidence/admission-persistence-4163-species.csv` — reviewer: met
 
 ## Standards Review
 
@@ -160,17 +192,21 @@ mechanisms" or to the reproducible command, as described above.
 
 ## Test Plan
 
-- Added `test/scripts/AdmissionPersistenceStudy.ts` (15 tests):
+- Added `test/scripts/AdmissionPersistenceStudy.ts` (17 tests):
   - `kaplanMeier` with and without censoring, and on no data;
   - parent weights: uniform all 1, the best exactly the cap, ties shared, and an
     `oddsCap` below 1 refused by name;
   - `validateSettings` names the bad setting;
-  - `persistenceSummary` on a hand-built run, and with no offspring;
+  - `persistenceSummary` on a hand-built run (per founder and per species), and
+    with no offspring;
+  - `pooledBySpecies` sums a species across runs from counts, and
+    `speciesDigest` / `speciesCsv` account for every species;
   - a run is deterministic, and the caller's generator is restored;
   - holdout never guides a decision: holdout targets shifted give an identical
     trace and persistence, and the holdout MSE differs as the positive control;
   - persistence bookkeeping is consistent: censored counts, descendants ≥
-    survival, parents unmodified;
+    survival, parents unmodified, and the species rows add up to each horizon's
+    totals;
   - the bias reaches selection.
 - Callers checked for the widened `pairedComparison`:
   `scripts/lineage_targeting_study.ts` (unchanged and still type-checks) and the
@@ -179,11 +215,13 @@ mechanisms" or to the reproducible command, as described above.
   from any existing test.
 - On the head, `deno test --allow-all test/scripts/AdmissionPersistenceStudy.ts`
   plus `test/scripts/IslandExchangeStudy.ts` and
-  `test/scripts/LineageTargetingStudy.ts` gave 53 passed, 0 failed.
+  `test/scripts/LineageTargetingStudy.ts` gave 55 passed, 0 failed.
 - The full `./quality.sh --rust-scorer-bin=<locally built rust_scorer>` ran in
   the foreground on head `2b9f2289` and exited 0: 10,493 passed, 0 failed, 50
-  ignored. The gate refuses to run without a native scorer, so it was built from
-  `stSoftwareAU/NEAT-AI-scorer`.
+  ignored. It was not re-run here after the per-species commits; the worker
+  re-runs the gate on the head. The gate refuses to run without a native scorer,
+  so it was built from `stSoftwareAU/NEAT-AI-scorer`.
 - The CLI's child-failure path (a non-zero exit or a missing output file) was
-  not exercised by a test. Pooled aggregation and coverage were checked only
-  through the real 20-seed run's artefact.
+  not exercised by a test. Pooled aggregation per horizon and coverage were
+  checked only through the real 20-seed run's artefact; the per-species pooling,
+  digest and CSV have unit tests.

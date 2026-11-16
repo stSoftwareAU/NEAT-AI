@@ -225,12 +225,12 @@ with at least 30 admitted eligible offspring.
 Individual survival given admission is 0 in every species at 100 and 1000
 generations, as it is pooled. Speciation by architecture bucket splits the
 offspring into many small species: most are seen in one seed only, and most
-never have an offspring admitted. Contribution rates per species centre on the
-pooled rate (about 0.11 to 0.13), and the spread across species is wide. It is
-not tested against chance, so it does not show that any species persists better
-than another. The final population holds only 1 to 5 species (see the table
-above): architecture changes under mutation, so species turn over faster than
-founder clades do.
+never have an offspring admitted. The median contribution rate per species
+(0.125 to 0.134) sits slightly above the pooled rate (0.109 to 0.115), and the
+spread across species is wide. It is not tested against chance, so it does not
+show that any species persists better than another. The final population holds
+only 1 to 5 species (see the table above): architecture changes under mutation,
+so species turn over faster than founder clades do.
 
 ### (b) Comparison: biased against uniform
 
