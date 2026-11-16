@@ -14,10 +14,12 @@
  * inputs to 8 hidden, 8 hidden to 1 output, 4 inputs to the output), each with
  * a weight and a priority, plus biases. Expressing the genome at budget `b`
  * keeps the top `round(b * 44)` candidates by priority, then drops every
- * hidden neuron left without an inbound or an outbound kept synapse, so a
- * smaller budget is always a nested subset of a larger one.
+ * hidden neuron left without an inbound or an outbound kept synapse. For a
+ * genome without budget slopes a smaller budget is always a nested subset of
+ * a larger one; a `budgetInput` genome first reads its priorities and weights
+ * at `b` (see {@link conditionOn}), so its kept sets need not nest.
  *
- * Arms (equal charged train records `C` per seed):
+ * Arms (four, equal charged train records `C` per seed):
  *
  * - `conditioned`: one search whose fitness is the mean calibration MSE over
  *   the training budgets (25%, 50%, 100%); the champion is expressed at every
@@ -25,6 +27,9 @@
  * - `independent`: five searches, one per evaluation budget, each with `C / 5`.
  * - `pruned`: one full-size search; the champion is cut to each budget by
  *   `|weight|` with no retraining.
+ * - `budgetInput`: as `conditioned`, but each synapse's priority and weight are
+ *   linear in the budget, so the budget is an input to expression and the kept
+ *   set need not be nested across budgets.
  *
  * ## Relation to NEAT-AI-Ockham
  *
@@ -47,10 +52,12 @@
  *
  * The cited paper's method is pinned in {@link SOURCE_METHOD}, together with
  * how this study maps onto it and where it departs. The main departure: the
- * paper feeds developmental time to a HyperNEAT generator as an input, while
- * this genome has no budget input. A budget picks the top-k synapses by an
- * evolved priority gene, so the negative result here does not test the
- * paper's generator.
+ * paper feeds developmental time to a HyperNEAT generator as an input. The
+ * `conditioned` arm has no budget input: a budget picks the top-k synapses by
+ * an evolved priority gene. The `budgetInput` arm takes the budget as a linear
+ * input per synapse (priority and weight each move linearly with the budget),
+ * which is closer to the paper but still not its CPPN over coordinates. The
+ * paper's excerpts were read on 2026-11-15 and 2026-11-16.
  *
  * @module budgetConditionedStudy
  */
@@ -130,7 +137,12 @@ export const BOOTSTRAP_RESAMPLES = 10_000;
 export const BOOTSTRAP_SEED = 4161;
 
 /** Arms, in the order their rng streams are derived. */
-export const ARM_NAMES = ["conditioned", "independent", "pruned"] as const;
+export const ARM_NAMES = [
+  "conditioned",
+  "independent",
+  "pruned",
+  "budgetInput",
+] as const;
 export type ArmName = typeof ARM_NAMES[number];
 
 /** How one run is set up. */
@@ -204,7 +216,20 @@ export interface Genome {
   priorities: number[];
   /** Hidden biases, then the output bias last. */
   biases: number[];
+  /**
+   * Per-synapse slope of the priority against the budget. Present only on a
+   * budget-input genome, and only together with `weightSlopes`.
+   */
+  prioritySlopes?: number[];
+  /**
+   * Per-synapse slope of the weight against the budget. Present only on a
+   * budget-input genome, and only together with `prioritySlopes`.
+   */
+  weightSlopes?: number[];
 }
+
+/** How the initial genomes are drawn. */
+export type Encoding = "fixed" | "budget-input";
 
 /** A random genome from the local stream. */
 export function randomGenome(rng: RandomNumberGenerator): Genome {
@@ -213,6 +238,49 @@ export function randomGenome(rng: RandomNumberGenerator): Genome {
     weights: Array.from({ length: SYNAPSE_COUNT }, () => u(-1, 1)),
     priorities: Array.from({ length: SYNAPSE_COUNT }, () => u(0, 1)),
     biases: Array.from({ length: HIDDEN + 1 }, () => u(-1, 1)),
+  };
+}
+
+/** A random genome that also carries per-synapse budget slopes. */
+export function randomInputGenome(rng: RandomNumberGenerator): Genome {
+  const base = randomGenome(rng);
+  const u = (lo: number, hi: number) => lo + rng.random() * (hi - lo);
+  return {
+    ...base,
+    prioritySlopes: Array.from({ length: SYNAPSE_COUNT }, () => u(-1, 1)),
+    weightSlopes: Array.from({ length: SYNAPSE_COUNT }, () => u(-1, 1)),
+  };
+}
+
+/**
+ * The genome as it reads at `budget`: priority and weight each move linearly
+ * with the budget. A genome with no slopes is returned unchanged.
+ */
+export function conditionOn(genome: Genome, budget: number): Genome {
+  const { prioritySlopes, weightSlopes } = genome;
+  if (prioritySlopes === undefined && weightSlopes === undefined) {
+    return genome;
+  }
+  if (prioritySlopes === undefined) {
+    throw new Error("genome has weightSlopes but no prioritySlopes");
+  }
+  if (weightSlopes === undefined) {
+    throw new Error("genome has prioritySlopes but no weightSlopes");
+  }
+  if (prioritySlopes.length !== SYNAPSE_COUNT) {
+    throw new Error(
+      `genome.prioritySlopes has length ${prioritySlopes.length}, expected ${SYNAPSE_COUNT}`,
+    );
+  }
+  if (weightSlopes.length !== SYNAPSE_COUNT) {
+    throw new Error(
+      `genome.weightSlopes has length ${weightSlopes.length}, expected ${SYNAPSE_COUNT}`,
+    );
+  }
+  return {
+    weights: genome.weights.map((w, i) => w + weightSlopes[i] * budget),
+    priorities: genome.priorities.map((p, i) => p + prioritySlopes[i] * budget),
+    biases: [...genome.biases],
   };
 }
 
@@ -262,7 +330,8 @@ export function expressGenome(
   budget: number,
   ranking: Ranking,
 ): Expression {
-  const kept = keptIndices(genome, budget, ranking);
+  const g = conditionOn(genome, budget);
+  const kept = keptIndices(g, budget, ranking);
   const hasIn = new Array<boolean>(HIDDEN).fill(false);
   const hasOut = new Array<boolean>(HIDDEN).fill(false);
   for (const i of kept) {
@@ -285,19 +354,19 @@ export function expressGenome(
       type: "hidden",
       uuid: hiddenUuid(h),
       squash: "TANH",
-      bias: genome.biases[h],
+      bias: g.biases[h],
     });
   }
   neurons.push({
     type: "output",
     uuid: OUTPUT_UUID,
     squash: "IDENTITY",
-    bias: genome.biases[HIDDEN],
+    bias: g.biases[HIDDEN],
   });
   const synapses: CreatureExport["synapses"] = effective.map((i) => ({
     fromUUID: endpoint(CANDIDATES[i].from),
     toUUID: endpoint(CANDIDATES[i].to),
-    weight: genome.weights[i],
+    weight: g.weights[i],
   }));
 
   let creature: Creature;
@@ -370,10 +439,21 @@ function offspringOf(
         ? gene + gaussian(rng) * settings.mutationSigma
         : gene;
     });
+  const weights = child(a.weights, b.weights);
+  const priorities = child(a.priorities, b.priorities);
+  const biases = child(a.biases, b.biases);
+  if (a.prioritySlopes === undefined || a.weightSlopes === undefined) {
+    return { weights, priorities, biases };
+  }
+  if (b.prioritySlopes === undefined || b.weightSlopes === undefined) {
+    throw new Error("cannot breed a budget-input genome with a fixed genome");
+  }
   return {
-    weights: child(a.weights, b.weights),
-    priorities: child(a.priorities, b.priorities),
-    biases: child(a.biases, b.biases),
+    weights,
+    priorities,
+    biases,
+    prioritySlopes: child(a.prioritySlopes, b.prioritySlopes),
+    weightSlopes: child(a.weightSlopes, b.weightSlopes),
   };
 }
 
@@ -394,6 +474,7 @@ export function evolve(
   settings: BudgetStudySettings,
   corpus: { train: readonly ABRecord[] },
   rng: RandomNumberGenerator,
+  encoding: Encoding,
 ): EvolveResult {
   validateSettings(settings);
   const cost = corpus.train.length * trainBudgets.length;
@@ -409,7 +490,9 @@ export function evolve(
 
   let survivors: Scored[] = [];
   for (let i = 0; i < settings.mu; i++) {
-    const genome = randomGenome(rng);
+    const genome = encoding === "fixed"
+      ? randomGenome(rng)
+      : randomInputGenome(rng);
     const fitness = evaluate(genome);
     if (fitness === null) break;
     survivors.push({ genome, fitness });
@@ -533,6 +616,7 @@ export function runArmSeed(
       settings,
       corpus,
       createSeededRng(base),
+      "fixed",
     );
     recordsCharged = r.recordsCharged;
     evaluations = r.evaluations;
@@ -549,12 +633,13 @@ export function runArmSeed(
         settings,
         corpus,
         createSeededRng(base + 1_000_003 * (bi + 1)),
+        "fixed",
       );
       recordsCharged += r.recordsCharged;
       evaluations += r.evaluations;
       budgets.push(resultFor(r.champion, b, "priority", settings, corpus));
     });
-  } else {
+  } else if (arm === "pruned") {
     const r = evolve(
       [1],
       "priority",
@@ -562,12 +647,30 @@ export function runArmSeed(
       settings,
       corpus,
       createSeededRng(base),
+      "fixed",
     );
     recordsCharged = r.recordsCharged;
     evaluations = r.evaluations;
     for (const b of EVAL_BUDGETS) {
       budgets.push(resultFor(r.champion, b, "magnitude", settings, corpus));
     }
+  } else if (arm === "budgetInput") {
+    const r = evolve(
+      TRAINING_BUDGETS,
+      "priority",
+      C,
+      settings,
+      corpus,
+      createSeededRng(base),
+      "budget-input",
+    );
+    recordsCharged = r.recordsCharged;
+    evaluations = r.evaluations;
+    for (const b of EVAL_BUDGETS) {
+      budgets.push(resultFor(r.champion, b, "priority", settings, corpus));
+    }
+  } else {
+    throw new Error(`unknown arm ${arm}`);
   }
   return { arm, seed, recordsCharged, evaluations, budgets };
 }
@@ -639,21 +742,21 @@ export function studyOutcome(c: {
   vsIndependent: { verdict: BudgetVerdictName };
   vsPruned: { verdict: BudgetVerdictName };
   fullSize: { verdict: BudgetVerdictName };
-}): { outcome: "success" | "failure"; reasons: string[] } {
+}, arm: string): { outcome: "success" | "failure"; reasons: string[] } {
   const reasons: string[] = [];
   if (c.vsIndependent.verdict !== "benefit") {
     reasons.push(
-      `conditioned does not beat independent per-budget searches on unseen budgets (${c.vsIndependent.verdict})`,
+      `${arm} does not beat independent per-budget searches on unseen budgets (${c.vsIndependent.verdict})`,
     );
   }
   if (c.vsPruned.verdict !== "benefit") {
     reasons.push(
-      `conditioned does not beat the magnitude-pruned full-size network on unseen budgets (${c.vsPruned.verdict})`,
+      `${arm} does not beat the magnitude-pruned full-size network on unseen budgets (${c.vsPruned.verdict})`,
     );
   }
   if (c.fullSize.verdict === "harm") {
     reasons.push(
-      "conditioned regresses against the pruned arm at the full-size budget",
+      `${arm} regresses against the pruned arm at the full-size budget`,
     );
   }
   return { outcome: reasons.length === 0 ? "success" : "failure", reasons };
@@ -688,10 +791,14 @@ export interface PinnedMethodElement {
 /**
  * The source method, pinned before the reproduction is judged (Issue #4161).
  *
- * The paper was read on 2026-11-15 through search-indexed excerpts of its
- * abstract page and its HTML full text. A direct fetch of arxiv.org was
- * refused by this host's proxy, so the details the excerpts do not give are
- * listed in `unpinned`, not guessed.
+ * The `conditioned` arm has no budget input; the `budgetInput` arm takes the
+ * budget as a linear input per synapse, which is closer to the paper's
+ * generator but still not its CPPN.
+ *
+ * The paper was read on 2026-11-15 and 2026-11-16 through search-indexed
+ * excerpts of its abstract page and its HTML full text. A direct fetch of
+ * arxiv.org was refused by this host's proxy, so the details the excerpts do
+ * not give are listed in `unpinned`, not guessed.
  */
 export const SOURCE_METHOD = Object.freeze({
   arxivId: "2611.06895",
@@ -702,7 +809,7 @@ export const SOURCE_METHOD = Object.freeze({
     "Learning Time-Varying Connectomes for Stable Behavior Across Development",
   authors: ["Christof Fehrman", "Jacob J. Morra", "Eva A. Naumann"],
   categories: ["q-bio.NC", "cs.NE"],
-  readOn: "2026-11-15",
+  readOn: "2026-11-15 and 2026-11-16",
   readVia:
     "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895; direct fetch refused by the host proxy",
   elements: Object.freeze(
@@ -711,8 +818,15 @@ export const SOURCE_METHOD = Object.freeze({
         paper:
           "One compact generative encoding: a HyperNEAT CPPN that takes developmental time as an extra input and emits age-specific connectivity for a recurrent controller.",
         study:
-          "One genome of weights, biases and an evolved expression-priority gene; a budget keeps the top-k candidate synapses by priority. The genome has no budget input.",
+          "conditioned arm: one genome of weights, biases and an evolved expression-priority gene; a budget keeps the top-k candidate synapses by priority. The genome has no budget input.",
         fidelity: "departs",
+      },
+      {
+        paper:
+          "Developmental time (T) is an input to the generator, so connectivity and weights can change with age rather than only grow or shrink.",
+        study:
+          "budgetInput arm: each candidate synapse carries a priority and a weight that are linear in the budget (priority + slope × budget, weight + slope × budget), so the budget is an input to expression and the kept set need not be nested across budgets. A linear rule per synapse, not a CPPN over coordinates.",
+        fidelity: "analogue",
       },
       {
         paper:
@@ -737,6 +851,13 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
+          "In testing, the substrate's developmental age and the CPPN's time input are set separately; for developmentally aware controllers both are set to the testing age.",
+        study:
+          "budgetInput is expressed with its budget input equal to the evaluation budget, which also sets the synapse count; the study does not separate the two.",
+        fidelity: "analogue",
+      },
+      {
+        paper:
           "Controls: standard HyperNEAT optimised at the initial substrate only (T=0) and 'Reverse' HyperNEAT at the mature substrate only (T=1), with the CPPN time input held at its training value during testing (five conditions in all).",
         study:
           "Controls: independent per-budget searches (including the unseen budgets, which is stronger than single-snapshot training) and a full-size search pruned by frozen-weight magnitude, all at an equal charged-record budget.",
@@ -755,6 +876,13 @@ export const SOURCE_METHOD = Object.freeze({
         study: "One synthetic 4-input regression scored in-process.",
         fidelity: "departs",
       },
+      {
+        paper:
+          "Substrates are prescribed by a developmental interpolation g(T): Fish g(T)=T, recurrent cohort ranks assigned outside to inside; Ring g(T)=T², inside to outside; intrinsic time constants τ(T)=0.4−0.2T (Fish) and 0.4−0.2T² (Ring); substrate coordinates are used without normalisation.",
+        study:
+          "No developmental substrate: the candidate topology and the TANH/IDENTITY squashes are fixed; only the number and choice of expressed synapses varies.",
+        fidelity: "departs",
+      },
     ] as readonly PinnedMethodElement[],
   ),
   unpinned: Object.freeze(
@@ -762,13 +890,16 @@ export const SOURCE_METHOD = Object.freeze({
       "CPPN inputs beyond developmental time, its output activation and how connections are thresholded (the paper cites HyperNEAT-LEO; whether it uses a link-expression output was not confirmed)",
       "the NEAT settings of the CPPN search beyond population size and generation count",
       "the fitness definitions for the optomotor and phototaxis tasks",
-      "the exact ages evaluated as unseen",
+      "the values of the unseen ages (the excerpts say standard HyperNEAT was tested at three unseen developmental times, but not which)",
     ] as readonly string[],
   ),
 });
 
 const CRITERIA =
   "Primary metric: per-seed mean validation MSE over the unseen budgets (37.5%, 75%). benefit iff the paired-bootstrap 95% CI of (conditioned - control) lies below 0, harm iff it lies above 0, insufficient-data when fewer than 5 paired seeds, otherwise no-benefit. Success iff benefit against both independent and pruned controls and the full-size (100%) validation MSE against pruned is not harm. Per-budget comparisons are exploratory.";
+
+const CRITERIA_BUDGET_INPUT =
+  "Second hypothesis, declared on 2026-11-16 before the budgetInput arm's first run: the same rule as CRITERIA applied to budgetInput in place of conditioned (benefit against both independent and pruned on the unseen-budget mean, and full-size validation MSE against pruned not harm). budgetInput minus conditioned on the unseen-budget mean is exploratory.";
 
 /** Run every arm at every seed and summarise. */
 export function runStudy(options: StudyOptions = {}) {
@@ -840,6 +971,32 @@ export function runStudy(options: StudyOptions = {}) {
     vsPruned: compare(paired("conditioned"), paired("pruned"), at(budget)),
   }));
 
+  const biVsIndependent = compare(
+    paired("budgetInput"),
+    paired("independent"),
+    unseenScore,
+  );
+  const biVsPruned = compare(
+    paired("budgetInput"),
+    paired("pruned"),
+    unseenScore,
+  );
+  const biFullSize = compare(paired("budgetInput"), paired("pruned"), at(1));
+  const biVsConditioned = compare(
+    paired("budgetInput"),
+    paired("conditioned"),
+    unseenScore,
+  );
+  const biPerBudget = EVAL_BUDGETS.map((budget) => ({
+    budget,
+    vsIndependent: compare(
+      paired("budgetInput"),
+      paired("independent"),
+      at(budget),
+    ),
+    vsPruned: compare(paired("budgetInput"), paired("pruned"), at(budget)),
+  }));
+
   const perArmBudget = ARM_NAMES.flatMap((arm) =>
     EVAL_BUDGETS.map((budget) => {
       const rows = runsOf(arm).map((r) =>
@@ -886,6 +1043,7 @@ export function runStudy(options: StudyOptions = {}) {
       seeds,
       bootstrap: { resamples: BOOTSTRAP_RESAMPLES, seed: BOOTSTRAP_SEED },
       criteria: CRITERIA,
+      criteriaBudgetInput: CRITERIA_BUDGET_INPUT,
       paper: SOURCE_METHOD,
       ockham:
         "Unlike NEAT-AI-Ockham's frozen-weight pruning, the expression order here is an evolved, heritable gene; the pruned control ranks a finished network's frozen weights by magnitude.",
@@ -895,7 +1053,18 @@ export function runStudy(options: StudyOptions = {}) {
     primary: { vsIndependent, vsPruned },
     fullSize,
     perBudget,
-    outcome: studyOutcome({ vsIndependent, vsPruned, fullSize }),
+    outcome: studyOutcome({ vsIndependent, vsPruned, fullSize }, "conditioned"),
+    budgetInput: {
+      primary: { vsIndependent: biVsIndependent, vsPruned: biVsPruned },
+      fullSize: biFullSize,
+      vsConditioned: biVsConditioned,
+      perBudget: biPerBudget,
+      outcome: studyOutcome({
+        vsIndependent: biVsIndependent,
+        vsPruned: biVsPruned,
+        fullSize: biFullSize,
+      }, "budgetInput"),
+    },
     coverage: {
       expectedRuns: seeds.length * ARM_NAMES.length,
       completedRuns: runs.length,

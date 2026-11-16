@@ -20,12 +20,15 @@ import {
   budgetSynapses,
   budgetVerdict,
   compare,
+  conditionOn,
   DEFAULT_SETTINGS,
   EVAL_BUDGETS,
   evolve,
   expressGenome,
   type Genome,
   HIDDEN,
+  randomGenome,
+  randomInputGenome,
   runArmSeed,
   runStudy,
   SOURCE_METHOD,
@@ -160,6 +163,7 @@ Deno.test("evolve charges within budget and stops when nothing more fits", () =>
     SMALL,
     corpus,
     createSeededRng(1),
+    "fixed",
   );
   assert(r.recordsCharged <= SMALL.budgetRecords);
   assert(SMALL.budgetRecords - r.recordsCharged < cost);
@@ -174,6 +178,7 @@ Deno.test("evolve charges within budget and stops when nothing more fits", () =>
         SMALL,
         corpus,
         createSeededRng(1),
+        "fixed",
       ),
     Error,
     "initial genomes",
@@ -194,6 +199,7 @@ Deno.test("every arm stays within the budget", () => {
       conditioned: TRAINING_BUDGETS.length * oneEvaluation,
       pruned: oneEvaluation,
       independent: EVAL_BUDGETS.length * oneEvaluation,
+      budgetInput: TRAINING_BUDGETS.length * oneEvaluation,
     }[arm];
     assert(unspent < bound, `${arm} left ${unspent} of the budget unspent`);
     assertEquals(run.budgets.length, EVAL_BUDGETS.length);
@@ -243,28 +249,28 @@ Deno.test("studyOutcome succeeds only when every condition holds", () => {
       vsIndependent: v("benefit"),
       vsPruned: v("benefit"),
       fullSize: v("no-benefit"),
-    }),
+    }, "conditioned"),
     { outcome: "success", reasons: [] },
   );
   const harm = studyOutcome({
     vsIndependent: v("benefit"),
     vsPruned: v("benefit"),
     fullSize: v("harm"),
-  });
+  }, "conditioned");
   assertEquals(harm.outcome, "failure");
   assertEquals(harm.reasons.length, 1);
   const a = studyOutcome({
     vsIndependent: v("no-benefit"),
     vsPruned: v("benefit"),
     fullSize: v("no-benefit"),
-  });
+  }, "conditioned");
   assertEquals(a.outcome, "failure");
   assertEquals(a.reasons.length, 1);
   const b = studyOutcome({
     vsIndependent: v("benefit"),
     vsPruned: v("insufficient-data"),
     fullSize: v("harm"),
-  });
+  }, "conditioned");
   assertEquals(b.reasons.length, 2);
 });
 
@@ -275,7 +281,7 @@ Deno.test("a small study completes every run at the budgeted size", () => {
     settings: SMALL,
   });
   assertEquals(study.coverage.expectedRuns, 2 * ARM_NAMES.length);
-  assertEquals(study.coverage.completedRuns, 6);
+  assertEquals(study.coverage.completedRuns, 8);
   assertEquals(study.coverage.failures.length, 0);
   for (const run of study.runs) {
     assert(ARM_NAMES.includes(run.arm as ArmName));
@@ -433,16 +439,17 @@ Deno.test("compare of no paired runs is insufficient data", () => {
 
 Deno.test("a failed run is recorded and the others still compare", () => {
   // 600 records leave each independent sub-search 120: three evaluations at
-  // 40 records, one short of the 4 initial genomes. The conditioned (cost
-  // 120) and pruned (cost 40) arms still fit their population.
+  // 40 records, one short of the 4 initial genomes. The conditioned and
+  // budgetInput (cost 120) and pruned (cost 40) arms still fit their
+  // population.
   const study = runStudy({
     seedCount: 2,
     baseSeed: 100,
     settings: { ...SMALL, budgetRecords: 600 },
   });
-  assertEquals(study.coverage.expectedRuns, 6);
-  assertEquals(study.coverage.completedRuns, 4);
-  assertEquals(study.runs.length, 4);
+  assertEquals(study.coverage.expectedRuns, 8);
+  assertEquals(study.coverage.completedRuns, 6);
+  assertEquals(study.runs.length, 6);
   assertEquals(study.coverage.failures.length, 2);
   for (const failure of study.coverage.failures) {
     assertEquals(failure.arm, "independent");
@@ -456,4 +463,125 @@ Deno.test("a failed run is recorded and the others still compare", () => {
   assertEquals(study.primary.vsIndependent.verdict, "insufficient-data");
   assertEquals(study.primary.vsPruned.verdict, "insufficient-data");
   assertEquals(study.outcome.outcome, "failure");
+  assertEquals(study.budgetInput.outcome.outcome, "failure");
+});
+
+Deno.test("conditionOn makes expression depend on the budget, not nested", () => {
+  const priorities = new Array<number>(SYNAPSE_COUNT).fill(0);
+  const prioritySlopes = new Array<number>(SYNAPSE_COUNT).fill(0);
+  // Set A (0-10) is highest at 25% and falls; set B (11-21) rises with budget.
+  for (let i = 0; i < 11; i++) {
+    priorities[i] = 1;
+    prioritySlopes[i] = -2.4;
+  }
+  for (let i = 11; i < 22; i++) {
+    priorities[i] = -0.5;
+    prioritySlopes[i] = 2;
+  }
+  const g: Genome = {
+    weights: new Array<number>(SYNAPSE_COUNT).fill(0.5),
+    priorities,
+    biases: new Array(HIDDEN + 1).fill(0.1),
+    prioritySlopes,
+    weightSlopes: new Array<number>(SYNAPSE_COUNT).fill(2),
+  };
+  const at25 = expressGenome(g, 0.25, "priority").kept;
+  const at50 = expressGenome(g, 0.5, "priority").kept;
+  assertEquals(at25, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assertEquals(at50, [
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+  ]);
+  // Index 0 was kept at 25% and is gone at 50%: the kept set is not nested.
+  assert(at25.every((i) => !at50.includes(i)));
+  assertAlmostEquals(conditionOn(g, 0.25).weights[3], 1.0, 1e-12);
+  assertAlmostEquals(conditionOn(g, 0.25).priorities[0], 0.4, 1e-12);
+  assertEquals(conditionOn(g, 0.25).prioritySlopes, undefined);
+});
+
+Deno.test("conditionOn leaves a genome without slopes unchanged", () => {
+  const g = genomeRanking([3, 1, 2]);
+  assertEquals(conditionOn(g, 0.5), g);
+});
+
+Deno.test("conditionOn refuses half a slope pair or a wrong length", () => {
+  const g = genomeRanking([3, 1, 2]);
+  const slopes = new Array<number>(SYNAPSE_COUNT).fill(0.1);
+  assertThrows(
+    () => conditionOn({ ...g, prioritySlopes: slopes }, 0.5),
+    Error,
+    "weightSlopes",
+  );
+  assertThrows(
+    () => conditionOn({ ...g, weightSlopes: slopes }, 0.5),
+    Error,
+    "prioritySlopes",
+  );
+  assertThrows(
+    () =>
+      conditionOn(
+        { ...g, prioritySlopes: slopes.slice(1), weightSlopes: slopes },
+        0.5,
+      ),
+    Error,
+    "prioritySlopes",
+  );
+  assertThrows(
+    () =>
+      conditionOn(
+        { ...g, prioritySlopes: slopes, weightSlopes: [...slopes, 0] },
+        0.5,
+      ),
+    Error,
+    "weightSlopes",
+  );
+});
+
+Deno.test("studyOutcome names the arm it judges", () => {
+  const none = { verdict: "no-benefit" as const };
+  const r = studyOutcome(
+    { vsIndependent: none, vsPruned: none, fullSize: { verdict: "harm" } },
+    "budgetInput",
+  );
+  assertEquals(r.reasons.length, 3);
+  for (const reason of r.reasons) assert(reason.startsWith("budgetInput "));
+});
+
+Deno.test("the budgetInput arm reproduces and differs from conditioned", () => {
+  const corpus = corpusOf(SMALL);
+  const a = runArmSeed("budgetInput", 5, SMALL, corpus);
+  assertEquals(a, runArmSeed("budgetInput", 5, SMALL, corpus));
+  const c = runArmSeed("conditioned", 5, SMALL, corpus);
+  assertNotEquals({ ...a, arm: "x" }, { ...c, arm: "x" });
+});
+
+Deno.test("a budget-input genome adds slopes after the fixed draws", () => {
+  const fixed = randomGenome(createSeededRng(7));
+  const input = randomInputGenome(createSeededRng(7));
+  assertEquals(input.weights, fixed.weights);
+  assertEquals(input.priorities, fixed.priorities);
+  assertEquals(input.biases, fixed.biases);
+  assertEquals(input.prioritySlopes?.length, SYNAPSE_COUNT);
+  assertEquals(input.weightSlopes?.length, SYNAPSE_COUNT);
+  assertEquals(fixed.prioritySlopes, undefined);
 });
