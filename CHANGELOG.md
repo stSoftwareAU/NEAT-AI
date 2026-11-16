@@ -353,6 +353,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   fires earlier without beating stagnation. Nothing under `src/` changes. See
   [`docs/evidence/census-restart-4157.md`](./docs/evidence/census-restart-4157.md).
 
+- **Issue #4161:** opt-in `deno task budget-conditioned-study` compares one
+  genome selected at several connection budgets and expressed by an evolved
+  priority gene against independent per-budget searches and a magnitude-pruned
+  full-size network. Result: negative. On the unseen budgets the conditioned
+  genome is harmful against independent searches, so no genome format or default
+  changes; see [the evidence page](docs/evidence/budget-conditioned-4161.md).
+
 - **Issue #4160:** opt-in `deno task connectivity-prior-study` compares sparse,
   input-reachable initial topologies against the current fully connected one.
   Result: no cell beat the control and the calibration-chosen cell was harmful,
