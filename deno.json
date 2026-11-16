@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "7.1.21",
+  "version": "7.1.22",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
@@ -92,6 +92,7 @@
     "differential-weight-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/differential_weight_study.ts",
     "census-restart-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/census_restart_study.ts",
     "memetic-gain-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/memetic_gain_study.ts",
+    "island-exchange-study": "deno run --allow-read --allow-write --allow-env --allow-ffi --allow-run=git scripts/island_exchange_study.ts",
     "connectivity-prior-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/connectivity_prior_study.ts",
     "surrogate-uncertainty-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_uncertainty_ab.ts",
     "lineage-targeting-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/lineage_targeting_study.ts",

@@ -345,6 +345,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4159:** an opt-in island-exchange study
+  (`deno task island-exchange-study`) comparing three arms on equal budgets
+  (350,100 scored records per seed, 20 pre-declared seeds): no exchange, a
+  neighbour-only ring that sends topology-diverse Pareto members, and the
+  global-champion broadcast the fleet uses today as the control. Both verdicts
+  are **no benefit** against the broadcast. The ring keeps the islands diverse
+  (inter-island distance 0.42 against 0.004) and its mean held-out error is
+  lower, but the interval spans zero. An earlier run, which left unmutated
+  clones among the fills, called both **worse** and is superseded. The artefact
+  now records `dirty` and `sourceSha256` beside `commit`, the command refuses a
+  dirty `scripts/`/`src/` unless `--allow-dirty`, and each run counts the
+  evaluations spent re-scoring content its island already held. No default and
+  nothing under `src/` changed. See
+  [`docs/evidence/island-exchange-4159.md`](./docs/evidence/island-exchange-4159.md).
 - **Issue #4157:** an opt-in study, `deno task census-restart-study`, compares
   restarting on an offspring census (Good–Turing unseen estimate over species
   and quantised-genome identities) against restarting on a score plateau, with a
@@ -366,7 +380,6 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   so no prior was added. Self-loops were tested on the recurrent execution path
   as a paired with/without comparison and showed no benefit; see
   [the evidence page](docs/evidence/connectivity-prior-4160.md).
-
 - **Issue #4155:** an opt-in `deno task lineage-targeting-study` harness that
   compares ordinary mutation with lineage-informed and stratum-targeted
   offspring at an equal record budget. The 30-seed result is no benefit: every
