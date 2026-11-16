@@ -79,8 +79,8 @@ cannot be fetched from this host, so the manifest now records
   mirror and Semantic Scholar: curl gives `CONNECT tunnel failed, response 403`,
   and WebFetch gives `proxy refused the connection`. The new method details come
   from search-indexed excerpts read on 2026-11-16. A retry on 2026-11-16 also
-  found arxiv.org's HTML and PDF, alphaXiv, Hugging Face and r.jina.ai refused
-  with the same 403.
+  found arxiv.org's HTML and PDF, alphaXiv and Hugging Face refused with the
+  same 403.
 - **Scorer:** `./quality.sh` needs the native `rust_scorer`, and this worktree
   has none next to it. It was built from a fresh clone of NEAT-AI-scorer,
   outside the checkout, and passed with `--rust-scorer-bin`.
