@@ -384,6 +384,25 @@ Deno.test("lpsr@reenter holds its size until the delay, then only shrinks", asyn
     assert(sizes[sizes.length - 1] < settings.populationSize);
     assert(result.contractionEvents > 0);
 
+    // The arm follows the delayed linear schedule, not the adaptive rule.
+    let previous = settings.populationSize;
+    for (const entry of result.trace) {
+      assertEquals(
+        entry.populationSize,
+        Math.min(
+          previous,
+          delayedLinearSize({
+            basePopulationSize: settings.populationSize,
+            minPopulationSize: settings.lpsrMinPopulationSize,
+            recordsCharged: entry.recordsCharged,
+            recordBudget: settings.recordBudget,
+            delayFraction: settings.contractionDelayFraction,
+          }),
+        ),
+      );
+      previous = entry.populationSize;
+    }
+
     const plain = await runArm(control, settings, 5, splits);
     assertEquals(plain.contractionEvents, 0);
     for (const entry of plain.trace) {
