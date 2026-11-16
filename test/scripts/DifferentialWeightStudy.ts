@@ -14,6 +14,7 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertNotEquals,
+  assertRejects,
   assertThrows,
 } from "@std/assert";
 import { Creature } from "@creature";
@@ -36,6 +37,7 @@ import {
   deWeightOffspring,
   pairedComparison,
   PREDECLARED_CONTRASTS,
+  refineWeights,
   runArm,
   sdRatio,
   STUDY_ARMS,
@@ -52,6 +54,12 @@ import {
   WALL_CLOCK_RECORD_BUDGET,
   type WallClockBudget,
 } from "../../scripts/lib/differentialWeightStudy.ts";
+import {
+  type CensoredRun,
+  collectRun,
+  compareContrasts,
+  type TimedResult,
+} from "../../scripts/lib/differentialWeightContrasts.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
 
 const SMALL: StudySettings = {
@@ -850,7 +858,11 @@ Deno.test("the default validation seeds are 24156..24185 and overlap neither use
   );
   assertEquals(seeds[0], 24156);
   assertEquals(seeds[seeds.length - 1], 24185);
-  assertEquals(USED_SEED_RANGES.length, 2);
+  assertEquals(USED_SEED_RANGES, [
+    [4156, 4185],
+    [14156, 14185],
+    [34156, 34185],
+  ]);
   assertEquals(usedSeedOverlap(seeds), []);
 });
 
@@ -941,34 +953,256 @@ Deno.test("runArm refuses a wall-clock budget that is not a positive finite numb
   const splits = buildSplits(SMALL);
   const arm = STUDY_ARMS[0];
   for (const ms of [0, -5, Infinity, Number.NaN]) {
-    let threw = false;
-    try {
-      // deno-lint-ignore no-await-in-loop
-      await runArm(arm, SMALL, 1, splits, undefined, { ms, now: () => 0 });
-    } catch (error) {
-      threw = String(error).includes("wallClock.ms");
-    }
-    assert(threw, String(ms));
+    // deno-lint-ignore no-await-in-loop
+    await assertRejects(
+      () => runArm(arm, SMALL, 1, splits, undefined, { ms, now: () => 0 }),
+      Error,
+      `wallClock.ms must be a positive finite number, got ${ms}`,
+    );
   }
 });
 
-Deno.test("the equal-wall-clock phase uses fresh seeds 34156..34185 and a record budget the clock binds", () => {
+Deno.test("the equal-wall-clock phase uses fresh seeds 44156..44185, 600 ms, and a tenfold record budget", () => {
   const seeds = Array.from(
     { length: VALIDATION_SEED_COUNT },
     (_, i) => WALL_CLOCK_BASE_SEED + i,
   );
-  assertEquals(seeds[0], 34156);
-  assertEquals(seeds[seeds.length - 1], 34185);
+  assertEquals(seeds[0], 44156);
+  assertEquals(seeds[seeds.length - 1], 44185);
   assertEquals(usedSeedOverlap(seeds), []);
   const validation = Array.from(
     { length: VALIDATION_SEED_COUNT },
     (_, i) => VALIDATION_BASE_SEED + i,
   );
   assertEquals(seeds.filter((seed) => validation.includes(seed)), []);
-  assert(WALL_CLOCK_BUDGET_MS > 0);
-  assert(WALL_CLOCK_RECORD_BUDGET > DEFAULT_STUDY_SETTINGS.recordBudget);
-  validateSettings({
-    ...DEFAULT_STUDY_SETTINGS,
-    recordBudget: WALL_CLOCK_RECORD_BUDGET,
+  assertEquals(WALL_CLOCK_BUDGET_MS, 600);
+  assertEquals(
+    WALL_CLOCK_RECORD_BUDGET,
+    10 * DEFAULT_STUDY_SETTINGS.recordBudget,
+  );
+  // A record budget the clock binds must still be a valid setting.
+  assertEquals(
+    validateSettings({
+      ...DEFAULT_STUDY_SETTINGS,
+      recordBudget: WALL_CLOCK_RECORD_BUDGET,
+    }),
+    undefined,
+  );
+});
+
+Deno.test("refineWeights stops before the next candidate once told to, keeping what it scored", () => {
+  const rng = createSeededRng(3);
+  const parent = new Creature(2, 1, { layers: [{ count: 2 }] });
+  parent.score = 0;
+  const scores = [5, 9, 7, 8];
+
+  let calls = 0;
+  const full = refineWeights(parent, 4, 0.1, rng, () => scores[calls++]);
+  assertEquals(calls, 4);
+  assertEquals(full.candidatesScored, 4);
+  assertEquals(full.best?.score, 9);
+
+  // Stop asked before every candidate; it says yes from the second on.
+  calls = 0;
+  let asked = 0;
+  const partial = refineWeights(
+    parent,
+    4,
+    0.1,
+    createSeededRng(3),
+    () => scores[calls++],
+    () => asked++ >= 1,
+  );
+  assertEquals(calls, 1);
+  assertEquals(asked, 2);
+  assertEquals(partial.candidatesScored, 1);
+  assertEquals(partial.best?.score, 5);
+
+  // Stopped before the first candidate: nothing scored, nothing kept.
+  calls = 0;
+  const none = refineWeights(
+    parent,
+    4,
+    0.1,
+    createSeededRng(3),
+    () => scores[calls++],
+    () => true,
+  );
+  assertEquals(calls, 0);
+  assertEquals(none.candidatesScored, 0);
+  assertEquals(none.best, undefined);
+  // The parent was never modified.
+  assertEquals(parent.score, 0);
+});
+
+/**
+ * A clock that reads 0 for its first `reads` reads and is spent from then on.
+ * One generation of a no-contraction arm reads the clock once at the start,
+ * once at the top of the loop, once per creature scored, once before
+ * refinement, then once before each refinement candidate.
+ */
+function clockSpentAfter(reads: number): WallClockBudget {
+  let n = 0;
+  return { ms: 10, now: () => (n++ < reads ? 0 : 1e9) };
+}
+
+Deno.test("a deadline that expires during refinement scores no further candidate and keeps the one scored", async () => {
+  await withRngTestLock(async () => {
+    const candidates = 4;
+    const settings: StudySettings = {
+      ...SMALL,
+      refinementCandidates: candidates,
+      // Room for one generation of scoring and one full refinement batch.
+      recordBudget: SMALL.trainRecords * (SMALL.populationSize + candidates),
+    };
+    const splits = buildSplits(settings);
+    const perEvaluation = settings.trainRecords;
+    const P = settings.populationSize;
+    for (const name of ["control@reenter", "control@isolated"]) {
+      const arm = STUDY_ARMS.find((x) => x.name === name)!;
+
+      // Control: the clock never runs out, so every candidate is scored.
+      // deno-lint-ignore no-await-in-loop
+      const open = await runArm(arm, settings, 5, splits, undefined, {
+        ms: 10,
+        now: () => 0,
+      });
+      assertEquals(open.stoppedBy, "records", name);
+      assertEquals(open.evaluations, P + candidates, name);
+      assertEquals(open.recordsCharged, perEvaluation * (P + candidates), name);
+
+      // Spent at the check before refinement: the population is scored, no
+      // candidate is.
+      // deno-lint-ignore no-await-in-loop
+      const before = await runArm(
+        arm,
+        settings,
+        5,
+        splits,
+        undefined,
+        clockSpentAfter(P + 3),
+      );
+      assertEquals(before.stoppedBy, "wall-clock", name);
+      assertEquals(before.evaluations, P, name);
+      assertEquals(before.recordsCharged, perEvaluation * P, name);
+      assertEquals(before.refinementsAccepted, 0, name);
+
+      // Spent once the first candidate is scored: exactly that one more
+      // evaluation is charged, and it is the creature that ships.
+      // deno-lint-ignore no-await-in-loop
+      const during = await runArm(
+        arm,
+        settings,
+        5,
+        splits,
+        undefined,
+        clockSpentAfter(P + 4),
+      );
+      assertEquals(during.stoppedBy, "wall-clock", name);
+      assertEquals(during.evaluations, P + 1, name);
+      assertEquals(during.recordsCharged, perEvaluation * (P + 1), name);
+      assertEquals(during.generations, 1, name);
+      assertEquals(during.refinementsAccepted, 1, name);
+      assertEquals(during.refinedReentered, name.endsWith("@reenter") ? 1 : 0);
+      assert(during.finalTrainMse < before.finalTrainMse, name);
+      assertEquals(during.deOffspring, 0, name);
+      assertEquals(during.slotsRequested, 0, name);
+    }
+  });
+});
+
+async function oneRun(
+  armName: string,
+  seed: number,
+  wallClock?: WallClockBudget,
+): Promise<TimedResult> {
+  const arm = STUDY_ARMS.find((x) => x.name === armName)!;
+  const result = await runArm(
+    arm,
+    SMALL,
+    seed,
+    buildSplits(SMALL),
+    undefined,
+    wallClock,
+  );
+  return { result, wallMs: 1 };
+}
+
+Deno.test("a run with no scored candidate is censored, kept out of every paired statistic, and not called no-benefit", async () => {
+  await withRngTestLock(async () => {
+    const seeds = [1, 2];
+    const runs = new Map<string, Map<number, TimedResult>>();
+    const censored: CensoredRun[] = [];
+    for (const arm of STUDY_ARMS) {
+      runs.set(arm.name, new Map());
+      for (const seed of seeds) {
+        // The control's second seed, and every `de@isolated` seed, run out of
+        // clock before anything is scored.
+        const spent = (arm.name === "control@reenter" && seed === 2) ||
+          arm.name === "de@isolated";
+        // deno-lint-ignore no-await-in-loop
+        const timed = await oneRun(
+          arm.name,
+          seed,
+          spent ? { ms: 10, now: clockSpentAfter(1).now } : undefined,
+        );
+        collectRun(runs.get(arm.name)!, censored, timed);
+      }
+    }
+
+    // Three censored runs, each with its reason and costs.
+    assertEquals(
+      censored.map((run) => `${run.arm}#${run.seed}`).sort(),
+      ["control@reenter#2", "de@isolated#1", "de@isolated#2"],
+    );
+    for (const run of censored) {
+      assertEquals(run.stoppedBy, "wall-clock");
+      assertEquals(run.evaluations, 0);
+      assertEquals(run.recordsCharged, 0);
+      assertEquals(run.generations, 0);
+      assertEquals(
+        run.reason,
+        "no creature was scored before the wall-clock budget ended",
+      );
+    }
+    assertEquals(runs.get("control@reenter")!.size, 1);
+    assertEquals(runs.get("de@isolated")!.size, 0);
+    assertEquals(runs.get("de@reenter")!.size, 2);
+
+    const byLabel = new Map(
+      compareContrasts(runs, seeds).map((c) => [c.label, c]),
+    );
+    // Paired only where both completed: seed 1.
+    const lpsr = byLabel.get("lpsr@reenter vs control@reenter")!;
+    assertEquals(lpsr.seeds, 1);
+    assertEquals(lpsr.attempted, 2);
+    if (!("heldOutMse" in lpsr)) throw new Error("expected a paired result");
+    assertEquals(lpsr.heldOutMse.n, 1);
+    assert(Number.isFinite(lpsr.heldOutMse.meanDiff));
+    assert(lpsr.heldOutMse.ci95.every(Number.isFinite));
+
+    // No paired seed at all: nothing to conclude.
+    const de = byLabel.get("de@isolated vs control@isolated")!;
+    assertEquals(de.seeds, 0);
+    assertEquals(de.attempted, 2);
+    assertEquals(de.verdict, "insufficient-data");
+    assertEquals("heldOutMse" in de, false);
+
+    // A contrast that lost no seed is complete.
+    const full = byLabel.get("lpsr@isolated vs control@isolated")!;
+    assertEquals(full.seeds, 2);
+    assertEquals(full.attempted, 2);
+  });
+});
+
+Deno.test("a completed run is collected, not censored", async () => {
+  await withRngTestLock(async () => {
+    const completed = new Map<number, TimedResult>();
+    const censored: CensoredRun[] = [];
+    const timed = await oneRun("control@reenter", 7);
+    collectRun(completed, censored, timed);
+    assertEquals(censored, []);
+    assertEquals([...completed.keys()], [7]);
+    assertEquals(completed.get(7), timed);
   });
 });

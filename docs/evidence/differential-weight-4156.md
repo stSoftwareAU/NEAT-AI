@@ -1,18 +1,20 @@
 # Differential-weight offspring and delayed contraction (Issue #4156)
 
-**Finding: negative on fresh validation seeds, and the paper's method is only
-partly pinned.** No arm meets the benefit criterion and none is harm. On a
-synthetic objective, differential-weight (DE) offspring were not better on
-held-out error. Delayed population contraction, by the existing adaptive rule,
-was about neutral. The paper's own mechanism, a delayed linear population-size
-reduction (LPSR, section 3.3 of
-[arXiv 2610.26202](https://arxiv.org/abs/2610.26202)), was tested as well and
-was not better here either: it also cut behavioural diversity below the 0.8
+**Finding: negative on fresh validation seeds, mixed at equal wall-clock, and
+the paper's method is only partly pinned.** At equal records no arm meets the
+benefit criterion and none is harm. On a synthetic objective,
+differential-weight (DE) offspring were not better on held-out error. Delayed
+population contraction, by the existing adaptive rule, was about neutral. The
+paper's own mechanism, a delayed linear population-size reduction (LPSR, section
+3.3 of [arXiv 2610.26202](https://arxiv.org/abs/2610.26202)), was tested as well
+and was not better here either: it also cut behavioural diversity below the 0.8
 floor. Do not read this as evidence for any of these ideas; do not read it as
 evidence against them at GRQ scale either (see [Limits](#limits)). The paper's
 full text could not be fetched, so only part of its method is pinned (see
-[Paper (partly pinned)](#paper-partly-pinned)). The same result holds when
-wall-clock, not records, is the budget held equal (see
+[Paper (partly pinned)](#paper-partly-pinned)). When wall-clock, not records, is
+the budget held equal, one contrast is harm by the predeclared criteria
+(`contraction@reenter`, a difference of +0.0003255) and `lpsr@reenter` leans
+better but fails the diversity floor (see
 [Equal wall-clock](#equal-wall-clock)).
 
 Harness:
@@ -107,9 +109,10 @@ flowchart TD
 ## Predeclared
 
 - **Seeds.** Validation seeds are 24156–24185 (30), a fresh range. The CLI
-  refuses any validation range that overlaps 4156–4185 or 14156–14185, because
-  both were seen: 4156–4185 shaped the harness, and 14156–14185 produced PR
-  #4165's reported 8-arm validation and a 12-arm re-run (see
+  refuses any validation range that overlaps 4156–4185, 14156–14185 or
+  34156–34185, because all three were seen: 4156–4185 shaped the harness,
+  14156–14185 produced PR #4165's reported 8-arm validation and a 12-arm re-run,
+  and 34156–34185 was the first equal-wall-clock phase (see
   [Preparation and search cost](#preparation-and-search-cost)). Calibration
   seeds are 94156–94160 (5), a disjoint range, used only to set the
   time-to-target threshold: the median final train MSE of `control@reenter`,
@@ -134,18 +137,23 @@ flowchart TD
 
 | Item              | Value                                          |
 | ----------------- | ---------------------------------------------- |
-| NEAT-AI           | 7.1.22                                         |
+| NEAT-AI           | 7.1.23                                         |
 | NEAT-AI-core      | rev `1d44889e405e4e0cfb553321b44cc39e7d771f5f` |
 | Deno              | 2.9.8                                          |
 | Corpus            | `synthetic-tanh-quadratic-v1`, seed 4156       |
-| Run `codeVersion` | `b224f0df`                                     |
+| Run `codeVersion` | `d85139e6` + review fix (see below)            |
 
-The run was made from commit `b224f0df`. Re-running on that commit reproduces
-the record-budget phase apart from `wallMs` and the version fields. The
-evidence: this run's record-budget results and contrasts equal those of the
-earlier run at `23bd8e8f` field for field, apart from `wallMs` and the added
-`stoppedBy`. The equal-wall-clock phase uses a real clock, so it is not
-bit-reproducible.
+The run was made from commit `d85139e6` plus the working-tree change that
+answers review of PR #4177 (the manifest's `codeVersion` is
+`d85139e6919353cd3ccdfd107e2296cd8a5397f6+uncommitted-review-fix`). That change
+was uncommitted when the study ran, because the review-fix worker cannot commit;
+it is committed straight after, and `git diff d85139e6 HEAD -- scripts test` on
+the pushed head is the code the run used. The change touches only the
+equal-wall-clock path and the result collection. Evidence that the record-budget
+phase is unchanged: its 360 results equal those of the run at `b224f0df` field
+for field, apart from `wallMs`, and its 11 contrasts equal that run's apart from
+`wallClockMedianRatio` and the new `attempted` field. The equal-wall-clock phase
+uses a real clock, so it is not bit-reproducible.
 
 ## Results
 
@@ -191,45 +199,77 @@ second phase therefore holds wall-clock equal:
 
 - Every arm gets the same **600 ms** per run (`WALL_CLOCK_BUDGET_MS`). The value
   was fixed before this phase ran, at the order of one record-budget run here.
-- The cap is checked before every generation, every evaluation and every
-  refinement. The record budget is raised to 2,400,000 (ten times the primary)
-  so the clock, not the records, stops each run.
+- The cap is checked before every generation, every creature scored and every
+  refinement **candidate**, and no breeding starts once it is spent. At most one
+  evaluation that began before the deadline finishes after it. An earlier
+  version of this phase checked only before the whole refinement batch, so up to
+  three further candidates (four by default) could be scored after the deadline.
+  Review found that, and the phase was re-run on fresh seeds.
+- The record budget is raised to 2,400,000 (ten times the primary) so the clock,
+  not the records, stops each run.
 - The contraction schedules read budget progress from the elapsed share of the
   600 ms, so the 50% delay and the LPSR line run on time.
-- Fresh seeds 34156–34185, disjoint from every other range. Runs are seed-major,
-  and at each seed the arm order is rotated, so drift in machine load falls on
-  every arm alike.
+- Fresh seeds 44156–44185, disjoint from every other range. 34156–34185 was the
+  first version's range and is now refused. Runs are seed-major, and at each
+  seed the arm order is rotated, so drift in machine load falls on every arm
+  alike.
+- A run that ends with no scored creature (for example, a clock spent during
+  set-up) is **censored**: it is listed under `censored` with its reason and
+  costs, is left out of every paired statistic, and is counted in coverage. A
+  contrast with no paired seed has the verdict `insufficient-data`, not
+  `no-benefit`. No run was censored here.
 
 **Budgets held.** All 360 runs (12 arms × 30 seeds) were stopped by the clock,
-with no failures. The median wall-clock per arm was 602–609 ms. The arms
-converted that equal time into different numbers of records: medians run from
-219,200 (`control@isolated`) to 240,800 (`de+contraction@isolated`).
+with no failures and none censored. The median wall-clock per arm was 601–603
+ms. The arms converted that equal time into different numbers of records:
+medians run from 222,000 (`control@reenter`) to 252,600 (`de@reenter`). Two runs
+overshot by more than 50 ms: `de+contraction@reenter` at seed 44168 took 1,620
+ms and `lpsr@isolated` at seed 44174 took 771 ms, charging only 118,400 records.
+Both look like machine stalls. They are kept in the results.
 
-| Contrast (arm vs control)                       |  Mean diff |                    CI95 |  Wins | Diversity | Verdict    |
-| ----------------------------------------------- | ---------: | ----------------------: | ----: | --------: | ---------- |
-| `de@reenter` vs `control@reenter`               |  +0.001548 |  [−0.001946, +0.006964] | 17/30 |      1.03 | no-benefit |
-| `contraction@reenter` vs `control@reenter`      | −0.0008755 | [−0.003361, +0.0006792] | 12/30 |     0.976 | no-benefit |
-| `de+contraction@reenter` vs `control@reenter`   |  +0.001786 |  [−0.001906, +0.006880] | 13/30 |      1.04 | no-benefit |
-| `lpsr@reenter` vs `control@reenter`             |  +0.001237 | [−0.0004057, +0.003629] | 12/30 |     0.737 | no-benefit |
-| `de+lpsr@reenter` vs `control@reenter`          | −0.0004466 |  [−0.002918, +0.002690] | 15/30 |     0.863 | no-benefit |
-| `de@isolated` vs `control@isolated`             |  −0.003508 |   [−0.01050, +0.002695] | 21/30 |      1.09 | no-benefit |
-| `contraction@isolated` vs `control@isolated`    | +0.0008086 | [−0.0002873, +0.002160] | 10/30 |     0.964 | no-benefit |
-| `de+contraction@isolated` vs `control@isolated` |  −0.004233 |  [−0.01072, +0.0009724] | 18/30 |      1.12 | no-benefit |
-| `lpsr@isolated` vs `control@isolated`           | −0.0001307 | [−0.001136, +0.0007898] | 15/30 |     0.714 | no-benefit |
-| `de+lpsr@isolated` vs `control@isolated`        |  −0.004791 |  [−0.01145, +0.0005842] | 23/30 |     0.906 | no-benefit |
-| `control@isolated` vs `control@reenter`         |  +0.005453 |   [−0.001035, +0.01282] |  3/30 |     0.977 | no-benefit |
+| Contrast (arm vs control)                       |  Mean diff |                      CI95 |  Wins | Diversity | Verdict    |
+| ----------------------------------------------- | ---------: | ------------------------: | ----: | --------: | ---------- |
+| `de@reenter` vs `control@reenter`               |  +0.001537 |    [−0.001390, +0.005233] | 17/30 |      1.04 | no-benefit |
+| `contraction@reenter` vs `control@reenter`      | +0.0003255 | [+0.00004435, +0.0006819] |  7/30 |     0.959 | **harm**   |
+| `de+contraction@reenter` vs `control@reenter`   |  +0.001476 |    [−0.001396, +0.005050] | 16/30 |      1.02 | no-benefit |
+| `lpsr@reenter` vs `control@reenter`             |  −0.002561 |  [−0.006084, −0.00008183] | 18/30 |     0.729 | no-benefit |
+| `de+lpsr@reenter` vs `control@reenter`          |  +0.001958 |    [−0.001037, +0.005569] | 16/30 |     0.870 | no-benefit |
+| `de@isolated` vs `control@isolated`             |  +0.002643 |    [−0.002483, +0.007725] | 13/30 |     0.976 | no-benefit |
+| `contraction@isolated` vs `control@isolated`    |  +0.001633 |  [−0.00008441, +0.004103] |  9/30 |     0.990 | no-benefit |
+| `de+contraction@isolated` vs `control@isolated` |  +0.003510 |    [−0.001975, +0.008828] | 14/30 |     0.969 | no-benefit |
+| `lpsr@isolated` vs `control@isolated`           |  +0.001044 |    [−0.002485, +0.004406] | 15/30 |     0.757 | no-benefit |
+| `de+lpsr@isolated` vs `control@isolated`        |  +0.004678 |     [−0.001138, +0.01050] | 13/30 |     0.753 | no-benefit |
+| `control@isolated` vs `control@reenter`         |  +0.001987 |    [−0.003150, +0.007368] |  8/30 |      1.02 | no-benefit |
 
-No contrast is benefit or harm, and every CI95 spans zero. Under isolation the
-three DE arms lean better (21, 18 and 23 wins of 30), and isolation leans worse
-than re-entry (3 wins of 30). Re-entry leaning better is the paper's direction.
-None of these is established, and the record-budget phase did not show the DE
-lean. The delayed LPSR again cuts diversity below the 0.8 floor (0.737 and
-0.714). Per-run results, coverage and contrasts are under `wallClockPhase` in
-the artefact.
+This phase is **not** a repeat of the record-budget result, and it is not simply
+negative:
+
+- **`contraction@reenter` is harm** by the predeclared criterion, since its CI95
+  lower bound is above zero (+0.00004435). The difference is +0.0003255 on a
+  control that scores around 0.01–0.04, so it is very small, and it is one of 11
+  contrasts, so a single such result is about what chance gives. Under
+  isolation, the same arm is +0.001633 with a CI that spans zero.
+- **`lpsr@reenter` leans better.** Its CI95 upper bound is below zero
+  (−0.00008183) and it wins 18 of 30, which meets the win fraction of 0.6. It is
+  **not** a benefit, because its behavioural diversity is 0.729 of the
+  control's, below the 0.8 floor. That floor was predeclared and is why the
+  verdict is `no-benefit`. At equal records the same arm was +0.001361 with a CI
+  that spanned zero, and `lpsr@isolated` here is +0.001044, so the direction
+  does not hold across the pair.
+- No DE arm is better, and the DE lean under isolation seen on the first
+  wall-clock seeds (21, 18 and 23 wins) did **not** replicate: 13, 14 and 13
+  wins. Isolation versus re-entry is again not distinguishable (8 wins of 30).
+
+None of this is established at this sample size, and 600 ms on a shared
+container is far from the paper's 15 minutes. Per-run results, coverage and
+contrasts are under `wallClockPhase` in the artefact. The earlier run's table on
+34156–34185 (the version that scored refinement candidates after the deadline)
+is superseded, and its cost is counted in
+[Preparation and search cost](#preparation-and-search-cost).
 
 ## Coverage
 
-Every arm completed 30/30 seeds with no failures.
+Every arm completed 30/30 seeds with no failures and no censored runs.
 
 | Arm                       | Completed | Generations | Evals per generation | Unfilled slots |
 | ------------------------- | --------: | ----------: | -------------------: | -------------: |
@@ -298,19 +338,24 @@ given (240,000 records per run is the cap). The CLI has run the five-seed
 calibration phase (1,200,000 records) since its first commit, so every full run
 through it paid that phase as well.
 
-| Run                                                                                                                              | Seeds                                                | Records charged                                                                                                                           |
-| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Calibration (reported)                                                                                                           | 94156–94160                                          | 1,200,000                                                                                                                                 |
-| Pilot that set `contractionHighDiversityThreshold` to 0                                                                          | **not recorded**                                     | **not recorded**; at most 3 × 8 × 240,000 = 5,760,000, plus up to 1,200,000 for a calibration phase if it ran through the CLI (not known) |
-| First full run, discarded: ordinary breeding left slots empty, so the top-up retry was added                                     | **not recorded**; the CLI default then was 4156–4185 | **not recorded**; at most 30 × 8 × 240,000 = 57,600,000, plus 1,200,000 calibration = 58,800,000                                          |
-| Second full run on 4156–4185, discarded: time to target ignored shippable creatures that were not the population's best (review) | 4156–4185                                            | **recorded** (artefact at commit `eccc6792`): 57,594,400 validation + 1,200,000 calibration = 58,794,400                                  |
-| PR #4165's reported validation on 14156–14185 (8 arms), superseded                                                               | 14156–14185                                          | 57,596,400 validation + 1,200,000 calibration (the sum of `recordsCharged` over 240 runs)                                                 |
-| 12-arm re-run at `ccf3d612` on 14156–14185, superseded                                                                           | 14156–14185                                          | 86,337,200 + 1,200,000 = 87,537,200                                                                                                       |
-| Reported validation 24156–24185 (12 arms)                                                                                        | 24156–24185                                          | 86,345,600 (budget 30 × 12 × 240,000 = 86,400,000) + 1,200,000 calibration                                                                |
+| Run                                                                                                                                                                                         | Seeds                                                | Records charged                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Calibration (reported)                                                                                                                                                                      | 94156–94160                                          | 1,200,000                                                                                                                                 |
+| Pilot that set `contractionHighDiversityThreshold` to 0                                                                                                                                     | **not recorded**                                     | **not recorded**; at most 3 × 8 × 240,000 = 5,760,000, plus up to 1,200,000 for a calibration phase if it ran through the CLI (not known) |
+| First full run, discarded: ordinary breeding left slots empty, so the top-up retry was added                                                                                                | **not recorded**; the CLI default then was 4156–4185 | **not recorded**; at most 30 × 8 × 240,000 = 57,600,000, plus 1,200,000 calibration = 58,800,000                                          |
+| Second full run on 4156–4185, discarded: time to target ignored shippable creatures that were not the population's best (review)                                                            | 4156–4185                                            | **recorded** (artefact at commit `eccc6792`): 57,594,400 validation + 1,200,000 calibration = 58,794,400                                  |
+| PR #4165's reported validation on 14156–14185 (8 arms), superseded                                                                                                                          | 14156–14185                                          | 57,596,400 validation + 1,200,000 calibration (the sum of `recordsCharged` over 240 runs)                                                 |
+| 12-arm re-run at `ccf3d612` on 14156–14185, superseded                                                                                                                                      | 14156–14185                                          | 86,337,200 + 1,200,000 = 87,537,200                                                                                                       |
+| 12-arm run at `23bd8e8f` on 24156–24185, superseded by the run that added the wall-clock phase                                                                                              | 24156–24185                                          | recorded (artefact at commit `32f346c5`): 86,345,600 + 1,200,000 = 87,545,600                                                             |
+| 12-arm run at `b224f0df` with the first wall-clock phase, superseded after review found a refinement batch ran past the deadline and a run with no scored creature was counted as completed | 24156–24185 and 34156–34185                          | recorded (artefact at commit `1439479d`): 86,345,600 + 1,200,000 + 81,493,600 (wall-clock phase) = 169,039,200                            |
+| Reported run at `d85139e6` + review fix: validation 24156–24185 (12 arms) and equal wall-clock 44156–44185                                                                                  | 24156–24185 and 44156–44185                          | validation 86,345,600 (budget 30 × 12 × 240,000 = 86,400,000) + 1,200,000 calibration + 84,250,800 (wall-clock phase)                     |
 
 So the preparation cost is **not fully counted**: the later runs and the
 calibration are exact, but the pilot's and the first full run's costs are
-bounded, not measured.
+bounded, not measured. Counting the superseded runs that are recorded, the
+searches before the reported run charged 58,794,400 + 58,796,400 + 87,537,200 +
+87,545,600 + 169,039,200 = 461,712,800 records, plus the two bounded runs above
+(at most 58,800,000, and at most 5,760,000 + 1,200,000).
 
 The pilot's and the first full run's seeds and records were not written down
 when they were made, and cannot be recovered. The honest reading is that the
@@ -400,7 +445,10 @@ met, and this work does **not** close the issue.
   [Preparation and search cost](#preparation-and-search-cost)).
 - Wall-clock is held equal only in the second phase, at 600 ms per run on a
   shared container. That phase is not bit-reproducible, and 600 ms is far from
-  the paper's 15 minutes.
+  the paper's 15 minutes. The clock is read between evaluations, so one
+  evaluation in flight at the deadline finishes after it, and the uncharged
+  speciation and holdout work also run past it. Two of 360 runs were machine
+  stalls of more than 50 ms over the cap.
 
 ## Reproduce
 

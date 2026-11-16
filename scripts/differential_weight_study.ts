@@ -30,19 +30,21 @@ import denoJson from "../deno.json" with { type: "json" };
 import { intArg, numberArg, stringArg } from "./lib/cliArgs.ts";
 import { median } from "./lib/rankFidelity.ts";
 import {
+  type CensoredRun,
+  collectRun,
+  compareContrasts,
+  type TimedResult,
+} from "./lib/differentialWeightContrasts.ts";
+import {
   type ArmResult,
-  BOOTSTRAP_RESAMPLES,
-  BOOTSTRAP_SEED,
   buildSplits,
   calibrateTarget,
   CALIBRATION_BASE_SEED,
   CALIBRATION_SEED_COUNT,
   CORPUS_SEED,
   DEFAULT_STUDY_SETTINGS,
-  pairedComparison,
   PREDECLARED_CONTRASTS,
   runArm,
-  sdRatio,
   STUDY_ARMS,
   type StudyArm,
   type StudySettings,
@@ -52,7 +54,6 @@ import {
   validateSettings,
   VALIDATION_BASE_SEED,
   VALIDATION_SEED_COUNT,
-  verdict,
   WALL_CLOCK_BASE_SEED,
   WALL_CLOCK_BUDGET_MS,
   WALL_CLOCK_RECORD_BUDGET,
@@ -108,23 +109,28 @@ const PREPARATION_RUNS = [
     recordsCharged:
       "recorded: 86,337,200 validation + 1,200,000 calibration = 87,537,200",
   },
+  {
+    what:
+      "12-arm run on 24156-24185 at commit 23bd8e8f, superseded by the run that added the equal-wall-clock phase; its record-budget results were reproduced field for field",
+    seeds: "24156-24185 (30)",
+    arms: "12 arms",
+    recordsCharged:
+      "recorded in the artefact at commit 32f346c5: 86,345,600 validation + 1,200,000 calibration = 87,545,600",
+  },
+  {
+    what:
+      "12-arm run at commit b224f0df with the first equal-wall-clock phase, superseded after review found a refinement batch ran past the deadline and that a run with no scored candidate was counted as completed; its record-budget results were reproduced field for field",
+    seeds: "24156-24185 (30) and 34156-34185 (30, wall-clock phase)",
+    arms: "12 arms",
+    recordsCharged:
+      "recorded in the artefact at commit 1439479d: 86,345,600 validation + 1,200,000 calibration + 81,493,600 in the wall-clock phase = 169,039,200",
+  },
 ];
-
-/** A run plus the wall-clock it took (measured here only). */
-interface TimedResult {
-  readonly result: ArmResult;
-  readonly wallMs: number;
-}
 
 interface Failure {
   readonly arm: string;
   readonly seed: number;
   readonly error: string;
-}
-
-function mean(values: readonly number[]): number {
-  if (values.length === 0) return Number.NaN;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 /** `NaN`/`Infinity` do not survive JSON; write them as `null`. */
@@ -215,6 +221,8 @@ if (import.meta.main) {
   // Calibration: the threshold is set on seeds the validation never sees.
   const calibrationRuns: ArmResult[] = [];
   const failures: Failure[] = [];
+  const censored: CensoredRun[] = [];
+  const wallCensored: CensoredRun[] = [];
   let calibrationRecordsCharged = 0;
   for (const seed of calibrationSeeds) {
     try {
@@ -262,7 +270,7 @@ if (import.meta.main) {
       try {
         // deno-lint-ignore no-await-in-loop
         const timed = await timedRun(arm, settings, seed, splits, target);
-        runs.get(arm.name)!.set(seed, timed);
+        collectRun(runs.get(arm.name)!, censored, timed);
         console.info(
           `  ${arm.name.padEnd(24)} seed ${seed}  holdout MSE ${
             fmt(timed.result.finalHoldoutMse)
@@ -278,72 +286,7 @@ if (import.meta.main) {
   }
 
   // Comparisons over seeds where both arms completed.
-  const compare = (
-    runs: Map<string, Map<number, TimedResult>>,
-    validationSeeds: readonly number[],
-  ) =>
-    PREDECLARED_CONTRASTS.map((contrast) => {
-      const armRuns = runs.get(contrast.arm)!;
-      const controlRuns = runs.get(contrast.control)!;
-      const seeds = validationSeeds.filter((seed) =>
-        armRuns.has(seed) && controlRuns.has(seed)
-      );
-      const a = seeds.map((seed) => armRuns.get(seed)!);
-      const c = seeds.map((seed) => controlRuns.get(seed)!);
-      const label = `${contrast.arm} vs ${contrast.control}`;
-      if (seeds.length === 0) {
-        return { label, ...contrast, seeds: 0, verdict: "no-benefit" as const };
-      }
-      const holdout = pairedComparison(
-        a.map((r) => r.result.finalHoldoutMse),
-        c.map((r) => r.result.finalHoldoutMse),
-        BOOTSTRAP_RESAMPLES,
-        BOOTSTRAP_SEED,
-      );
-      const spread = seeds.length >= 2
-        ? sdRatio(
-          a.map((r) => r.result.finalHoldoutMse),
-          c.map((r) => r.result.finalHoldoutMse),
-          BOOTSTRAP_RESAMPLES,
-          BOOTSTRAP_SEED,
-        )
-        : null;
-      const pairedTimes = seeds.flatMap((_, i) => {
-        const x = a[i].result.timeToTargetRecords;
-        const y = c[i].result.timeToTargetRecords;
-        return x !== null && y !== null ? [x - y] : [];
-      });
-      const diversityRatio = mean(a.map((r) =>
-        r.result.meanBehaviouralDiversity
-      )) /
-        mean(c.map((r) => r.result.meanBehaviouralDiversity));
-      const speciesRatio = mean(a.map((r) => r.result.meanSpeciesCount)) /
-        mean(c.map((r) => r.result.meanSpeciesCount));
-      const wallClockMedianRatio = median(a.map((r) => r.wallMs)) /
-        median(c.map((r) => r.wallMs));
-      return {
-        label,
-        ...contrast,
-        seeds: seeds.length,
-        heldOutMse: holdout,
-        sdRatio: spread,
-        timeToTarget: {
-          reachedArm: a.filter((r) => r.result.timeToTargetRecords !== null)
-            .length,
-          reachedControl: c.filter((r) => r.result.timeToTargetRecords !== null)
-            .length,
-          pairedSeeds: pairedTimes.length,
-          medianPairedDifferenceRecords: pairedTimes.length === 0
-            ? null
-            : median(pairedTimes),
-        },
-        diversityRatio,
-        speciesCountRatio: speciesRatio,
-        wallClockMedianRatio,
-        verdict: verdict(holdout, diversityRatio, SUCCESS_CRITERIA),
-      };
-    });
-  const comparisons = compare(runs, validationSeeds);
+  const comparisons = compareContrasts(runs, validationSeeds);
 
   // Human summary.
   console.info(
@@ -370,6 +313,7 @@ if (import.meta.main) {
     arm: arm.name,
     completed: runs.get(arm.name)!.size,
     attempted: attempted.get(arm.name)!,
+    censored: censored.filter((run) => run.arm === arm.name).length,
     unfilledSlots: [...runs.get(arm.name)!.values()].reduce(
       (sum, run) => sum + run.result.unfilledSlots,
       0,
@@ -388,7 +332,7 @@ if (import.meta.main) {
     console.info(
       `  ${
         row.arm.padEnd(24)
-      } ${row.completed}/${row.attempted}  gens ${row.generations}  evals/gen ${
+      } ${row.completed}/${row.attempted} (censored ${row.censored})  gens ${row.generations}  evals/gen ${
         fmt(row.evaluations / Math.max(1, row.generations), 3)
       }  unfilled slots ${row.unfilledSlots}`,
     );
@@ -447,7 +391,7 @@ if (import.meta.main) {
             target,
             { ms: wallClockMs, now: () => performance.now() },
           );
-          wallRuns.get(arm.name)!.set(seed, timed);
+          collectRun(wallRuns.get(arm.name)!, wallCensored, timed);
         } catch (error) {
           failures.push({
             arm: `${arm.name} (wall-clock)`,
@@ -460,7 +404,7 @@ if (import.meta.main) {
     }
   }
   const wallComparisons = wallClockMs > 0
-    ? compare(wallRuns, wallClockSeeds)
+    ? compareContrasts(wallRuns, wallClockSeeds)
     : [];
   const wallCoverage = STUDY_ARMS.map((arm) => {
     const done = [...wallRuns.get(arm.name)!.values()];
@@ -468,6 +412,7 @@ if (import.meta.main) {
       arm: arm.name,
       completed: done.length,
       attempted: wallClockMs > 0 ? wallClockSeeds.length : 0,
+      censored: wallCensored.filter((run) => run.arm === arm.name).length,
       stoppedByWallClock: done.filter((run) =>
         run.result.stoppedBy === "wall-clock"
       ).length,
@@ -501,6 +446,7 @@ if (import.meta.main) {
     for (const row of wallCoverage) {
       console.info(
         `  ${row.arm.padEnd(24)} ${row.completed}/${row.attempted} ` +
+          `censored ${row.censored} ` +
           `stopped by clock ${row.stoppedByWallClock}  median wall ${
             fmt(row.medianWallMs ?? Number.NaN, 4)
           } ms  median records ${row.medianRecordsCharged}`,
@@ -546,7 +492,7 @@ if (import.meta.main) {
       contractionPolicy:
         "adaptive (contraction, de+contraction): contraction uses the existing adaptive shrink rule, never growing, only after the delay; the production highDiversityThreshold is 0.8 but a 3-seed pilot showed 1.3-2.3 species per 24 creatures so the shrink branch never fired; the study sets contractionHighDiversityThreshold to 0, so the rule contracts on every post-delay plateau, bounded below by minPopulationFraction 0.5; the rule's low-diversity grow branch is disabled (lowDiversityThreshold 0) because it is checked first and would pre-empt the shrink; linear (lpsr, de+lpsr): the paper's budget-aware delayed L-SHADE linear population-size reduction, held at the base size until contractionDelayFraction of the record budget, then linear to lpsrMinPopulationSize (4, L-SHADE's N_min) at budget exhaustion, never growing; the paper's own delay cap value was not obtained",
       budgetPolicy:
-        "two phases. Primary (validationSeeds): records charged held equal, holdout and diversity probe uncharged, wall-clock measured. Equal-wall-clock (wallClockPhase): every arm gets the same per-run wall-clock cap, checked before every evaluation and refinement, on fresh seeds, with the record budget raised tenfold so the clock is what stops each run; contraction schedules read the elapsed share of the wall-clock as budget progress. The wall-clock phase is not bit-reproducible, because the clock is real, so its arm order is rotated per seed to spread machine-load drift across arms",
+        "two phases. Primary (validationSeeds): records charged held equal, holdout and diversity probe uncharged, wall-clock measured. Equal-wall-clock (wallClockPhase): every arm gets the same per-run wall-clock cap, checked before every evaluation and before every refinement candidate, so no evaluation starts after the deadline, on fresh seeds, with the record budget raised tenfold so the clock is what stops each run; a run that ends with no scored candidate is recorded as censored and left out of every paired statistic; contraction schedules read the elapsed share of the wall-clock as budget progress. The wall-clock phase is not bit-reproducible, because the clock is real, so its arm order is rotated per seed to spread machine-load drift across arms",
       preparation: {
         note:
           "records charged by every run that shaped the design or the harness, counted as search cost alongside calibration; bounds are 240,000 records per run, which is the most one run can charge",
@@ -560,7 +506,7 @@ if (import.meta.main) {
           last,
         })),
         earlierRunSeedNote:
-          "two ranges are used and refused as validation ranges: 4156-4185 was the earlier full runs' CLI default, and 14156-14185 was PR 4165's reported validation and the ccf3d612 re-run; the pilot's seeds were not recorded",
+          "three ranges are used and refused as validation ranges: 4156-4185 was the earlier full runs' CLI default, 14156-14185 was PR 4165's reported validation and the ccf3d612 re-run, and 34156-34185 was the first equal-wall-clock phase, seen before review found that a refinement batch ran past the deadline; the pilot's seeds were not recorded",
       },
       paper: {
         url: PAPER,
@@ -595,6 +541,7 @@ if (import.meta.main) {
             manifest,
             coverage,
             failures,
+            censored,
             comparisons,
             results: perRun,
             wallClockPhase: {
@@ -604,6 +551,7 @@ if (import.meta.main) {
               armOrder:
                 "seed-major; at seed index i the arms run in STUDY_ARMS order rotated left by i mod 12",
               coverage: wallCoverage,
+              censored: wallCensored,
               comparisons: wallComparisons,
               results: STUDY_ARMS.flatMap((arm) =>
                 wallClockSeeds.flatMap((seed) => {

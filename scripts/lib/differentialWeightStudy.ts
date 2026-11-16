@@ -87,13 +87,15 @@ export const VALIDATION_SEED_COUNT = 30;
  * Seed ranges (inclusive) that earlier runs are known to have used, and so are
  * no longer untouched: 4156-4185 (the earlier full runs' CLI default) and
  * 14156-14185 (PR #4165's reported validation, seen before the delayed-LPSR
- * arms were added). The pilot's seeds
- * were never recorded, so it cannot be listed here; its bound is in the
+ * arms were added) and 34156-34185 (the first equal-wall-clock phase, seen
+ * before review found that a refinement batch ran past the deadline). The
+ * pilot's seeds were never recorded, so it cannot be listed here; its bound is in the
  * manifest's `preparation.runs`.
  */
 export const USED_SEED_RANGES: readonly (readonly [number, number])[] = [
   [4156, 4185],
   [14156, 14185],
+  [34156, 34185],
 ];
 /** The seeds in `seeds` that fall inside a range an earlier run used. */
 export function usedSeedOverlap(seeds: readonly number[]): number[] {
@@ -107,7 +109,7 @@ export function usedSeedOverlap(seeds: readonly number[]): number[] {
  * validation, the calibration and every used range, so the phase that caps
  * wall-clock is also measured on seeds no design decision saw.
  */
-export const WALL_CLOCK_BASE_SEED = 34156;
+export const WALL_CLOCK_BASE_SEED = 44156;
 /**
  * The wall-clock every run gets in the equal-wall-clock phase, in milliseconds.
  * Fixed before that phase ran: 600 ms is the order of one record-budget run
@@ -468,6 +470,9 @@ export interface Refinement {
  * the best only if it beats the parent's own score. The parent is not modified.
  *
  * @param score - Returns a higher-is-better score for a candidate.
+ * @param shouldStop - Asked before each candidate is built or scored; when it
+ *   answers `true` the batch ends there. Candidates already scored are kept, so
+ *   an equal wall-clock budget never pays for an evaluation it has no time for.
  */
 export function refineWeights(
   parent: Creature,
@@ -475,24 +480,28 @@ export function refineWeights(
   sigma: number,
   rng: RandomNumberGenerator,
   score: (candidate: Creature) => number,
+  shouldStop: () => boolean = () => false,
 ): Refinement {
   const parentScore = parent.score ?? -Infinity;
   let best: Creature | undefined;
   let bestScore = parentScore;
+  let scored = 0;
   for (let i = 0; i < candidates; i++) {
+    if (shouldStop()) break;
     const exported = parent.exportJSON();
     for (const gene of listGenes(exported)) {
       gene.set(gene.get() + sigma * gaussian(rng));
     }
     const candidate = creatureFromExport(exported);
     const value = score(candidate);
+    scored++;
     candidate.score = value;
     if (value > bestScore) {
       best = candidate;
       bestScore = value;
     }
   }
-  return { best, candidatesScored: candidates };
+  return { best, candidatesScored: scored };
 }
 
 // ---------------------------------------------------------------------------
@@ -983,6 +992,7 @@ function runSeededArm(
         settings.refinementSigma,
         rng,
         charge,
+        wallClockSpent,
       );
       if (refinement.best !== undefined) {
         refinementsAccepted++;
@@ -997,6 +1007,13 @@ function runSeededArm(
           isolatedBest = refinement.best;
         }
       }
+    }
+
+    // The clock ran out during refinement: keep what was scored, start no
+    // breeding. A re-entering descendant joins the population so it can ship.
+    if (wallClockSpent()) {
+      if (reentered !== undefined) population = [...population, reentered];
+      break;
     }
 
     // 6. Breed the next population.

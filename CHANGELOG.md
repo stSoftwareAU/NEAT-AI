@@ -31,10 +31,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   existing adaptive rule, and the paper's delayed L-SHADE linear reduction),
   crossed with whether refined descendants re-enter the population. It runs once
   at equal charged records and once at an equal 600 ms per-run wall-clock on
-  fresh seeds. In both, the result on a synthetic objective is negative: no arm
-  meets the benefit criterion and none is harm. The paper's method was pinned
-  only from excerpts (the full text could not be fetched), so the issue stays
-  open. Nothing under `src/` imports the harness. See
+  fresh seeds. At equal records the result on a synthetic objective is negative:
+  no arm meets the benefit criterion and none is harm. At equal wall-clock it is
+  mixed: one contrast (`contraction@reenter`, +0.0003255) is harm by the
+  predeclared criteria, and the delayed LPSR with re-entry leans better but
+  fails the diversity floor. A deadline that expires during refinement scores no
+  further candidate, and a run with no scored candidate is recorded as censored
+  rather than as a completed sample. The paper's method was pinned only from
+  excerpts (the full text could not be fetched), so the issue stays open.
+  Nothing under `src/` imports the harness. See
   [`docs/evidence/differential-weight-4156.md`](docs/evidence/differential-weight-4156.md).
 - **Issue #4096:** the event-loop watchdog breach line now ends with
   `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>` (V8 heap used at the last

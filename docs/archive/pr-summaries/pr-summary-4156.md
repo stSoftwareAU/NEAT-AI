@@ -22,16 +22,28 @@ study on fresh validation seeds:
   12 arms ran on the fresh range 24156–24185.
 - **Equal wall-clock phase.** `runArm` takes an optional `WallClockBudget`
   (`ms`, injected `now`). The CLI now runs a second phase in which every arm
-  gets the same 600 ms per run on fresh seeds 34156–34185. In that phase the
+  gets the same 600 ms per run on fresh seeds 44156–44185. In that phase the
   record budget is raised tenfold so the clock is what stops each run, and the
   contraction schedules read progress from elapsed time. All 360 runs stopped on
-  the clock, with per-arm median wall-clock between 602 and 609 ms.
+  the clock, with per-arm median wall-clock between 601 and 603 ms.
+- **Review fixes (round 3).** The clock is now checked before every refinement
+  candidate, not only before the whole batch, and no breeding starts once it is
+  spent. A run that ends with no scored creature is recorded as censored, not as
+  a completed sample, and a contrast with no paired seed is `insufficient-data`.
+  The preparation ledger now holds the two superseded runs on 24156–24185. The
+  wall-clock phase moved to fresh seeds 44156–44185, because the first version's
+  seeds 34156–34185 were seen before the fix.
 
-The result is negative again, at equal records and at equal wall-clock. No
-contrast is benefit or harm, and every held-out MSE CI95 spans zero. The paper's
-delayed LPSR is not better here (+0.001361 with re-entry, +0.002685 isolated).
-It also cuts behavioural diversity to 0.72 and 0.65 of the control, below the
-0.8 floor. Nothing under `src/` changes.
+The result is negative at equal records. No contrast is benefit or harm, and
+every held-out MSE CI95 spans zero. At equal wall-clock it is **mixed**:
+`contraction@reenter` is **harm** by the predeclared criteria (+0.0003255, CI95
+[+0.00004435, +0.0006819]), and `lpsr@reenter` leans better (−0.002561, CI95
+[−0.006084, −0.00008183], 18 of 30 wins) but fails the diversity floor (0.729
+against 0.8), so its verdict is `no-benefit`. The other nine contrasts are
+`no-benefit`, and none is established at this sample size. The paper's delayed
+LPSR is not better at equal records (+0.001361 with re-entry, +0.002685
+isolated), and it cuts behavioural diversity to 0.72 and 0.65 of the control,
+below the 0.8 floor. Nothing under `src/` changes.
 
 The full text is still unread, so the delay cap, F/CR and the injection fraction
 are not pinned. Part of #4156.
@@ -61,8 +73,19 @@ are not pinned. Part of #4156.
   `contraction: "none" | "adaptive" | "linear"`. The original eight arms' code
   path and RNG use are unchanged. The ccf3d612 re-run on 14156–14185 reproduced
   PR #4165's eight contrasts exactly, which is the evidence for this.
-- `USED_SEED_RANGES` now also holds `[14156, 14185]`, and `VALIDATION_BASE_SEED`
-  is 24156. The superseded runs are counted in `PREPARATION_RUNS`.
+- `USED_SEED_RANGES` now also holds `[14156, 14185]` and `[34156, 34185]`;
+  `VALIDATION_BASE_SEED` is 24156 and `WALL_CLOCK_BASE_SEED` is 44156. The
+  superseded runs are counted in `PREPARATION_RUNS`.
+- `refineWeights` takes an optional `shouldStop` that it asks before each
+  candidate, and reports the candidates it really scored. The run passes the
+  wall-clock check, so an expired deadline stops the batch and keeps what was
+  scored (a re-entering descendant joins the population so it can ship). Without
+  a wall-clock the callback is always false, so the record-budget phase is
+  unchanged.
+- Result collection and the contrast comparison moved from the CLI into
+  `scripts/lib/differentialWeightContrasts.ts`, so they can be tested. A run
+  with no finite training and holdout MSE goes to a `censored` list with its
+  reason and costs and never enters `compareContrasts`.
 - The `paper` manifest field changed shape (`methodRead` went from a boolean to
   `"partial"`, and fields were added). The artefact is regenerated whole and no
   code reads it, so no old-shape reader is needed.
@@ -92,21 +115,41 @@ This is a script/CLI change; no UI files are touched. The full record is in
 `docs/evidence/differential-weight-4156.md`, and the machine-readable artefact
 is `docs/evidence/differential-weight-4156.json`.
 
-- **Run.** `codeVersion` `b224f0df`, NEAT-AI 7.1.22, Deno 2.9.8. The
-  record-budget results and contrasts equal the earlier `23bd8e8f` run field for
-  field, apart from `wallMs` and the new `stoppedBy`.
-- **Equal wall-clock.** 360/360 runs stopped by the 600 ms clock, with no
-  failures. Median records per arm ranged from 219,200 to 240,800. All 11
-  contrasts are `no-benefit`, and every CI95 spans zero. The DE arms under
-  isolation lean better (21, 18 and 23 wins of 30), and isolation leans worse
-  than re-entry (3 of 30). None is established. The table is in the evidence
-  page's "Equal wall-clock" section.
-- **Coverage.** 30/30 seeds for each of the 12 arms, with no failures.
+- **Run.** `codeVersion`
+  `d85139e6919353cd3ccdfd107e2296cd8a5397f6+uncommitted-review-fix`, NEAT-AI
+  7.1.23, Deno 2.9.8. The run was made on head `d85139e6` plus this review fix,
+  which was uncommitted at the time because the worker cannot commit; it is
+  committed straight after. `git diff d85139e6 HEAD -- scripts test` on the
+  pushed head is the code the run used. The record-budget results equal the run
+  at `b224f0df` field for field apart from `wallMs`, and its contrasts equal
+  that run's apart from `wallClockMedianRatio` and the new `attempted` field.
+- **Equal wall-clock (new run, seeds 44156–44185).** 360/360 runs stopped by the
+  600 ms clock, with no failures and none censored. Median records per arm
+  ranged from 222,000 to 252,600. Nine contrasts are `no-benefit` with a CI95
+  spanning zero, and two are not:
+  - `contraction@reenter` is **harm**: +0.0003255, CI95 [+0.00004435,
+    +0.0006819], 7/30 wins. It is tiny and one of 11 contrasts.
+  - `lpsr@reenter` is −0.002561, CI95 [−0.006084, −0.00008183], 18/30 wins,
+    diversity 0.729. The diversity floor makes it `no-benefit`.
+  - The DE lean under isolation on the first wall-clock seeds did not replicate
+    (13, 14 and 13 wins of 30). The full table is in the evidence page's "Equal
+    wall-clock" section.
+- **Overshoot.** Two runs ran more than 50 ms past the cap, which look like
+  machine stalls: `de+contraction@reenter` at seed 44168 took 1,620 ms, and
+  `lpsr@isolated` at seed 44174 took 771 ms with only 118,400 records. Both are
+  kept.
+- **Coverage.** 30/30 seeds for each of the 12 arms in both phases, with no
+  failures and no censored runs.
 - **Records.** 86,345,600 validation records charged against a budget of
-  86,400,000. Calibration is unchanged: seeds 94156–94160, threshold 0.01406,
-  1,200,000 records.
-- **No uncommitted code in the run.** The run used committed head `b224f0df`,
-  and `git diff b224f0df HEAD -- scripts test` is empty.
+  86,400,000, and 84,250,800 in the wall-clock phase. Calibration is unchanged:
+  seeds 94156–94160, threshold 0.01406, 1,200,000 records.
+- **Preparation ledger.** The recorded superseded runs charged 461,712,800
+  records (58,794,400 + 58,796,400 + 87,537,200 + 87,545,600 + 169,039,200), on
+  top of two bounded runs. The `23bd8e8f` run (87,545,600) and the `b224f0df`
+  run (169,039,200, including its wall-clock phase) are the two this review
+  found missing.
+
+Record-budget contrasts (24156–24185, unchanged by the fix):
 
 | Contrast (arm vs control)               | Mean diff  | CI95                   | Wins  | Diversity | Verdict    |
 | --------------------------------------- | ---------- | ---------------------- | ----- | --------- | ---------- |
@@ -175,14 +218,26 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
 - **met** — Hold evaluation and wall-clock budgets equal — evidence:
   - the primary phase holds charged records equal;
   - `wallClockPhase` in `docs/evidence/differential-weight-4156.json`: every arm
-    gets 600 ms per run on seeds 34156–34185, and 360/360 runs stopped on the
-    clock, with per-arm medians of 602–609 ms;
-  - `runArm`'s `wallClock` parameter in
-    `scripts/lib/differentialWeightStudy.ts`;
-  - `test/scripts/DifferentialWeightStudy.ts::an equal wall-clock budget stops every arm on the clock, before its record budget`
-    and the four tests after it.
+    gets 600 ms per run on seeds 44156–44185, and 360/360 runs stopped on the
+    clock, with per-arm medians of 601–603 ms;
+  - `runArm`'s `wallClock` parameter and `refineWeights`' `shouldStop` in
+    `scripts/lib/differentialWeightStudy.ts`: the clock is asked before every
+    creature scored and every refinement candidate, and no breeding starts once
+    it is spent. One evaluation in flight at the deadline can still finish after
+    it, and so can the uncharged speciation and holdout work;
+  - `test/scripts/DifferentialWeightStudy.ts::a deadline that expires during refinement scores no further candidate and keeps the one scored`:
+    with a clock spent after the first candidate, exactly one candidate is
+    charged (8 population + 1 evaluations, not 8 + 4), it ships, and no breeding
+    starts. The same test checks the non-expired control (8 + 4) and a clock
+    spent before refinement (8). It fails when the clock is not passed to
+    refinement;
+  - `::refineWeights stops before the next candidate once told to, keeping what it scored`
+    and
+    `::an equal wall-clock budget stops every arm on the clock, before its record budget`.
 
-  reviewer: met
+  reviewer: partial — reason: the previous head checked the clock only before
+  the whole refinement batch, so up to three further candidates were scored
+  after the deadline. Fixed in this push and the phase re-run on fresh seeds.
 - **met** — measure time-to-target, held-out score, variance and diversity —
   evidence: `comparisons` in `docs/evidence/differential-weight-4156.json` —
   reviewer: met
@@ -200,33 +255,53 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
   `test/scripts/DifferentialWeightStudy.ts::the default validation seeds are 24156..24185 and overlap neither used range`
   — reviewer: met
 - **met** — Identify code/model/data versions — evidence: the manifest's
-  `codeVersion` `23bd8e8f`, `neatAiVersion`, `neatCoreRev`, `deno` and `corpus`
-  — reviewer: partial — reason: the reviewer could not run `git` to check
-  whether the run used uncommitted code. It did not:
-  `git diff 23bd8e8f HEAD -- scripts test` shows only the later test-only
-  commit, and the run started after `23bd8e8f` was committed.
-- **met** — separate calibration from untouched validation and count all
-  preparation/search costs — evidence: `preparation` in the manifest (the
-  superseded 14156 runs are recorded exactly; the pilot and the first full run
-  stay bounded, as in PR #4165) — reviewer: met
+  `codeVersion`, `neatAiVersion`, `neatCoreRev`, `deno` and `corpus`. The
+  `codeVersion` is `d85139e6…+uncommitted-review-fix`: the run used head
+  `d85139e6` plus this review fix, which the worker could not commit before the
+  run. `git diff d85139e6 HEAD -- scripts test` on the pushed head is exactly
+  that code. — reviewer: met
+- **partial** — separate calibration from untouched validation and count all
+  preparation/search costs — evidence: `preparation` in the manifest and the
+  "Preparation and search cost" table. The superseded runs are now recorded
+  exactly, including the two this review found missing (`23bd8e8f`, 87,545,600
+  records, and `b224f0df`, 169,039,200 including its wall-clock phase). The
+  recorded superseded runs total 461,712,800 records. Calibration is on the
+  disjoint 94156–94160, and the validation 24156–24185 and wall-clock
+  44156–44185 ranges are untouched by any earlier run — reviewer: partial —
+  reason: the pilot's and the first full run's seeds and records were never
+  written down, so their costs stay bounds (at most 5,760,000 + 1,200,000, and
+  at most 58,800,000), not measurements. They cannot be recovered.
 - **met** — Provide deterministic positive/negative correctness tests for new
   behaviour and pass the repository's normal quality checks — evidence:
   `test/scripts/DifferentialWeightStudy.ts::delayedLinearSize holds the base until the delay, then falls linearly to the minimum`,
-  `::validateSettings refuses a bad lpsrMinPopulationSize`, and
-  `::lpsr@reenter holds its size until the delay, then only shrinks`;
-  `./quality.sh` passed — reviewer: partial — reason: the reviewer saw only the
-  diff. The full gate was run here and passed (see Test Plan).
+  `::validateSettings refuses a bad lpsrMinPopulationSize`,
+  `::lpsr@reenter holds its size until the delay, then only shrinks`,
+  `::a deadline that expires during refinement scores no further candidate and keeps the one scored`,
+  `::a run with no scored candidate is censored, kept out of every paired statistic, and not called no-benefit`
+  and `::a completed run is collected, not censored`; the targeted tests and the
+  repository's formatter, linter and type-check pass (see Test Plan) — reviewer:
+  partial — reason: the full `./quality.sh` gate is not re-run in this fix (see
+  Test Plan), so CI on the pushed head is the evidence for it.
 - **met** — Deliver a reproducible command/manifest and machine-readable results
   with paired distributions, uncertainty, failures and actual coverage —
   evidence: `docs/evidence/differential-weight-4156.json` (`failures: []`,
-  12-arm coverage, paired CIs) — reviewer: met
+  `censored: []` in both phases, 12-arm coverage with `completed`, `attempted`
+  and `censored` per arm, `attempted` per contrast, paired CIs). A run with no
+  scored candidate is censored with its reason and costs, left out of every
+  paired statistic, and a contrast with no paired seed is `insufficient-data`,
+  not `no-benefit`; the test above covers that path — reviewer: partial —
+  reason: the previous head counted a run with no scored candidate as completed,
+  so a small `--wall-clock-ms` produced non-finite statistics written as `null`.
+  Fixed in this push.
 - **met** — Record negative findings and remove optional code that does not earn
   its maintenance cost. Do not claim success before representative runs —
-  evidence: the evidence page records `no-benefit` for every contrast —
-  reviewer: partial — reason: the reviewer would remove the LPSR code because
-  its result is negative. It is kept because the harness is the reproducible
-  command the issue requires, and deleting the arms would make the recorded
-  negative result unreproducible. No production code is added.
+  evidence: the evidence page records the mixed equal-wall-clock result:
+  `contraction@reenter` is harm, `lpsr@reenter` leans better but fails the
+  diversity floor, and the other nine contrasts are `no-benefit` — reviewer:
+  partial — reason: the reviewer would remove the LPSR code because its result
+  is negative. It is kept because the harness is the reproducible command the
+  issue requires, and deleting the arms would make the recorded negative result
+  unreproducible. No production code is added.
 - **met** — Keep public implementation and fixtures application-agnostic —
   evidence: the corpus is synthetic (`synthetic-tanh-quadratic-v1`) — reviewer:
   met
@@ -276,6 +351,25 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
     `control@reenter` on the same seed never changes size.
   - `the study has 12 distinct arms and 11 contrasts that name real arms`.
   - `the default validation seeds are 24156..24185 and overlap neither used range`.
+- **Tests added for the review fixes:**
+  - `refineWeights stops before the next candidate once told to, keeping what it scored`:
+    with scores 5, 9, 7 and 8, an unstopped batch scores 4 and keeps 9; a stop
+    asked from the second candidate scores 1 and keeps 5; a stop before the
+    first scores 0 and keeps nothing. The parent is not modified.
+  - `a deadline that expires during refinement scores no further candidate and keeps the one scored`:
+    for `control@reenter` and `control@isolated`, a clock that never runs out
+    charges 8 + 4 evaluations; one spent before refinement charges 8; one spent
+    after the first candidate charges exactly 8 + 1 (`recordsCharged` 540 for 60
+    records each), accepts that candidate, ships a lower training MSE than the
+    8-evaluation run, and starts no breeding. It fails when the clock is not
+    passed to refinement (4 candidates scored).
+  - `a run with no scored candidate is censored, kept out of every paired statistic, and not called no-benefit`:
+    through `collectRun` and `compareContrasts`, three zero-evaluation runs are
+    censored with `evaluations` 0, `recordsCharged` 0 and the reason "no
+    creature was scored before the wall-clock budget ended". A contrast then
+    pairs 1 of 2 seeds with finite statistics, and a contrast with no paired
+    seed has `seeds` 0 and the verdict `insufficient-data`.
+  - `a completed run is collected, not censored`.
 - **Tests added for the equal wall-clock budget:**
   - `an equal wall-clock budget stops every arm on the clock, before its record budget`:
     with a ticking fake clock, all 12 arms report `stoppedBy: "wall-clock"`,
@@ -286,8 +380,15 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
   - `under a wall-clock budget lpsr contracts on the elapsed share, not the records share`.
   - `runArm refuses a wall-clock budget that is not a positive finite number`
     (0, −5, ∞, NaN).
-  - `the equal-wall-clock phase uses fresh seeds 34156..34185 and a record budget the clock binds`.
-- **Tests edited.**
+  - `the equal-wall-clock phase uses fresh seeds 44156..44185, 600 ms, and a tenfold record budget`
+    (it replaces the earlier `…34156..34185 and a record budget the clock binds`
+    test, which only asserted `> 0` and that validation did not throw). It now
+    asserts the exact seeds, 600 ms and 10 × the primary budget.
+- **Tests edited.** `runArm refuses a wall-clock budget…` now uses
+  `assertRejects` with the exact message for each of 0, −5, ∞ and NaN, instead
+  of `includes("wallClock.ms")`.
+  `the default validation seeds are 24156..24185…` now asserts the three used
+  ranges exactly instead of their count.
   `a validation range inside or touching a used range is reported` gains
   `usedSeedOverlap([14185, 14186])` → `[14185]`. The existing no-contraction
   test's guard changed from `!arm.delayedContraction` to
@@ -299,13 +400,13 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
       renamed field. The assertions under it are unchanged.
 - **Targeted tests.**
   `deno test -A test/scripts/DifferentialWeightStudy.ts < /dev/null` on the
-  final code: 31 passed, 0 failed.
-- **Full gate.** Not yet re-run on the wall-clock commit; the worker re-runs it.
-  It last passed at head 15115d92, with
-  `./quality.sh --rust-scorer-bin=<built rust_scorer>` reporting
-  `ok | 10483 passed (5 steps) | 0 failed | 50 ignored (16m9s)`. `rust_scorer`
-  was built from a fresh clone of NEAT-AI-scorer, because the checkout has none
-  beside it.
+  final code: 35 passed, 0 failed. `deno fmt --check` and `deno lint` on
+  `scripts` and `test/scripts` and `deno check` on the changed files are clean.
+- **Full gate.** `./quality.sh` was not re-run in this fix. It last passed at
+  head 15115d92 (`ok | 10483 passed (5 steps) | 0 failed | 50 ignored`), before
+  the wall-clock commits; CI runs it on the pushed head. `rust_scorer` was built
+  from a fresh clone of NEAT-AI-scorer in that run, because the checkout has
+  none beside it.
 - **Spelling.** cspell is clean on the changed files after adding `lpsr`,
   `Tanabe`, `Fukunaga` and `Ambrosini` to `docs/cspell.json`. markdownlint
   reports 0 issues on the edited docs.
@@ -321,13 +422,15 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
 - Wall-clock is held equal only in the second phase, at 600 ms on a shared
   container. That phase is not bit-reproducible, and 600 ms is far from the
   paper's 15 minutes.
-- **The cap can overshoot.** The clock is checked between steps, so a refinement
-  batch (up to 4 evaluations) can run past it, and so can the uncharged
-  speciation and holdout work. 5 of 360 runs took over 650 ms, and the slowest
-  took 902 ms.
-- **One outlier run.** `de+contraction@isolated` at seed 34156 charged 51,200
-  records against a median of about 225,000. This looks like a machine stall. It
-  is kept in the results and is not flagged.
+- **The cap can overshoot.** The clock is checked between evaluations, so one
+  evaluation in flight at the deadline finishes after it, and so does the
+  uncharged speciation and holdout work. Two of 360 runs were more than 50 ms
+  over, which look like machine stalls (1,620 ms and 771 ms); both are kept.
+- **The wall-clock result is mixed and one contrast is harm.** A harm verdict
+  for `contraction@reenter` (+0.0003255) is one of 11 contrasts on a very small
+  effect. No third range was run, and the result is not replicated.
+- **The wall-clock seeds were spent once.** 34156–34185 was seen before the fix
+  and is now refused, so the reported wall-clock phase is on 44156–44185.
 - In the wall-clock phase, time to target is still counted in records.
 - The pilot's and the first full run's costs remain bounded, not measured.
 - Not checked: whether the 14156-range DE spread finding was noise. The fresh
