@@ -304,9 +304,11 @@ export async function main(args: string[]): Promise<number> {
     console.log(
       `  ${arm.padEnd(8)} admission ${p.admissionRate?.toFixed(3) ?? "n/a"}  ` +
         p.horizons.map((h) =>
-          `@${h.horizon}: surv|adm ${
+          `@${h.horizon}: survival|admitted ${
             h.survivalRateGivenAdmitted?.toFixed(3) ?? "n/a"
-          } contrib|adm ${h.contributionRateGivenAdmitted?.toFixed(3) ?? "n/a"}`
+          } contribution|admitted ${
+            h.contributionRateGivenAdmitted?.toFixed(3) ?? "n/a"
+          }`
         ).join("  "),
     );
   }
