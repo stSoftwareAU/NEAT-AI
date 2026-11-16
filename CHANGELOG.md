@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4156:** opt-in `deno task differential-weight-study`, a research
+  harness that measures differential-weight (DE) offspring and delayed
+  population contraction as a 2×2 at equal charged records, crossed with whether
+  refined descendants re-enter the population. The result on a synthetic
+  objective is negative: no arm meets the benefit criterion and none is harm.
+  The paper the issue cites was not read, so the method is this repository's
+  reading of the issue and is untested against the paper's; the issue stays
+  open. Nothing under `src/` imports the harness. See
+  [`docs/evidence/differential-weight-4156.md`](docs/evidence/differential-weight-4156.md).
 - **Issue #4096:** the event-loop watchdog breach line now ends with
   `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>` (V8 heap used at the last
   main-thread heartbeat and the heap limit), and `inFlightPhase` can read
@@ -350,12 +359,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   no-benefit (holdout precision +0.175, 95% CI [-0.0088, 0.381]). Nothing in
   `src/` calls it; see
   [the evidence page](docs/evidence/topology-weight-luck-4162.md).
+- **Issue #4161:** opt-in `deno task budget-conditioned-study` compares one
+  genome selected at several connection budgets and expressed by an evolved
+  priority gene against independent per-budget searches and a magnitude-pruned
+  full-size network. Result: negative. On the unseen budgets the conditioned
+  genome is harmful against independent searches, so no genome format or default
+  changes; see [the evidence page](docs/evidence/budget-conditioned-4161.md).
 
 - **Issue #4160:** opt-in `deno task connectivity-prior-study` compares sparse,
   input-reachable initial topologies against the current fully connected one.
   Result: no cell beat the control and the calibration-chosen cell was harmful,
-  so no prior was added. Self-loops were not swept: the harness runs the
-  forward-only path; see
+  so no prior was added. Self-loops were tested on the recurrent execution path
+  as a paired with/without comparison and showed no benefit; see
   [the evidence page](docs/evidence/connectivity-prior-4160.md).
 
 - **Issue #4155:** an opt-in `deno task lineage-targeting-study` harness that
