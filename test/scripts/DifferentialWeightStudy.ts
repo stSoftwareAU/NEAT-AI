@@ -816,4 +816,17 @@ Deno.test("a validation range inside or touching a used range is reported", () =
     last,
   ]);
   assertEquals(usedSeedOverlap([]), []);
+  // The second used range: PR 4165's reported validation.
+  assertEquals(usedSeedOverlap([14185, 14186]), [14185]);
+});
+
+Deno.test("the default validation seeds are 24156..24185 and overlap neither used range", () => {
+  const seeds = Array.from(
+    { length: VALIDATION_SEED_COUNT },
+    (_, i) => VALIDATION_BASE_SEED + i,
+  );
+  assertEquals(seeds[0], 24156);
+  assertEquals(seeds[seeds.length - 1], 24185);
+  assertEquals(USED_SEED_RANGES.length, 2);
+  assertEquals(usedSeedOverlap(seeds), []);
 });

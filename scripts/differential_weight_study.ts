@@ -86,6 +86,22 @@ const PREPARATION_RUNS = [
     recordsCharged:
       "recorded in the artefact at commit eccc6792: 57,594,400 validation + 1,200,000 calibration = 58,794,400",
   },
+  {
+    what:
+      "PR 4165's reported validation on 14156-14185, superseded: its results were seen before the delayed L-SHADE LPSR arms were added, so the range is no longer untouched",
+    seeds: "14156-14185 (30)",
+    arms: "8 arms",
+    recordsCharged:
+      "recorded in the artefact merged with PR 4165: 57,596,400 validation + 1,200,000 calibration = 58,796,400",
+  },
+  {
+    what:
+      "12-arm run on 14156-14185 at commit ccf3d612 after the LPSR arms were added, superseded for the same reason; its 8 original arms reproduced PR 4165's contrasts exactly",
+    seeds: "14156-14185 (30)",
+    arms: "12 arms",
+    recordsCharged:
+      "recorded: 86,337,200 validation + 1,200,000 calibration = 87,537,200",
+  },
 ];
 
 /** A run plus the wall-clock it took (measured here only). */
@@ -418,7 +434,7 @@ if (import.meta.main) {
           last,
         })),
         earlierRunSeedNote:
-          "the earlier full runs used the CLI default of the day, 4156-4185, so that range is refused as a validation range; the pilot's seeds were not recorded",
+          "two ranges are used and refused as validation ranges: 4156-4185 was the earlier full runs' CLI default, and 14156-14185 was PR 4165's reported validation and the ccf3d612 re-run; the pilot's seeds were not recorded",
       },
       paper: {
         url: PAPER,

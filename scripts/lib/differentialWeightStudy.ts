@@ -75,21 +75,25 @@ import { median } from "./rankFidelity.ts";
 /**
  * First validation seed. The validation seeds are `base .. base + count - 1`.
  *
- * The range 4156-4185 was the CLI default while the harness was being built,
- * so the pilot and the discarded full runs may have drawn on it. The reported
- * validation therefore uses a fresh range no earlier run used.
+ * Two ranges are already used and so are no longer untouched: 4156-4185 was
+ * the earlier full runs' CLI default, and 14156-14185 was PR #4165's reported
+ * validation, whose 8-arm results were seen before the delayed-LPSR arms were
+ * added. The reported validation therefore uses the fresh range 24156-24185.
  */
-export const VALIDATION_BASE_SEED = 14156;
+export const VALIDATION_BASE_SEED = 24156;
 /** How many validation seeds the study runs. */
 export const VALIDATION_SEED_COUNT = 30;
 /**
- * Seed ranges (inclusive) that earlier runs are known to have used while the
- * harness was being built, and so are no longer untouched. The pilot's seeds
+ * Seed ranges (inclusive) that earlier runs are known to have used, and so are
+ * no longer untouched: 4156-4185 (the earlier full runs' CLI default) and
+ * 14156-14185 (PR #4165's reported validation, seen before the delayed-LPSR
+ * arms were added). The pilot's seeds
  * were never recorded, so it cannot be listed here; its bound is in the
  * manifest's `preparation.runs`.
  */
 export const USED_SEED_RANGES: readonly (readonly [number, number])[] = [
   [4156, 4185],
+  [14156, 14185],
 ];
 /** The seeds in `seeds` that fall inside a range an earlier run used. */
 export function usedSeedOverlap(seeds: readonly number[]): number[] {
