@@ -77,6 +77,14 @@ for (const e of study.exploratory) {
     } wins ${e.comparison.wins} losses ${e.comparison.losses}`,
   );
 }
+const selfLoop = study.selfLoop;
+console.info(
+  selfLoop.comparison === null
+    ? `Self-loops ${selfLoop.arm} vs ${selfLoop.baseline}: no paired runs`
+    : `Self-loops ${selfLoop.arm} vs ${selfLoop.baseline} (recurrent path): ${selfLoop.comparison.verdict} (mean diff ${
+      fmt(selfLoop.comparison.meanDiff)
+    })`,
+);
 const cov = study.coverage;
 console.info(
   `\nCoverage: ${cov.completedRuns}/${cov.expectedRuns} runs, ${cov.failures.length} failures`,
