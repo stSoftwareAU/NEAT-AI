@@ -49,11 +49,10 @@ export class MockWorker implements WorkerInterface<RequestData> {
     // like a real Worker.postMessage() would. This catches non-cloneable data
     // (functions, symbols, etc.) that would cause a DataCloneError in production.
     //
-    // Issue #3476: MockWorker runs only on the single-thread path (threads === 1)
-    // and the init-failure fallback — there is NO cross-thread boundary, so this
+    // Issue #3476: MockWorker is an in-process path, so this
     // clone can never prevent a real DataCloneError; it just deep-copies the whole
     // creature payload once per evaluate/train/discover/breed and throws it away.
-    // Gate it behind an explicit debug opt-in so production single-thread runs skip
+    // Gate it behind an explicit debug opt-in so in-process runs skip
     // the wasted copy, while dev/test runs can still exercise the #1428 detection.
     // Multi-thread runs (threads > 1) still go through the real Worker.postMessage,
     // which throws DataCloneError on a non-cloneable payload regardless of this flag,

@@ -24,7 +24,7 @@ import type {
   DiscoverResult,
   RemovalCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { trainDir } from "@architecture/Training.ts";
+import { trainDirAsync } from "@architecture/Training.ts";
 import { buildTrainResponseBody } from "@multithreading/workers/WorkerTrainResponse.ts";
 import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { Costs } from "@costs";
@@ -261,6 +261,15 @@ export class WorkerProcessor {
   private readonly datasetFileCache = new DatasetFileListCache();
 
   /**
+   * Settles when the last queued training task in this isolate settles
+   * (Issue #4126). Training is awaited so `terminate()` can release a worker
+   * whose native call overruns, but the entry point does not serialise
+   * messages, so without this queue every training task sent to one worker
+   * would enter the native trainer at once. Never rejects.
+   */
+  private trainingTail: Promise<void> = Promise.resolve();
+
+  /**
    * Loads a custom cost function from a file path using dynamic import.
    * This allows external programs to provide custom cost functions without
    * needing to register constructors in advance.
@@ -305,6 +314,53 @@ export class WorkerProcessor {
       throw new Error(
         `Failed to load custom cost function from ${filePath}: ${errorMessage}`,
       );
+    }
+  }
+
+  /** Runs one training request; callers serialise it via {@link trainingTail}. */
+  private async train(
+    taskID: RequestData["taskID"],
+    request: NonNullable<RequestData["train"]>,
+    debug: RequestData["debug"],
+  ): Promise<ResponseData> {
+    const start = Date.now();
+    let creature: Creature | null = null;
+    try {
+      creature = Creature.fromJSON(
+        request.creature,
+        debug,
+      );
+      clearForGc(request, "creature");
+
+      assert(this.dataSetDir, "No data dir");
+      assert(this.cost, "No cost");
+
+      const result = await trainDirAsync(
+        creature,
+        this.dataSetDir,
+        request.options,
+        this.cost,
+      );
+
+      const response = {
+        taskID,
+        duration: Date.now() - start,
+        train: buildTrainResponseBody(
+          result,
+          exportJSONWithRuntimeIds(creature),
+        ),
+      };
+
+      // Immediately clear large objects to help GC
+      if (result.trace) clearForGc(result, "trace");
+      if (result.compact) clearForGc(result, "compact");
+
+      return response;
+    } finally {
+      // Ensure creature is disposed even if an error occurs
+      if (creature) {
+        creature.dispose();
+      }
     }
   }
 
@@ -436,44 +492,21 @@ export class WorkerProcessor {
         }
       }
     } else if (data.train) {
-      let creature: Creature | null = null;
-      try {
-        creature = Creature.fromJSON(
-          data.train.creature,
-          data.debug,
-        );
-        clearForGc(data.train, "creature");
-
-        assert(this.dataSetDir, "No data dir");
-        assert(this.cost, "No cost");
-
-        const result = trainDir(
-          creature,
-          this.dataSetDir,
-          data.train.options,
-          this.cost,
-        );
-
-        const response = {
-          taskID: data.taskID,
-          duration: Date.now() - start,
-          train: buildTrainResponseBody(
-            result,
-            exportJSONWithRuntimeIds(creature),
-          ),
-        };
-
-        // Immediately clear large objects to help GC
-        if (result.trace) clearForGc(result, "trace");
-        if (result.compact) clearForGc(result, "compact");
-
-        return response;
-      } finally {
-        // Ensure creature is disposed even if an error occurs
-        if (creature) {
-          creature.dispose();
-        }
-      }
+      // One native training run per worker isolate at a time, as when the
+      // call was synchronous; a queued task's duration starts when it runs.
+      // The caller clears `data.train.creature` as soon as `postMessage`
+      // returns (the in-process `MockWorker` shares the request object), so the
+      // request is captured here, synchronously, rather than read when queued.
+      const request = {
+        creature: data.train.creature,
+        options: data.train.options,
+      };
+      clearForGc(data.train, "creature");
+      const run = this.trainingTail.then(() =>
+        this.train(data.taskID, request, data.debug)
+      );
+      this.trainingTail = run.then(() => undefined, () => undefined);
+      return await run;
     } else if (data.echo) {
       await new Promise((f) => setTimeout(f, data.echo?.ms));
       return {

@@ -18,7 +18,8 @@
  * failure the caller counts — never a quietly finished piece of work.
  */
 
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import { clearForGc } from "@utils/ReleasableRef.ts";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import { DatasetError } from "@errors/DatasetError.ts";
@@ -94,5 +95,35 @@ Deno.test("a worker train task on a removed dataset directory fails the task, lo
     assertEquals(isFailedTrainWorkerResponse(response), true);
   } finally {
     creature.dispose();
+  }
+});
+
+Deno.test("a worker train task still runs when the sender clears its creature right after submitting", async () => {
+  await initWasmForTests();
+  // The sender (`WorkerHandler`) drops `train.creature` the moment
+  // `postMessage` returns, and the in-process `MockWorker` shares that object.
+  // The task must have taken what it needs by then: here it must reach the
+  // empty dataset directory and say so, not fail on a nulled creature.
+  const dataSetDir = await Deno.makeTempDir({ prefix: "issue-4126-worker-" });
+  const processor = new WorkerProcessor();
+  const creature = new Creature(1, 1);
+  try {
+    await processor.process({
+      taskID: 1,
+      initialize: { dataSetDir, costName: "MSE" },
+    });
+
+    const request: RequestData = {
+      taskID: 2,
+      train: { creature: creature.exportJSON(), options: {} },
+    };
+    const pending = processor.process(request);
+    clearForGc(request.train!, "creature");
+
+    const error = await assertRejects(() => pending, Error);
+    assertStringIncludes(error.message, "No binary files found");
+  } finally {
+    creature.dispose();
+    await Deno.remove(dataSetDir, { recursive: true });
   }
 });

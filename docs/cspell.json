@@ -18,6 +18,11 @@
     "scorings",
     "Predeclare",
     "Rekor",
+    "reseed",
+    "reseeded",
+    "reseeding",
+    "reseeds",
+    "Turing",
     "automatable",
     "Abramowitz",
     "argmin",
@@ -786,6 +791,14 @@
     "messageerror",
     "dorny",
     "retr",
-    "unexportable"
+    "unexportable",
+    "libc",
+    "libdl",
+    "msvcrt",
+    "DTRAINER",
+    "dynamiclib",
+    "mkfifo",
+    "dlclose",
+    "evolvedir"
   ]
 }

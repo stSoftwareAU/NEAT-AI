@@ -140,6 +140,10 @@ Tuning guides and benchmark research.
   contraction (Issue #4156): a 2×2 at equal records over 30 seeds. The result is
   negative on a synthetic objective, and nothing in `src/` changes. The paper's
   method was not read, so it is untested against it and the issue stays open.
+- **[evidence/census-restart-4157.md](evidence/census-restart-4157.md)** — the
+  offspring-census restart study (Issue #4157): census-triggered against
+  plateau-triggered restarts on a synthetic objective. Negative result; run it
+  with `deno task census-restart-study`.
 - **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
   — initial connectivity and input fan-out as priors (Issue #4160): a negative
   result; no sparse start beat the current initialisation.

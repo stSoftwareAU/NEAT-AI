@@ -888,7 +888,10 @@ export async function evolve(
   // Issue #1026: Use parallel breeding for improved performance
   // Issue #2239: Time parallel breeding phase
   // Issue #4096: name the phase for the off-main-thread watchdog breach line.
-  neat.markPhase("breeding");
+  // Parent selection, quota allocation and the synchronous start of breedBatch
+  // (ranking, selectParentPairs, and each worker's first breeding request
+  // export) run here, before the first await.
+  neat.markPhase("parent-selection");
   const breedingStartMs = Date.now();
   const parallelBreeding = new ParallelBreeding(
     genus,
@@ -949,6 +952,8 @@ export async function evolve(
   // Issue #2314: Process completed results while workers breed.
   // Issue #2239: Time result processing phase
   const resultProcessingStartMs = Date.now();
+  // Merge the completed training/discovery results while the workers breed.
+  neat.markPhase("result-processing");
   // Issue #4107: the training tasks merged this generation are recorded on the
   // Neat instance until the commit, so they are named if the hard deadline
   // abandons it first: here, or by the teardown if this evolve() never resumes.
@@ -964,6 +969,11 @@ export async function evolve(
     neat.mergedUncommittedTrainIDs,
   );
   const resultProcessingMs = Date.now() - resultProcessingStartMs;
+  // From here to `await breedingPromise` returning, the main thread only
+  // configures the mutator and handles each offspring a worker returns
+  // (Creature.fromJSON, memetic discover, the next pair's export), so a block
+  // here is in that handling.
+  neat.markPhase("breeding");
 
   // Issue #2314: Compute plateau and MCMC configuration while workers breed.
   // Issue #1039: Apply plateau stagnation response - increase mutation rate
@@ -1184,7 +1194,7 @@ export async function evolve(
     // results, not from creature tags: a discovery or replay creature built
     // from a trained fittest keeps that task's trainID tag, although the task
     // was committed in an earlier generation. If the teardown already named
-    // them (this evolve() resumed after it), the set is empty and nothing is
+    // them (this evolve() resumed after it), the map is empty and nothing is
     // logged twice.
     neat.discardMergedUncommittedTraining();
     // Issue #4115: name each discovery/replay creature this abandon discards.
@@ -1202,7 +1212,9 @@ export async function evolve(
     neat.population = budgeted.population; // Keep pseudo sorted.
     // Issue #4107: this generation's trained creatures are committed now, so
     // its merged training tasks are no longer at risk of being discarded.
-    neat.mergedUncommittedTrainIDs.clear();
+    // Issue #4099: log each one's `completed` line here, at commit, so a task
+    // ends with exactly one terminal line.
+    neat.commitMergedTraining();
 
     if (budgeted.dropped.length > 0 && neat.config.verbose) {
       getLogger().info(

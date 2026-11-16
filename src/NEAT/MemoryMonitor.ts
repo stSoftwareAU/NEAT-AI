@@ -17,7 +17,7 @@
  *   non-essential caches, attempt GC if available.
  */
 
-import v8 from "node:v8";
+import { readHeapSizeLimit } from "./HeapSizeLimit.ts";
 import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import {
   evictOldestWasmCreatureActivations,
@@ -444,22 +444,6 @@ export function defaultMemoryUsageProvider(): MemoryUsageSample {
     rss: mem.rss,
     external: mem.external,
   };
-}
-
-/**
- * The current isolate's V8 old-space heap limit in bytes (Issue #3410).
- *
- * Returns `0` when `node:v8` cannot report the limit, so `resolveHeapLimit`
- * transparently falls back to the committed `heapTotal` rather than dividing by
- * a bogus value.
- */
-function readHeapSizeLimit(): number {
-  try {
-    const limit = v8.getHeapStatistics().heap_size_limit;
-    return Number.isFinite(limit) && limit > 0 ? limit : 0;
-  } catch {
-    return 0;
-  }
 }
 
 /**

@@ -709,8 +709,9 @@ export abstract class WorkerHandlerBase<
    * terminated — while a task is still unanswered (Issue
    * #4126).
    *
-   * Such a thread may be blocked in native code, which {@link terminate}
-   * cannot interrupt, and Deno keeps the process alive until that thread ends.
+   * This is a conservative signal: a synchronous native call can keep the
+   * worker alive, whereas an awaited native call can outlive the worker without
+   * pinning the process. There is no acknowledgement of native cancellation.
    * It is computed live, so it covers a task shed with {@link cancelTask} at
    * the run's deadline and then terminated by teardown, with no quarantine. A
    * worker taken out of service with no unanswered task (e.g. an

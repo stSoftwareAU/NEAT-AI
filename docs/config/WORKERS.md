@@ -176,14 +176,32 @@ The environment variables themselves are listed in
 
 ## 🛑 Exiting when a worker cannot be stopped
 
-Issue #4126: a quarantined worker blocked in native (FFI) code cannot be stopped
-by `Worker.terminate()`, and Deno keeps the process alive for its thread. The
-teardown warns `teardown: N worker(s) could not be stopped` when this happens.
+A worker blocked in a synchronous native (FFI) call can keep Deno alive after
+`evolveDir` returns. The native trainer and discovery analysis are awaited on
+the worker path (Issue #4126), allowing the worker to terminate while native
+work is pending. Other synchronous native calls can still block worker
+termination. Each worker still runs one native training task at a time: tasks
+sent to a busy worker queue behind the running one, so a heavy worker never
+holds more than one native trainer's memory and CPU at once.
+
+When native training is enabled, `evolveDir` uses a real worker even with
+`threads: 1`. A main-isolate mock cannot drop a pending FFI operation when
+quarantined. Worker initialisation therefore fails loudly rather than falling
+back to in-process execution in this mode. With native training disabled,
+single-thread execution and initialisation fallback can still use mocks.
+
+Teardown conservatively warns `teardown: N worker(s) could not be stopped` for
+workers quarantined or terminated with unanswered tasks, and for workers
+detached because `terminate()` threw or outlived its teardown budget. This
+warning can also appear for asynchronous training that no longer pins the
+process.
+
 Set `exitOnUnreclaimableWorkers` to have the library call `Deno.exit()` 10
-seconds after teardown, preserving `Deno.exitCode`. The guard is armed only when
-`evolveDir` returns or throws while a worker could not be stopped: either one it
-quarantined or terminated with a task still unanswered, or one it detached
-because `terminate()` threw or outlived the teardown budget.
+seconds after teardown when that count is non-zero, preserving `Deno.exitCode`.
+The guard still covers unanswered native training tasks. Native FFI computation
+can continue after quarantine, retaining its buffers, loader reference and
+temporary files until the process exits; see the
+[ownership details](../troubleshooting/PROCESS_DOES_NOT_EXIT.md#cause).
 
 ```ts
 const config = createNeatConfig({
