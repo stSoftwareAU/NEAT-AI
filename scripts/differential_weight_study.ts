@@ -2,8 +2,10 @@
  * Issue #4156 — differential-weight offspring and delayed population
  * contraction.
  *
- * Runs the 2x2 of DE offspring and delayed contraction, crossed with whether
- * refined descendants re-enter the population, over predeclared validation
+ * Runs DE offspring (off or on) against three contraction policies (none, the
+ * adaptive shrink rule, and the paper's delayed L-SHADE linear reduction),
+ * crossed with whether refined descendants re-enter the population (12 arms),
+ * over predeclared validation
  * seeds. A calibration phase on a disjoint seed range sets the time-to-target
  * threshold from the current-behaviour arm (`control@reenter`), so the
  * validation seeds never tune the bar they are measured against.
@@ -400,7 +402,7 @@ if (import.meta.main) {
       arms: STUDY_ARMS,
       contrasts: PREDECLARED_CONTRASTS,
       contractionPolicy:
-        "contraction uses the existing adaptive shrink rule, never growing, only after the delay; the production highDiversityThreshold is 0.8 but a 3-seed pilot showed 1.3-2.3 species per 24 creatures so the shrink branch never fired; the study sets contractionHighDiversityThreshold to 0, so the rule contracts on every post-delay plateau, bounded below by minPopulationFraction 0.5; the rule's low-diversity grow branch is disabled (lowDiversityThreshold 0) because it is checked first and would pre-empt the shrink",
+        "adaptive (contraction, de+contraction): contraction uses the existing adaptive shrink rule, never growing, only after the delay; the production highDiversityThreshold is 0.8 but a 3-seed pilot showed 1.3-2.3 species per 24 creatures so the shrink branch never fired; the study sets contractionHighDiversityThreshold to 0, so the rule contracts on every post-delay plateau, bounded below by minPopulationFraction 0.5; the rule's low-diversity grow branch is disabled (lowDiversityThreshold 0) because it is checked first and would pre-empt the shrink; linear (lpsr, de+lpsr): the paper's budget-aware delayed L-SHADE linear population-size reduction, held at the base size until contractionDelayFraction of the record budget, then linear to lpsrMinPopulationSize (4, L-SHADE's N_min) at budget exhaustion, never growing; the paper's own delay cap value was not obtained",
       budgetPolicy:
         "records charged held equal; holdout and diversity probe uncharged; wall-clock measured and reported, not capped",
       preparation: {
@@ -420,9 +422,27 @@ if (import.meta.main) {
       },
       paper: {
         url: PAPER,
-        methodRead: false,
-        note:
-          "not fetched: proxy refused; the method follows this repository's reading of the issue and has not been checked against the paper, so the paper's method is untested",
+        title:
+          "Hybrid metaheuristics for architectural design optimization under small evaluation and wall-clock budgets",
+        author: "Luciano Ambrosini",
+        version: "v1, submitted 2026-10-19",
+        methodRead: "partial",
+        sourcesRead:
+          "search-engine excerpts of the abstract page and the PDF text, retrieved 2026-11-16; direct fetches of arxiv.org (abs and pdf) were refused by the container proxy, so the full text was not read",
+        pinned: [
+          "MERLIN: CMA-ES whose sampling is enriched with differential-evolution trial vectors added as extra offspring; removing them leaves CMA-ES with the same initial step size",
+          "RAPTOR: particle swarm with success-history parameter adaptation, differential-evolution injection and local refinement",
+          "L-SHADE-SW: L-SHADE with an interleaved Solis-Wets local search whose result replaces the worst population member",
+          "budget-aware delay of L-SHADE linear population-size reduction (section 3.3, figure 2): improves three adaptive DE variants in 40 of 51 comparisons with no loss",
+          "budget: hard cap of 1,200 evaluations, all counted; the finite-element problem runs at equal wall-clock (15 minutes per run)",
+          "ablations: the gain is attributed to the DE injection; local search pays off only when its result re-enters the population",
+        ],
+        notPinned: [
+          "the delay formula and delay cap value",
+          "the DE variant, F and CR used for injection",
+          "the injection fraction (this study uses the issue's 20%)",
+          "Solis-Wets step parameters (this study uses Gaussian perturbation of every weight)",
+        ],
       },
     };
     await Deno.writeTextFile(

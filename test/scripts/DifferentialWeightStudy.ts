@@ -32,8 +32,10 @@ import {
   calibrateTarget,
   contractedSize,
   DEFAULT_STUDY_SETTINGS,
+  delayedLinearSize,
   deWeightOffspring,
   pairedComparison,
+  PREDECLARED_CONTRASTS,
   runArm,
   sdRatio,
   STUDY_ARMS,
@@ -296,7 +298,7 @@ Deno.test("every arm spends its budget without exceeding it, and reports its own
       } else {
         assertEquals(result.deOffspring, 0, arm.name);
       }
-      if (!arm.delayedContraction) {
+      if (arm.contraction === "none") {
         assertEquals(result.contractionEvents, 0, arm.name);
         assertEquals(result.finalPopulationSize, SMALL.populationSize);
       }
@@ -320,6 +322,84 @@ Deno.test("contraction@reenter really contracts after the delay; the control nev
     const plain = await runArm(control, settings, 5, splits);
     assertEquals(plain.contractionEvents, 0);
   });
+});
+
+Deno.test("delayedLinearSize holds the base until the delay, then falls linearly to the minimum", () => {
+  const common = {
+    basePopulationSize: 24,
+    minPopulationSize: 4,
+    recordBudget: 1000,
+    delayFraction: 0.5,
+  };
+  assertEquals(delayedLinearSize({ ...common, recordsCharged: 0 }), 24);
+  assertEquals(delayedLinearSize({ ...common, recordsCharged: 499 }), 24);
+  assertEquals(delayedLinearSize({ ...common, recordsCharged: 500 }), 24);
+  assertEquals(delayedLinearSize({ ...common, recordsCharged: 750 }), 14);
+  assertEquals(delayedLinearSize({ ...common, recordsCharged: 1000 }), 4);
+  assertEquals(delayedLinearSize({ ...common, recordsCharged: 1500 }), 4);
+  for (const charged of [0, 500, 1000, 5000]) {
+    assertEquals(
+      delayedLinearSize({
+        ...common,
+        delayFraction: 1,
+        recordsCharged: charged,
+      }),
+      24,
+    );
+  }
+});
+
+Deno.test("validateSettings refuses a bad lpsrMinPopulationSize", () => {
+  validateSettings(DEFAULT_STUDY_SETTINGS);
+  for (
+    const lpsrMinPopulationSize of [
+      SMALL.elitism,
+      SMALL.populationSize + 1,
+      4.5,
+    ]
+  ) {
+    assertThrows(
+      () => validateSettings({ ...SMALL, lpsrMinPopulationSize }),
+      Error,
+      "lpsrMinPopulationSize",
+    );
+  }
+});
+
+Deno.test("lpsr@reenter holds its size until the delay, then only shrinks", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    const settings = { ...SMALL, recordBudget: 60 * 8 * 30 };
+    const arm = STUDY_ARMS.find((x) => x.name === "lpsr@reenter")!;
+    const control = STUDY_ARMS.find((x) => x.name === "control@reenter")!;
+    const result = await runArm(arm, settings, 5, splits);
+    const delay = settings.contractionDelayFraction * settings.recordBudget;
+    const before = result.trace.filter((e) => e.recordsCharged < delay);
+    assert(before.length > 0);
+    for (const entry of before) {
+      assertEquals(entry.populationSize, settings.populationSize);
+    }
+    const sizes = result.trace.map((e) => e.populationSize);
+    for (let i = 1; i < sizes.length; i++) assert(sizes[i] <= sizes[i - 1]);
+    assert(sizes[sizes.length - 1] < settings.populationSize);
+    assert(result.contractionEvents > 0);
+
+    const plain = await runArm(control, settings, 5, splits);
+    assertEquals(plain.contractionEvents, 0);
+    for (const entry of plain.trace) {
+      assertEquals(entry.populationSize, settings.populationSize);
+    }
+  });
+});
+
+Deno.test("the study has 12 distinct arms and 11 contrasts that name real arms", () => {
+  const names = STUDY_ARMS.map((arm) => arm.name);
+  assertEquals(new Set(names).size, 12);
+  assertEquals(PREDECLARED_CONTRASTS.length, 11);
+  for (const contrast of PREDECLARED_CONTRASTS) {
+    assert(names.includes(contrast.arm), contrast.arm);
+    assert(names.includes(contrast.control), contrast.control);
+  }
 });
 
 Deno.test("breeding tops the population up to its target size", async () => {
@@ -641,6 +721,7 @@ Deno.test("with no species of four, every DE slot falls back and is counted", as
       ...SMALL,
       populationSize: 3,
       elitism: 1,
+      lpsrMinPopulationSize: 2,
       recordBudget: 60 * 3 * 8,
       deFraction: 0.5,
     };

@@ -8,9 +8,11 @@
  * - **Does a differential-weight (DE/rand/1/bin) offspring help?** A share of
  *   each generation's offspring is built weight-only from three donors in the
  *   target's species instead of by crossover and mutation.
- * - **Does delaying population contraction help?** The existing adaptive shrink
- *   rule ({@link computeAdaptivePopulationSize}) is held back until a fixed
- *   share of the record budget has been spent.
+ * - **Does delaying population contraction help?** Two contraction policies are
+ *   held back until a fixed share of the record budget has been spent: the
+ *   existing adaptive shrink rule ({@link computeAdaptivePopulationSize}) and
+ *   L-SHADE's linear population-size reduction ({@link delayedLinearSize}),
+ *   which is the mechanism the cited paper proposes.
  * - **Does it matter whether locally refined descendants re-enter the
  *   population?** Production trains a creature and the trained descendant
  *   re-enters; the `@isolated` arms keep it out of breeding but let it compete
@@ -129,6 +131,12 @@ export interface StudySettings {
   /** Share of `recordBudget` that must be spent before contraction may begin. */
   readonly contractionDelayFraction: number;
   /**
+   * L-SHADE's `N_min`: the population size the linear reduction reaches at
+   * budget exhaustion (4 in Tanabe & Fukunaga 2014). Must be an integer above
+   * `elitism` and no more than `populationSize`.
+   */
+  readonly lpsrMinPopulationSize: number;
+  /**
    * Species diversity (species count over population size) above which the
    * existing adaptive rule shrinks the population on a plateau. The production
    * default is 0.8, but a 3-seed pilot showed 1.3-2.3 species per 24
@@ -161,6 +169,7 @@ export const DEFAULT_STUDY_SETTINGS: StudySettings = Object.freeze({
   deF: 0.5,
   deCR: 0.9,
   contractionDelayFraction: 0.5,
+  lpsrMinPopulationSize: 4,
   contractionHighDiversityThreshold: 0,
   plateauWindow: 5,
   plateauMinImprovement: 0.01,
@@ -193,6 +202,15 @@ export function validateSettings(s: StudySettings): void {
   if (s.elitism >= s.populationSize) {
     throw new Error(
       `elitism (${s.elitism}) must be below populationSize (${s.populationSize})`,
+    );
+  }
+  if (
+    !Number.isInteger(s.lpsrMinPopulationSize) ||
+    s.lpsrMinPopulationSize <= s.elitism ||
+    s.lpsrMinPopulationSize > s.populationSize
+  ) {
+    throw new Error(
+      `lpsrMinPopulationSize must be an integer above elitism (${s.elitism}) and at most populationSize (${s.populationSize}), got ${s.lpsrMinPopulationSize}`,
     );
   }
   if (!(s.deFraction >= 0 && s.deFraction <= 1)) {
@@ -498,6 +516,45 @@ export function contractedSize(args: ContractionInput): number {
   return Math.min(args.currentSize, proposed);
 }
 
+/** Inputs to {@link delayedLinearSize}. */
+export interface DelayedLinearInput {
+  readonly basePopulationSize: number;
+  /** L-SHADE's `N_min`. */
+  readonly minPopulationSize: number;
+  readonly recordsCharged: number;
+  readonly recordBudget: number;
+  /** Share of the budget held at the base size (`contractionDelayFraction`). */
+  readonly delayFraction: number;
+}
+
+/**
+ * L-SHADE's linear population-size reduction (Tanabe & Fukunaga 2014), held at
+ * the initial size until the delay and then reduced linearly to the minimum at
+ * budget exhaustion. The paper's delay cap value was not available, so the
+ * delay is this study's `contractionDelayFraction` (50%).
+ *
+ * Before the delay, or when `delayFraction >= 1`, the base size is returned.
+ * After it, `progress` runs from 0 to 1 over the rest of the budget and the
+ * size is `round((base - min) * (1 - progress)) + min`.
+ */
+export function delayedLinearSize(args: DelayedLinearInput): number {
+  const { basePopulationSize, minPopulationSize, recordBudget } = args;
+  const delayRecords = args.delayFraction * recordBudget;
+  if (args.delayFraction >= 1 || args.recordsCharged < delayRecords) {
+    return basePopulationSize;
+  }
+  const progress = Math.min(
+    1,
+    Math.max(
+      0,
+      (args.recordsCharged - delayRecords) /
+        ((1 - args.delayFraction) * recordBudget),
+    ),
+  );
+  return Math.round((basePopulationSize - minPopulationSize) * (1 - progress)) +
+    minPopulationSize;
+}
+
 // ---------------------------------------------------------------------------
 // Behavioural diversity
 // ---------------------------------------------------------------------------
@@ -544,8 +601,14 @@ export interface StudyArm {
   readonly name: string;
   /** Part of each generation's offspring is DE offspring. */
   readonly de: boolean;
-  /** Population contraction is allowed, after the delay. */
-  readonly delayedContraction: boolean;
+  /**
+   * Population contraction policy, always after the delay:
+   * - `"none"`: the population stays at its base size.
+   * - `"adaptive"`: the existing adaptive shrink rule ({@link contractedSize}).
+   * - `"linear"`: delayed L-SHADE linear population-size reduction
+   *   ({@link delayedLinearSize}), the paper's mechanism.
+   */
+  readonly contraction: "none" | "adaptive" | "linear";
   /** Refined descendants join the next population. */
   readonly refinementReenters: boolean;
 }
@@ -555,18 +618,20 @@ function makeArms(): readonly StudyArm[] {
   for (const reenter of [true, false]) {
     const suffix = reenter ? "reenter" : "isolated";
     for (
-      const [name, de, delayedContraction] of [
-        ["control", false, false],
-        ["de", true, false],
-        ["contraction", false, true],
-        ["de+contraction", true, true],
+      const [name, de, contraction] of [
+        ["control", false, "none"],
+        ["de", true, "none"],
+        ["contraction", false, "adaptive"],
+        ["de+contraction", true, "adaptive"],
+        ["lpsr", false, "linear"],
+        ["de+lpsr", true, "linear"],
       ] as const
     ) {
       arms.push(
         Object.freeze({
           name: `${name}@${suffix}`,
           de,
-          delayedContraction,
+          contraction,
           refinementReenters: reenter,
         }),
       );
@@ -576,8 +641,8 @@ function makeArms(): readonly StudyArm[] {
 }
 
 /**
- * The 2x2 of DE and delayed contraction, crossed with whether refined
- * descendants re-enter. `control@reenter` is current behaviour.
+ * The 2 DE settings x 3 contraction policies (none, adaptive, linear), crossed
+ * with whether refined descendants re-enter. `control@reenter` is current behaviour.
  */
 export const STUDY_ARMS: readonly StudyArm[] = makeArms();
 
@@ -775,16 +840,27 @@ function runSeededArm(
 
     // 4. Population size for the next generation.
     let nextSize = settings.populationSize;
-    if (arm.delayedContraction) {
-      nextSize = contractedSize({
-        basePopulationSize: settings.populationSize,
-        currentSize: size,
-        speciesCount,
-        scoreHistory: history,
-        recordsCharged,
-        recordBudget: settings.recordBudget,
-        settings,
-      });
+    if (arm.contraction !== "none") {
+      nextSize = arm.contraction === "adaptive"
+        ? contractedSize({
+          basePopulationSize: settings.populationSize,
+          currentSize: size,
+          speciesCount,
+          scoreHistory: history,
+          recordsCharged,
+          recordBudget: settings.recordBudget,
+          settings,
+        })
+        : Math.min(
+          size,
+          delayedLinearSize({
+            basePopulationSize: settings.populationSize,
+            minPopulationSize: settings.lpsrMinPopulationSize,
+            recordsCharged,
+            recordBudget: settings.recordBudget,
+            delayFraction: settings.contractionDelayFraction,
+          }),
+        );
       if (nextSize < size) {
         contractionEvents++;
         firstContractionRecords ??= recordsCharged;
@@ -1129,7 +1205,7 @@ export interface Contrast {
 /** The comparisons the study reports, fixed before any run. */
 export const PREDECLARED_CONTRASTS: readonly Contrast[] = Object.freeze([
   ...["reenter", "isolated"].flatMap((suffix) =>
-    ["de", "contraction", "de+contraction"].map((name) =>
+    ["de", "contraction", "de+contraction", "lpsr", "de+lpsr"].map((name) =>
       Object.freeze({
         arm: `${name}@${suffix}`,
         control: `control@${suffix}`,
