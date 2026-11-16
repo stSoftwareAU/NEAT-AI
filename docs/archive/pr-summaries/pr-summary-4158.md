@@ -9,10 +9,13 @@ and ablation controls, all at an equal budget of charged records. It records the
 20-seed result, which is a **negative finding**: protected refinement does not
 beat immediate competition, and it does no better or worse than spending the
 same refinement records on ordinary descendants (`no-benefit` on every
-contrast). The matched-compute contrast covers the 16 seeds where the control
-spent the treatment's allocation; four uncompletable seeds are listed and
-excluded, with an all-seeds sensitivity row. Nothing under `src/` changed, and
-nothing imports the harness. Closes #4158.
+contrast). Only 3 of the 20 seeds are **exactly matched** (the control spent the
+treatment's whole refinement allocation on the same evaluation records), so the
+matched-compute contrast is too small to conclude from; 11 more seeds are
+approximately matched (30 records short) and are reported as a separate
+sensitivity row, with an all-seeds row, and six uncompletable seeds are listed
+and excluded from both matched rows. Nothing under `src/` changed, and nothing
+imports the harness. Closes #4158.
 
 ## Spec
 
@@ -53,20 +56,25 @@ nothing imports the harness. Closes #4158.
   evaluation reached the control's current count, and the whole remainder in the
   last generation that can still be scored. Unspent records carry forward, so
   the allocation is the treatment's whatever the control's mutation counts, pen
-  occupancy or ordinary supply. Both arms then stop on the budget with the same
-  evaluation records. A pair is **matched** when the control's shortfall is
+  occupancy or ordinary supply. Both arms should then stop on the budget with
+  the same evaluation records. A pair is **exactly matched** (`fullyMatched`)
+  only when the control spent the treatment's whole refinement allocation and
+  both arms charged identical evaluation records; only those feed the
+  matched-compute contrast. A pair is **approximately matched**
+  (`nearlyMatched`) when the evaluation records are equal and the shortfall is
   under one first refinement round (60 records: a descendant's first round also
-  scores the descendant). Otherwise it is **uncompletable**: the unspent quota
-  is reported per run (`refinementQuota`, `refinementShortfall`) and per seed
-  (`matchedAllocation`, with `fullyMatched`), only matched seeds feed the
-  matched-compute contrast, and a seed whose `protect-refine` run failed leaves
-  the control as a listed failure rather than running unmatched. Two earlier
-  versions did not hold the spend equal. The first sized the control from its
-  own generation's major count (seed 4159: 3,060 records against 2,370; seed
-  4164: 2,610 against 1,980). The second replayed the schedule by generation but
-  let its full evaluations spend the budget first, so it fell short on 17 seeds
-  and the arms ended with different evaluation counts (seed 4175: 1,530
-  refinement and 118,200 evaluation records against 2,790 and 117,000).
+  scores the descendant); it feeds a separate sensitivity contrast. Otherwise it
+  is **uncompletable**. The unspent quota is reported per run
+  (`refinementQuota`, `refinementShortfall`) and per seed (`matchedAllocation`,
+  with both arms' evaluation records), and a seed whose `protect-refine` run
+  failed leaves the control as a listed failure rather than running unmatched.
+  Two earlier versions did not hold the spend equal. The first sized the control
+  from its own generation's major count (seed 4159: 3,060 records against 2,370;
+  seed 4164: 2,610 against 1,980). The second replayed the schedule by
+  generation but let its full evaluations spend the budget first, so it fell
+  short on 17 seeds and the arms ended with different evaluation counts (seed
+  4175: 1,530 refinement and 118,200 evaluation records against 2,790 and
+  117,000).
 - Assumption: refinement is a perturbation hill-climb, not backprop. It is
   application-agnostic and charges records exactly as full scoring does.
 
@@ -93,26 +101,28 @@ nothing imports the harness. Closes #4158.
 This is a script/CLI change; no UI files are touched. The full record is in
 `docs/evidence/protected-refinement-4158.md`. The machine-readable artefact is
 `docs/evidence/protected-refinement-4158.json`. It holds the manifest (code
-commit a2e62c0f plus the review change below, NEAT-AI version, Deno version,
+commit d9eace28 plus the review change below, NEAT-AI version, Deno version,
 corpus seed, seeds, settings, criteria and arms), the calibration table, the
 chosen R, the calibration cost, the per-run results, coverage (20/20 for every
 arm, no failures), the paired comparisons and the per-seed matched allocation.
 Each run also records how many major and how many ordinary descendants received
 refinement rounds (`refinedMajor`, `refinedOrdinary`) and its refinement
-schedule (`refinementSchedule`). The review change altered only
-`matched-ordinary`: every other arm, the calibration and the chosen R reproduced
-their earlier numbers, apart from `wallMs` and the NEAT-AI version.
+schedule (`refinementSchedule`). The latest review change altered only how pairs
+are classified and which contrasts are built from them: every run, the
+calibration and the chosen R reproduced the earlier artefact, apart from
+`wallMs`.
 
 Calibration cost 1,362,090 records, reported separately. The diff is the arm's
 held-out MSE minus the baseline's, so a negative diff is better:
 
-| Contrast                                           | n  | Mean diff | CI95                 | W/L  | Species ratio | Verdict      |
-| -------------------------------------------------- | -- | --------- | -------------------- | ---- | ------------- | ------------ |
-| protect-refine vs immediate                        | 20 | −2.36e-3  | [−2.12e-2, +1.59e-2] | 9/11 | 0.82          | `no-benefit` |
-| protect-refine vs matched-ordinary (matched seeds) | 16 | −3.86e-4  | [−1.75e-2, +1.58e-2] | 7/9  | 0.82          | `no-benefit` |
-| protect-refine vs matched-ordinary (all seeds)     | 20 | +5.11e-4  | [−1.36e-2, +1.35e-2] | 9/11 | 1.00          | `no-benefit` |
-| protect-refine vs refine-only                      | 20 | +8.05e-3  | [−1.66e-3, +1.98e-2] | 8/12 | 0.68          | `no-benefit` |
-| protect-refine vs protect-only                     | 20 | +3.18e-4  | [−9.22e-3, +8.03e-3] | 7/13 | 1.10          | `no-benefit` |
+| Contrast                                             | n  | Mean diff | CI95                 | W/L  | Species ratio | Verdict      |
+| ---------------------------------------------------- | -- | --------- | -------------------- | ---- | ------------- | ------------ |
+| protect-refine vs immediate                          | 20 | −2.36e-3  | [−2.12e-2, +1.59e-2] | 9/11 | 0.82          | `no-benefit` |
+| protect-refine vs matched-ordinary (exactly matched) | 3  | −3.32e-2  | [−9.48e-2, +2.11e-3] | 2/1  | 0.71          | `no-benefit` |
+| protect-refine vs matched-ordinary (approx. matched) | 14 | −2.72e-3  | [−2.19e-2, +1.54e-2] | 6/8  | 0.81          | `no-benefit` |
+| protect-refine vs matched-ordinary (all seeds)       | 20 | +5.11e-4  | [−1.36e-2, +1.35e-2] | 9/11 | 1.00          | `no-benefit` |
+| protect-refine vs refine-only                        | 20 | +8.05e-3  | [−1.66e-3, +1.98e-2] | 8/12 | 0.68          | `no-benefit` |
+| protect-refine vs protect-only                       | 20 | +3.18e-4  | [−9.22e-3, +8.03e-3] | 7/13 | 1.10          | `no-benefit` |
 
 - Useful structural mutations retained: 25.8% of major descendants survived
   their first full-score competition under `protect-refine`, against 35.4% for
@@ -120,18 +130,19 @@ held-out MSE minus the baseline's, so a negative diff is better:
 - Who was refined, summed over 20 runs per arm: `protect-refine` 603 major and 0
   ordinary; `refine-only` 689 major and 0 ordinary; `matched-ordinary` 0 major
   and 609 ordinary; `immediate` and `protect-only` none.
-- Matched allocation: 16 seeds are matched (three spent the quota exactly and
-  thirteen were one 30-record sub-sample evaluation short, which cannot pay for
-  a first round). On them `matched-ordinary` spent 42,420 of 42,810 refinement
-  records (99.1%), and for 14 of the 16 both arms charged identical evaluation
-  records (seed 4171's treatment and seed 4172's control stalled). Four seeds
-  are uncompletable (4161, 4165, 4173, 4176): the control's population converged
-  to clones, stalled at `maxGenerations` with no offspring left to refine, and
-  spent 7,770 of those seeds' 11,220 records. They are in the JSON with
-  `fullyMatched: false` and excluded from the matched contrast, and the
-  all-seeds row shows they do not change the verdict. Overall the control spent
-  50,190 of 54,030 records (92.9%). The contrast is at 99.1% of the matched
-  spend, not an exact match.
+- Matched allocation: 3 seeds are exactly matched (4160, 4163, 4175: the control
+  spent the whole quota, 7,980 of 7,980 records, on identical evaluation
+  records). 11 more are approximately matched: identical evaluation records and
+  one 30-record sub-sample evaluation short, which cannot pay for a first round.
+  Together the 14 spent 38,070 of 38,400 refinement records (99.1%). Six seeds
+  are uncompletable (4161, 4165, 4171, 4172, 4173, 4176): the arms ended on
+  different evaluation records because a run stalled at `maxGenerations` (the
+  population converged to clones and `Offspring.breed` declined them). The
+  control stalled on 4161, 4165, 4172, 4173 and 4176; the treatment stalled on
+  4171. They are in the JSON with `fullyMatched: false` and
+  `nearlyMatched: false` and are excluded from both matched contrasts. Overall
+  the control spent 50,190 of 54,030 records (92.9%). No contrast is both
+  exactly matched and large enough to conclude from.
 - Diversity: the median final species count is 1–2 and the median mean genetic
   distance is 0.000 in every arm. The toy population converges to near-clones,
   so diversity cannot separate the arms.
@@ -188,26 +199,30 @@ Criteria heading.
     records); given a hand-written schedule it spends exactly that quota once
     evaluation reaches the scheduled point, whatever mutations it draws, and
     never refines a major descendant; a stalled control reports its shortfall as
-    quota minus spend; `matchedAllocations` marks a seed matched only when the
-    shortfall is under one first round; and it is refused without a schedule;
+    quota minus spend; `matchedAllocations` marks a seed exactly matched only
+    when the control spent the whole quota on the same evaluation records, and
+    approximately matched when the evaluation records are equal and the
+    shortfall is under one first round (a control that spent the whole quota on
+    fewer evaluation records is neither); and it is refused without a schedule;
   - the holdout never guides a run;
   - `pairedComparison` pairs by seed, skipping a seed either arm lacks and
     ignoring order; it reports the arm's and the baseline's retained fraction
     separately (1 of 4 against 3 of 6 majors) and reports both as null when no
     paired run competed a major;
-  - `runStudy` completes every arm for every planned seed with five paired
-    comparisons (the matched one over the matched seeds only), chooses the
-    calibration row with the lowest median train MSE, sums the calibration cost
-    from the table, is unmoved in calibration and the chosen R when the holdout
-    changes, validates with the calibrated depth rather than a supplied default
-    outside the calibration grid (every validation result equals a direct
-    `runArm` at the chosen depth, excluding wall-clock time), and, when a
-    validation seed throws (a seed `createNeatConfig` refuses), lists it in
-    `failures` by arm, seed and the exact message `createNeatConfig` throws (for
-    `matched-ordinary`, that its `protect-refine` schedule is missing), shows
-    coverage below plan and pairs only the surviving seed; with no calibration
-    seeds it reports no chosen depth, no results or comparisons, zero coverage
-    and one failure naming the missing finite calibration MSE;
+  - `runStudy` completes every arm for every planned seed with six paired
+    comparisons (the matched ones over the exactly and the approximately matched
+    seeds only), chooses the calibration row with the lowest median train MSE,
+    sums the calibration cost from the table, is unmoved in calibration and the
+    chosen R when the holdout changes, validates with the calibrated depth
+    rather than a supplied default outside the calibration grid (every
+    validation result equals a direct `runArm` at the chosen depth, excluding
+    wall-clock time), and, when a validation seed throws (a seed
+    `createNeatConfig` refuses), lists it in `failures` by arm, seed and the
+    exact message `createNeatConfig` throws (for `matched-ordinary`, that its
+    `protect-refine` schedule is missing), shows coverage below plan and pairs
+    only the surviving seed; with no calibration seeds it reports no chosen
+    depth, no results or comparisons, zero coverage and one failure naming the
+    missing finite calibration MSE;
   - `verdict` returns benefit, harm and no-benefit, including a CI benefit with
     a species ratio under 0.8;
   - `validateSettings` accepts the defaults and names the offending field;
@@ -239,13 +254,14 @@ Criteria heading.
 - The paper was not read (see above).
 - Nine stalled runs spent less than the full budget, so their arms had less
   compute (`matched-ordinary` 5, `protect-only` 2, `protect-refine` 1,
-  `refine-only` 1). The page lists them by arm. Four of the five stalled
-  controls leave their seeds uncompletable (4161, 4165, 4173, 4176): they are
-  listed and excluded from the matched contrast, and the all-seeds row shows the
-  verdict does not depend on them.
-- The matched contrast is at 99.1% of the treatment's refinement records, not an
-  exact match: thirteen of the 16 matched seeds are one 30-record sub-sample
-  evaluation short, which cannot pay for another first round. The arms charge
-  identical evaluation records on 14 of those 16 seeds.
+  `refine-only` 1). The page lists them by arm. Five of the stalled controls and
+  the one stalled treatment leave six seeds uncompletable (4161, 4165, 4171,
+  4172, 4173, 4176): they are listed and excluded from both matched contrasts,
+  and the all-seeds row shows the verdict does not depend on them.
+- The exactly matched contrast has three pairs, so it cannot support a verdict.
+  The approximately matched contrast has 14 pairs at 99.1% of the treatment's
+  refinement records: eleven of them are one 30-record sub-sample evaluation
+  short, which cannot pay for another first round. Making the control spend
+  those 30 records exactly is not done.
 - The fixed pen capacity of 4 and the sub-sample stride of 10 were not
   calibrated; only R was.

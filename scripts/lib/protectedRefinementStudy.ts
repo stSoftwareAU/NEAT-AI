@@ -929,14 +929,25 @@ export interface MatchedAllocation {
   readonly spentRecords: number;
   /** Quota the control could not spend (zero when it spent all of it). */
   readonly shortfallRecords: number;
+  /** Evaluation records `protect-refine` charged. */
+  readonly treatedEvaluationRecords: number;
+  /** Evaluation records `matched-ordinary` charged. */
+  readonly controlEvaluationRecords: number;
   /**
-   * Whether the control spent the treatment's allocation: the shortfall is
-   * under one first refinement round ({@link firstRoundRecords}), so no further
-   * descendant could have been refined with it. Only these seeds feed the
-   * matched-compute contrast; the rest are uncompletable pairs (the control
-   * stalled or ran out of ordinary descendants) and are listed, not hidden.
+   * Whether the pair is exactly matched: the control spent the treatment's
+   * whole refinement allocation and both arms charged the same evaluation
+   * records. Only these seeds feed the matched-compute contrast.
    */
   readonly fullyMatched: boolean;
+  /**
+   * Whether the pair is at least approximately matched: equal evaluation
+   * records and a refinement shortfall under one first refinement round
+   * ({@link firstRoundRecords}), so the leftover could not have refined one
+   * more descendant. Includes every exact pair. Feeds a sensitivity contrast
+   * only; the remaining pairs are uncompletable (a run stalled, or the arms
+   * ended on different evaluation counts) and are listed, not hidden.
+   */
+  readonly nearlyMatched: boolean;
 }
 
 /** Records of a descendant's first refinement round: it scores itself too. */
@@ -956,12 +967,19 @@ export function matchedAllocations(
   const out: MatchedAllocation[] = [];
   for (const r of results) {
     if (r.arm !== "matched-ordinary" || !treated.has(r.seed)) continue;
+    const t = treated.get(r.seed)!;
+    const shortfall = r.refinementShortfall ?? 0;
+    const sameEvaluation =
+      t.recordsByPhase.evaluation === r.recordsByPhase.evaluation;
     out.push({
       seed: r.seed,
-      quotaRecords: treated.get(r.seed)!.recordsByPhase.refinement,
+      quotaRecords: t.recordsByPhase.refinement,
       spentRecords: r.recordsByPhase.refinement,
-      shortfallRecords: r.refinementShortfall ?? 0,
-      fullyMatched: (r.refinementShortfall ?? 0) < firstRound,
+      shortfallRecords: shortfall,
+      treatedEvaluationRecords: t.recordsByPhase.evaluation,
+      controlEvaluationRecords: r.recordsByPhase.evaluation,
+      fullyMatched: sameEvaluation && shortfall === 0,
+      nearlyMatched: sameEvaluation && shortfall < firstRound,
     });
   }
   return out;
@@ -1073,17 +1091,26 @@ export async function runStudy(options: StudyOptions): Promise<StudyReport> {
       refineRounds: chosen ?? settings.refineRounds,
     }),
   );
-  const matchedSeeds = new Set(
-    matchedAllocation.filter((a) => a.fullyMatched).map((a) => a.seed),
-  );
-  const onMatchedSeeds = (rs: readonly RefinementRunResult[]) =>
-    rs.filter((r) => matchedSeeds.has(r.seed));
+  const seedsWhere = (keep: (a: MatchedAllocation) => boolean) => {
+    const seeds = new Set(
+      matchedAllocation.filter(keep).map((a) => a.seed),
+    );
+    return (rs: readonly RefinementRunResult[]) =>
+      rs.filter((r) => seeds.has(r.seed));
+  };
+  const onMatchedSeeds = seedsWhere((a) => a.fullyMatched);
+  const onNearlyMatchedSeeds = seedsWhere((a) => a.nearlyMatched);
   const comparisons = chosen === null ? [] : [
     pairedComparison(primary, of("immediate"), "protect-refine vs immediate"),
     pairedComparison(
       onMatchedSeeds(primary),
       onMatchedSeeds(of("matched-ordinary")),
       "protect-refine vs matched-ordinary",
+    ),
+    pairedComparison(
+      onNearlyMatchedSeeds(primary),
+      onNearlyMatchedSeeds(of("matched-ordinary")),
+      "protect-refine vs matched-ordinary (approximately matched seeds)",
     ),
     pairedComparison(
       primary,

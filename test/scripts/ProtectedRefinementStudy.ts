@@ -488,38 +488,55 @@ function result(
   };
 }
 
-Deno.test("matchedAllocations marks a seed matched only when the shortfall cannot buy another round", () => {
-  const treated = (seed: number, refinement: number) => ({
+Deno.test("matchedAllocations counts a pair as matched only when refinement and evaluation records are both equal", () => {
+  const treated = (seed: number, evaluation: number, refinement: number) => ({
     ...result(seed, 0.1),
-    recordsByPhase: { evaluation: 0, refinement },
+    recordsByPhase: { evaluation, refinement },
   });
-  const control = (seed: number, refinement: number, shortfall: number) => ({
+  const control = (
+    seed: number,
+    evaluation: number,
+    refinement: number,
+    shortfall: number,
+  ) => ({
     ...result(seed, 0.1),
     arm: "matched-ordinary" as const,
-    recordsByPhase: { evaluation: 0, refinement },
+    recordsByPhase: { evaluation, refinement },
     refinementQuota: refinement + shortfall,
     refinementShortfall: shortfall,
   });
   const out = matchedAllocations([
-    treated(1, 100),
-    control(1, 100, 0),
-    treated(2, 100),
-    control(2, 70, 30),
-    treated(3, 100),
-    control(3, 40, 60),
-    treated(4, 100),
+    treated(1, 1000, 100),
+    control(1, 1000, 100, 0), // exact
+    treated(2, 1000, 100),
+    control(2, 1000, 70, 30), // one round short: approximate only
+    treated(3, 1000, 100),
+    control(3, 1000, 40, 60), // too short to be matched at all
+    treated(4, 1000, 100),
+    control(4, 900, 100, 0), // spent it all, but evaluated less
+    treated(5, 1000, 100),
+    control(5, 1000, 70, 30), // approximate, with a third seed unmatched
+    treated(6, 1000, 100),
   ], 60);
-  assertEquals(out.map((a) => [a.seed, a.fullyMatched]), [
-    [1, true],
-    [2, true],
-    [3, false],
-  ]);
-  assertEquals(out[2], {
-    seed: 3,
+  assertEquals(
+    out.map((a) => [a.seed, a.fullyMatched, a.nearlyMatched]),
+    [
+      [1, true, true],
+      [2, false, true],
+      [3, false, false],
+      [4, false, false],
+      [5, false, true],
+    ],
+  );
+  assertEquals(out[3], {
+    seed: 4,
     quotaRecords: 100,
-    spentRecords: 40,
-    shortfallRecords: 60,
+    spentRecords: 100,
+    shortfallRecords: 0,
+    treatedEvaluationRecords: 1000,
+    controlEvaluationRecords: 900,
     fullyMatched: false,
+    nearlyMatched: false,
   });
 });
 
@@ -651,19 +668,21 @@ Deno.test("runStudy calibrates on train MSE, validates every arm and accounts th
     }
     assertEquals(report.results.length, ARMS.length * 2);
 
-    // Five comparisons, each paired over both seeds, except the matched
-    // contrast: it counts only the seeds whose control spent the treatment's
-    // allocation, and the same pairs over every seed follow it.
-    assertEquals(report.comparisons.length, 5);
-    const matchedSeeds = report.matchedAllocation.filter((a) => a.fullyMatched);
+    // Six comparisons, each paired over both seeds, except the two matched
+    // contrasts: the exact one counts only seeds whose control spent the
+    // treatment's whole allocation on the same evaluation records, the
+    // approximate one adds the pairs within one first round, and the last
+    // follows over every seed.
+    assertEquals(report.comparisons.length, 6);
+    const expectedN: Record<string, number> = {
+      "protect-refine vs matched-ordinary": report.matchedAllocation.filter((
+        a,
+      ) => a.fullyMatched).length,
+      "protect-refine vs matched-ordinary (approximately matched seeds)": report
+        .matchedAllocation.filter((a) => a.nearlyMatched).length,
+    };
     for (const c of report.comparisons) {
-      assertEquals(
-        c.n,
-        c.label === "protect-refine vs matched-ordinary"
-          ? matchedSeeds.length
-          : 2,
-        c.label,
-      );
+      assertEquals(c.n, expectedN[c.label] ?? 2, c.label);
     }
     assertEquals(report.matchedAllocation.length, 2);
 
@@ -738,13 +757,15 @@ Deno.test("runStudy lists a run that throws and pairs only the seeds both arms c
       assertEquals(report.coverage[arm], { completed: 1, planned: 2 }, arm);
     }
     assert(report.results.every((r) => r.seed === 0));
-    const matched = report.matchedAllocation.filter((a) => a.fullyMatched);
+    const exact = report.matchedAllocation.filter((a) => a.fullyMatched);
+    const near = report.matchedAllocation.filter((a) => a.nearlyMatched);
+    const expectedN: Record<string, number> = {
+      "protect-refine vs matched-ordinary": exact.length,
+      "protect-refine vs matched-ordinary (approximately matched seeds)":
+        near.length,
+    };
     for (const c of report.comparisons) {
-      assertEquals(
-        c.n,
-        c.label === "protect-refine vs matched-ordinary" ? matched.length : 1,
-        c.label,
-      );
+      assertEquals(c.n, expectedN[c.label] ?? 1, c.label);
     }
   });
 });

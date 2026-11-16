@@ -29,9 +29,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   whether short protected refinement helps major topology mutations survive
   selection. It found no benefit: protection lowered retention of major
   descendants (0.258 against 0.354) and refinement spent on ordinary descendants
-  did no better or worse (`no-benefit`, on the 16 seeds where the control
-  matched the treatment's refinement spend; four seeds are listed as
-  uncompletable). Nothing under `src/` changed. See
+  did no better or worse (`no-benefit` on every contrast). Only 3 of 20 seeds
+  are exactly matched to the treatment's refinement and evaluation records, too
+  few to conclude from; 14 approximately matched seeds and all 20 seeds agree;
+  six seeds are listed as uncompletable. Nothing under `src/` changed. See
   [`docs/evidence/protected-refinement-4158.md`](docs/evidence/protected-refinement-4158.md).
 - **Issue #4156:** opt-in `deno task differential-weight-study`, a research
   harness that measures differential-weight (DE) offspring and delayed

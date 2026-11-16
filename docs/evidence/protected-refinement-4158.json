@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "codeVersion": "a2e62c0f",
+    "codeVersion": "d9eace28",
     "neatAiVersion": "7.1.23",
     "deno": "2.9.8",
     "corpusSeed": 4158,
@@ -86,7 +86,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 56,
-      "wallMs": 234.51666599999953,
+      "wallMs": 206.65754199999992,
       "majorProduced": 37,
       "majorByKind": {
         "addNeuron": 2,
@@ -260,7 +260,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 48,
-      "wallMs": 263.6297910000003,
+      "wallMs": 269.0460000000003,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 6,
@@ -293,7 +293,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 65,
-      "wallMs": 230.66683399999965,
+      "wallMs": 244.92933400000038,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 6,
@@ -427,7 +427,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 52,
-      "wallMs": 219.24570800000038,
+      "wallMs": 218.22708300000068,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 5,
@@ -569,7 +569,7 @@
       "refinementQuota": 2910,
       "refinementShortfall": 30,
       "generations": 51,
-      "wallMs": 261.3558750000002,
+      "wallMs": 237.8129170000002,
       "majorProduced": 43,
       "majorByKind": {
         "addNeuron": 2,
@@ -602,7 +602,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 88,
-      "wallMs": 304.3148340000007,
+      "wallMs": 301.0175419999996,
       "majorProduced": 35,
       "majorByKind": {
         "addNeuron": 5,
@@ -768,7 +768,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 70,
-      "wallMs": 258.9284169999992,
+      "wallMs": 241.39179200000035,
       "majorProduced": 29,
       "majorByKind": {
         "addNeuron": 4,
@@ -801,7 +801,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 58,
-      "wallMs": 222.76187500000015,
+      "wallMs": 209.98358299999927,
       "majorProduced": 27,
       "majorByKind": {
         "addNeuron": 4,
@@ -943,7 +943,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 46,
-      "wallMs": 223.78541700000096,
+      "wallMs": 189.61833300000035,
       "majorProduced": 32,
       "majorByKind": {
         "addNeuron": 8,
@@ -1065,7 +1065,7 @@
       "refinementQuota": 2370,
       "refinementShortfall": 30,
       "generations": 60,
-      "wallMs": 259.743625000001,
+      "wallMs": 250.9539590000004,
       "majorProduced": 30,
       "majorByKind": {
         "addNeuron": 6,
@@ -1098,7 +1098,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 48,
-      "wallMs": 299.2838760000013,
+      "wallMs": 274.03629199999887,
       "majorProduced": 32,
       "majorByKind": {
         "addNeuron": 6,
@@ -1288,7 +1288,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 48,
-      "wallMs": 253.04241700000057,
+      "wallMs": 223.52700000000004,
       "majorProduced": 42,
       "majorByKind": {
         "addNeuron": 6,
@@ -1321,7 +1321,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 44,
-      "wallMs": 236.0912500000013,
+      "wallMs": 238.48400000000038,
       "majorProduced": 30,
       "majorByKind": {
         "addNeuron": 8,
@@ -1451,7 +1451,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 121,
-      "wallMs": 310.1648759999989,
+      "wallMs": 289.46908299999996,
       "majorProduced": 32,
       "majorByKind": {
         "addNeuron": 5,
@@ -1585,7 +1585,7 @@
       "refinementQuota": 3150,
       "refinementShortfall": 0,
       "generations": 42,
-      "wallMs": 258.47799999999916,
+      "wallMs": 243.61987500000032,
       "majorProduced": 45,
       "majorByKind": {
         "addNeuron": 8,
@@ -1618,7 +1618,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 231,
-      "wallMs": 389.7442919999994,
+      "wallMs": 364.3440420000006,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 4,
@@ -1860,7 +1860,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 145,
-      "wallMs": 334.9879579999997,
+      "wallMs": 352.51458300000013,
       "majorProduced": 39,
       "majorByKind": {
         "addNeuron": 5,
@@ -1893,7 +1893,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 128,
-      "wallMs": 306.85845899999913,
+      "wallMs": 325.08016599999974,
       "majorProduced": 41,
       "majorByKind": {
         "addNeuron": 8,
@@ -2011,7 +2011,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 54,
-      "wallMs": 278.1498339999998,
+      "wallMs": 237.28462500000023,
       "majorProduced": 26,
       "majorByKind": {
         "addNeuron": 3,
@@ -2193,7 +2193,7 @@
       "refinementQuota": 3510,
       "refinementShortfall": 210,
       "generations": 2000,
-      "wallMs": 2560.828001,
+      "wallMs": 2459.0553760000003,
       "majorProduced": 37,
       "majorByKind": {
         "addNeuron": 5,
@@ -2226,7 +2226,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 54,
-      "wallMs": 269.6077919999989,
+      "wallMs": 268.17812499999854,
       "majorProduced": 34,
       "majorByKind": {
         "addNeuron": 8,
@@ -2376,7 +2376,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 38,
-      "wallMs": 268.9205839999995,
+      "wallMs": 269.27570800000103,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 5,
@@ -2409,7 +2409,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 68,
-      "wallMs": 302.76629199999843,
+      "wallMs": 267.670709,
       "majorProduced": 30,
       "majorByKind": {
         "addNeuron": 5,
@@ -2527,7 +2527,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 45,
-      "wallMs": 256.92391599999974,
+      "wallMs": 272.16570800000045,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 6,
@@ -2657,7 +2657,7 @@
       "refinementQuota": 2700,
       "refinementShortfall": 30,
       "generations": 40,
-      "wallMs": 265.39408399999957,
+      "wallMs": 241.82358300000124,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 5,
@@ -2690,7 +2690,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 75,
-      "wallMs": 277.53337499999907,
+      "wallMs": 320.01329199999964,
       "majorProduced": 27,
       "majorByKind": {
         "addNeuron": 7,
@@ -2864,7 +2864,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 148,
-      "wallMs": 412.62216699999954,
+      "wallMs": 348.4730840000011,
       "majorProduced": 24,
       "majorByKind": {
         "addNeuron": 6,
@@ -2897,7 +2897,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 68,
-      "wallMs": 223.0071250000001,
+      "wallMs": 230.10275000000183,
       "majorProduced": 25,
       "majorByKind": {
         "addNeuron": 4,
@@ -3023,7 +3023,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 59,
-      "wallMs": 285.8570409999993,
+      "wallMs": 274.643541999998,
       "majorProduced": 30,
       "majorByKind": {
         "addNeuron": 9,
@@ -3141,7 +3141,7 @@
       "refinementQuota": 2040,
       "refinementShortfall": 0,
       "generations": 45,
-      "wallMs": 223.70324999999866,
+      "wallMs": 209.7590420000015,
       "majorProduced": 29,
       "majorByKind": {
         "addNeuron": 8,
@@ -3174,7 +3174,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 578,
-      "wallMs": 1015.2702920000011,
+      "wallMs": 933.2932510000028,
       "majorProduced": 39,
       "majorByKind": {
         "addNeuron": 7,
@@ -3312,7 +3312,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 37,
-      "wallMs": 263.7674589999988,
+      "wallMs": 240.49083400000018,
       "majorProduced": 28,
       "majorByKind": {
         "addNeuron": 4,
@@ -3345,7 +3345,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 59,
-      "wallMs": 272.84229199999754,
+      "wallMs": 277.51066699999865,
       "majorProduced": 37,
       "majorByKind": {
         "addNeuron": 5,
@@ -3491,7 +3491,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 76,
-      "wallMs": 320.2281249999978,
+      "wallMs": 274.4653750000034,
       "majorProduced": 34,
       "majorByKind": {
         "addNeuron": 5,
@@ -3601,7 +3601,7 @@
       "refinementQuota": 1980,
       "refinementShortfall": 30,
       "generations": 59,
-      "wallMs": 277.4086669999997,
+      "wallMs": 254.41579199999978,
       "majorProduced": 45,
       "majorByKind": {
         "addNeuron": 6,
@@ -3634,7 +3634,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 102,
-      "wallMs": 307.29354199999943,
+      "wallMs": 252.43512499999997,
       "majorProduced": 35,
       "majorByKind": {
         "addNeuron": 6,
@@ -3832,7 +3832,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 133,
-      "wallMs": 309.4888749999991,
+      "wallMs": 262.1257500000029,
       "majorProduced": 29,
       "majorByKind": {
         "addNeuron": 1,
@@ -3865,7 +3865,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 85,
-      "wallMs": 257.4459999999999,
+      "wallMs": 233.7720420000005,
       "majorProduced": 37,
       "majorByKind": {
         "addNeuron": 6,
@@ -4015,7 +4015,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 2000,
-      "wallMs": 2543.201917999999,
+      "wallMs": 2479.597334000002,
       "majorProduced": 31,
       "majorByKind": {
         "addNeuron": 6,
@@ -4117,7 +4117,7 @@
       "refinementQuota": 2430,
       "refinementShortfall": 750,
       "generations": 2000,
-      "wallMs": 3053.088418000003,
+      "wallMs": 2954.344126,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 5,
@@ -4150,7 +4150,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 145,
-      "wallMs": 373.0260419999977,
+      "wallMs": 350.19058399999994,
       "majorProduced": 50,
       "majorByKind": {
         "addNeuron": 6,
@@ -4364,7 +4364,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 91,
-      "wallMs": 280.82258300000103,
+      "wallMs": 257.1380420000023,
       "majorProduced": 30,
       "majorByKind": {
         "addNeuron": 6,
@@ -4397,7 +4397,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 255,
-      "wallMs": 419.2474169999987,
+      "wallMs": 424.5150829999984,
       "majorProduced": 23,
       "majorByKind": {
         "addNeuron": 6,
@@ -4579,7 +4579,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 81,
-      "wallMs": 330.26058300000295,
+      "wallMs": 330.4154989999988,
       "majorProduced": 42,
       "majorByKind": {
         "addNeuron": 10,
@@ -4709,7 +4709,7 @@
       "refinementQuota": 2610,
       "refinementShortfall": 30,
       "generations": 98,
-      "wallMs": 295.1219999999994,
+      "wallMs": 297.4451670000017,
       "majorProduced": 44,
       "majorByKind": {
         "addNeuron": 9,
@@ -4742,7 +4742,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 42,
-      "wallMs": 289.9912089999998,
+      "wallMs": 274.2775839999995,
       "majorProduced": 26,
       "majorByKind": {
         "addNeuron": 7,
@@ -4896,7 +4896,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 49,
-      "wallMs": 230.99104199999783,
+      "wallMs": 255.48112500000207,
       "majorProduced": 27,
       "majorByKind": {
         "addNeuron": 3,
@@ -4929,7 +4929,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 79,
-      "wallMs": 307.5561669999988,
+      "wallMs": 264.94304199999897,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 3,
@@ -5083,7 +5083,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 90,
-      "wallMs": 277.58495799999946,
+      "wallMs": 289.90870899999936,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 9,
@@ -5205,7 +5205,7 @@
       "refinementQuota": 2370,
       "refinementShortfall": 30,
       "generations": 58,
-      "wallMs": 230.64591700000165,
+      "wallMs": 234.9983749999992,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 6,
@@ -5238,7 +5238,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 74,
-      "wallMs": 275.8809579999979,
+      "wallMs": 255.08695799999987,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 6,
@@ -5444,7 +5444,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 63,
-      "wallMs": 275.10795900000085,
+      "wallMs": 266.4192920000023,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 7,
@@ -5477,7 +5477,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 2000,
-      "wallMs": 3045.8918349999985,
+      "wallMs": 2806.2810430000027,
       "majorProduced": 19,
       "majorByKind": {
         "addNeuron": 4,
@@ -5603,7 +5603,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 114,
-      "wallMs": 320.25483400000303,
+      "wallMs": 302.6715000000004,
       "majorProduced": 30,
       "majorByKind": {
         "addNeuron": 5,
@@ -5765,7 +5765,7 @@
       "refinementQuota": 3060,
       "refinementShortfall": 30,
       "generations": 150,
-      "wallMs": 363.74954199999775,
+      "wallMs": 366.33616699999766,
       "majorProduced": 41,
       "majorByKind": {
         "addNeuron": 14,
@@ -5798,7 +5798,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 77,
-      "wallMs": 289.93200100000104,
+      "wallMs": 253.03420900000128,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 6,
@@ -6004,7 +6004,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 68,
-      "wallMs": 269.3259589999943,
+      "wallMs": 287.7256249999991,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 2,
@@ -6037,7 +6037,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 68,
-      "wallMs": 273.83162500000617,
+      "wallMs": 299.57137499999953,
       "majorProduced": 29,
       "majorByKind": {
         "addNeuron": 8,
@@ -6175,7 +6175,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 62,
-      "wallMs": 277.320292000004,
+      "wallMs": 278.89537500000006,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 3,
@@ -6341,7 +6341,7 @@
       "refinementQuota": 3150,
       "refinementShortfall": 30,
       "generations": 53,
-      "wallMs": 305.58612499999435,
+      "wallMs": 282.5162510000009,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 5,
@@ -6374,7 +6374,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 51,
-      "wallMs": 283.89762500000506,
+      "wallMs": 281.4272079999937,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 3,
@@ -6608,7 +6608,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 115,
-      "wallMs": 373.53600000000006,
+      "wallMs": 348.42279199999757,
       "majorProduced": 35,
       "majorByKind": {
         "addNeuron": 4,
@@ -6641,7 +6641,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 75,
-      "wallMs": 304.66575100000045,
+      "wallMs": 307.674291000003,
       "majorProduced": 26,
       "majorByKind": {
         "addNeuron": 5,
@@ -6775,7 +6775,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 128,
-      "wallMs": 379.7011249999996,
+      "wallMs": 412.72225099999923,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 7,
@@ -6917,7 +6917,7 @@
       "refinementQuota": 3150,
       "refinementShortfall": 30,
       "generations": 41,
-      "wallMs": 244.53050000000076,
+      "wallMs": 236.63108300000022,
       "majorProduced": 32,
       "majorByKind": {
         "addNeuron": 10,
@@ -6950,7 +6950,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 77,
-      "wallMs": 321.0353749999995,
+      "wallMs": 299.7514169999995,
       "majorProduced": 41,
       "majorByKind": {
         "addNeuron": 4,
@@ -7088,7 +7088,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 2000,
-      "wallMs": 3132.387084000002,
+      "wallMs": 3169.0447520000016,
       "majorProduced": 20,
       "majorByKind": {
         "addNeuron": 1,
@@ -7121,7 +7121,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 61,
-      "wallMs": 248.82162499999686,
+      "wallMs": 253.5715829999972,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 4,
@@ -7283,7 +7283,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 54,
-      "wallMs": 253.2559159999946,
+      "wallMs": 251.15629199999967,
       "majorProduced": 41,
       "majorByKind": {
         "addNeuron": 2,
@@ -7385,7 +7385,7 @@
       "refinementQuota": 1710,
       "refinementShortfall": 30,
       "generations": 94,
-      "wallMs": 292.8358750000043,
+      "wallMs": 322.2664999999979,
       "majorProduced": 31,
       "majorByKind": {
         "addNeuron": 2,
@@ -7418,7 +7418,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 39,
-      "wallMs": 259.74775000000227,
+      "wallMs": 250.03733400000056,
       "majorProduced": 40,
       "majorByKind": {
         "addNeuron": 6,
@@ -7604,7 +7604,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 52,
-      "wallMs": 260.9179159999985,
+      "wallMs": 300.93308300000353,
       "majorProduced": 32,
       "majorByKind": {
         "addNeuron": 8,
@@ -7637,7 +7637,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 46,
-      "wallMs": 279.76866699999664,
+      "wallMs": 267.58262500000274,
       "majorProduced": 36,
       "majorByKind": {
         "addNeuron": 7,
@@ -7775,7 +7775,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 43,
-      "wallMs": 291.70237500000076,
+      "wallMs": 235.45150099999591,
       "majorProduced": 37,
       "majorByKind": {
         "addNeuron": 9,
@@ -7913,7 +7913,7 @@
       "refinementQuota": 2700,
       "refinementShortfall": 30,
       "generations": 2000,
-      "wallMs": 2846.1638349999994,
+      "wallMs": 2826.493417999998,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 7,
@@ -7946,7 +7946,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 100,
-      "wallMs": 270.74437500000204,
+      "wallMs": 265.908666000003,
       "majorProduced": 41,
       "majorByKind": {
         "addNeuron": 8,
@@ -8120,7 +8120,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 42,
-      "wallMs": 252.8392090000052,
+      "wallMs": 298.052208000001,
       "majorProduced": 40,
       "majorByKind": {
         "addNeuron": 10,
@@ -8153,7 +8153,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 81,
-      "wallMs": 298.3591249999954,
+      "wallMs": 310.37191699999676,
       "majorProduced": 34,
       "majorByKind": {
         "addNeuron": 7,
@@ -8299,7 +8299,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 63,
-      "wallMs": 257.16599999999744,
+      "wallMs": 299.9070419999989,
       "majorProduced": 34,
       "majorByKind": {
         "addNeuron": 5,
@@ -8409,7 +8409,7 @@
       "refinementQuota": 3030,
       "refinementShortfall": 1200,
       "generations": 2000,
-      "wallMs": 2501.667626000002,
+      "wallMs": 2521.7594180000015,
       "majorProduced": 22,
       "majorByKind": {
         "addNeuron": 8,
@@ -8442,7 +8442,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 75,
-      "wallMs": 315.0989589999954,
+      "wallMs": 308.4930420000019,
       "majorProduced": 31,
       "majorByKind": {
         "addNeuron": 4,
@@ -8604,7 +8604,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 44,
-      "wallMs": 280.1088749999981,
+      "wallMs": 257.8777090000003,
       "majorProduced": 33,
       "majorByKind": {
         "addNeuron": 8,
@@ -8637,7 +8637,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 65,
-      "wallMs": 301.97762499999953,
+      "wallMs": 303.3454169999968,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 6,
@@ -8763,7 +8763,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 52,
-      "wallMs": 305.7425000000003,
+      "wallMs": 298.94374999999854,
       "majorProduced": 32,
       "majorByKind": {
         "addNeuron": 5,
@@ -8885,7 +8885,7 @@
       "refinementQuota": 2520,
       "refinementShortfall": 30,
       "generations": 41,
-      "wallMs": 261.3018749999974,
+      "wallMs": 256.1833329999936,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 4,
@@ -8918,7 +8918,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 111,
-      "wallMs": 384.5968750000029,
+      "wallMs": 306.62112499999785,
       "majorProduced": 49,
       "majorByKind": {
         "addNeuron": 12,
@@ -9124,7 +9124,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 85,
-      "wallMs": 269.50108299999556,
+      "wallMs": 303.4424999999974,
       "majorProduced": 35,
       "majorByKind": {
         "addNeuron": 8,
@@ -9157,7 +9157,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 94,
-      "wallMs": 283.63083400000323,
+      "wallMs": 311.6960420000032,
       "majorProduced": 39,
       "majorByKind": {
         "addNeuron": 11,
@@ -9291,7 +9291,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 85,
-      "wallMs": 301.6000419999982,
+      "wallMs": 332.97645800000464,
       "majorProduced": 34,
       "majorByKind": {
         "addNeuron": 6,
@@ -9405,7 +9405,7 @@
       "refinementQuota": 2790,
       "refinementShortfall": 0,
       "generations": 34,
-      "wallMs": 279.98458299999766,
+      "wallMs": 270.9836670000004,
       "majorProduced": 44,
       "majorByKind": {
         "addNeuron": 9,
@@ -9438,7 +9438,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 550,
-      "wallMs": 859.5396249999976,
+      "wallMs": 804.2478750000009,
       "majorProduced": 31,
       "majorByKind": {
         "addNeuron": 7,
@@ -9620,7 +9620,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 104,
-      "wallMs": 285.28137499999866,
+      "wallMs": 249.50520900000265,
       "majorProduced": 28,
       "majorByKind": {
         "addNeuron": 5,
@@ -9653,7 +9653,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 78,
-      "wallMs": 264.62358400000085,
+      "wallMs": 234.36858300000313,
       "majorProduced": 35,
       "majorByKind": {
         "addNeuron": 7,
@@ -9799,7 +9799,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 48,
-      "wallMs": 243.23670799999672,
+      "wallMs": 227.7992499999964,
       "majorProduced": 40,
       "majorByKind": {
         "addNeuron": 7,
@@ -9869,7 +9869,7 @@
       "refinementQuota": 2250,
       "refinementShortfall": 1290,
       "generations": 2000,
-      "wallMs": 2192.486251000002,
+      "wallMs": 2137.6571260000055,
       "majorProduced": 18,
       "majorByKind": {
         "addNeuron": 4,
@@ -9902,7 +9902,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 113,
-      "wallMs": 301.4123339999933,
+      "wallMs": 296.92749999999796,
       "majorProduced": 39,
       "majorByKind": {
         "addNeuron": 6,
@@ -10144,7 +10144,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 104,
-      "wallMs": 321.53625000000466,
+      "wallMs": 293.0071670000034,
       "majorProduced": 41,
       "majorByKind": {
         "addNeuron": 4,
@@ -10177,7 +10177,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 2000,
-      "wallMs": 2885.228710000003,
+      "wallMs": 2672.852501000001,
       "majorProduced": 22,
       "majorByKind": {
         "addNeuron": 4,
@@ -10351,7 +10351,7 @@
       "refinementQuota": null,
       "refinementShortfall": null,
       "generations": 112,
-      "wallMs": 340.9967089999991,
+      "wallMs": 306.3216669999965,
       "majorProduced": 41,
       "majorByKind": {
         "addNeuron": 9,
@@ -10517,7 +10517,7 @@
       "refinementQuota": 3600,
       "refinementShortfall": 30,
       "generations": 69,
-      "wallMs": 260.99779199999466,
+      "wallMs": 238.81470900000568,
       "majorProduced": 38,
       "majorByKind": {
         "addNeuron": 6,
@@ -10557,19 +10557,36 @@
     },
     {
       "label": "protect-refine vs matched-ordinary",
-      "n": 16,
-      "meanDiff": -0.0003862105625196782,
+      "n": 3,
+      "meanDiff": -0.03317378388148173,
       "ci95": {
-        "lower": -0.01746850746379541,
-        "upper": 0.015758465843623382
+        "lower": -0.09481496095929953,
+        "upper": 0.002113280153578194
       },
-      "wins": 7,
-      "losses": 9,
+      "wins": 2,
+      "losses": 1,
       "ties": 0,
-      "winFraction": 0.4375,
-      "speciesRatio": 0.8214285714285714,
-      "retainedFractionArm": 0.26961770623742454,
-      "retainedFractionBaseline": 0.31543624161073824,
+      "winFraction": 0.6666666666666666,
+      "speciesRatio": 0.7142857142857143,
+      "retainedFractionArm": 0.3854166666666667,
+      "retainedFractionBaseline": 0.4188034188034188,
+      "verdict": "no-benefit"
+    },
+    {
+      "label": "protect-refine vs matched-ordinary (approximately matched seeds)",
+      "n": 14,
+      "meanDiff": -0.002717491564739267,
+      "ci95": {
+        "lower": -0.021868335599568318,
+        "upper": 0.015394742676938175
+      },
+      "wins": 6,
+      "losses": 8,
+      "ties": 0,
+      "winFraction": 0.42857142857142855,
+      "speciesRatio": 0.8076923076923077,
+      "retainedFractionArm": 0.27455357142857145,
+      "retainedFractionBaseline": 0.3176691729323308,
       "verdict": "no-benefit"
     },
     {
@@ -10653,140 +10670,200 @@
       "quotaRecords": 2910,
       "spentRecords": 2880,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117000,
+      "controlEvaluationRecords": 117000,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4159,
       "quotaRecords": 2370,
       "spentRecords": 2340,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117600,
+      "controlEvaluationRecords": 117600,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4160,
       "quotaRecords": 3150,
       "spentRecords": 3150,
       "shortfallRecords": 0,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 116700,
+      "controlEvaluationRecords": 116700,
+      "fullyMatched": true,
+      "nearlyMatched": true
     },
     {
       "seed": 4161,
       "quotaRecords": 3510,
       "spentRecords": 3300,
       "shortfallRecords": 210,
-      "fullyMatched": false
+      "treatedEvaluationRecords": 116400,
+      "controlEvaluationRecords": 101400,
+      "fullyMatched": false,
+      "nearlyMatched": false
     },
     {
       "seed": 4162,
       "quotaRecords": 2700,
       "spentRecords": 2670,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117300,
+      "controlEvaluationRecords": 117300,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4163,
       "quotaRecords": 2040,
       "spentRecords": 2040,
       "shortfallRecords": 0,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117900,
+      "controlEvaluationRecords": 117900,
+      "fullyMatched": true,
+      "nearlyMatched": true
     },
     {
       "seed": 4164,
       "quotaRecords": 1980,
       "spentRecords": 1950,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117900,
+      "controlEvaluationRecords": 117900,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4165,
       "quotaRecords": 2430,
       "spentRecords": 1680,
       "shortfallRecords": 750,
-      "fullyMatched": false
+      "treatedEvaluationRecords": 117300,
+      "controlEvaluationRecords": 97200,
+      "fullyMatched": false,
+      "nearlyMatched": false
     },
     {
       "seed": 4166,
       "quotaRecords": 2610,
       "spentRecords": 2580,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117300,
+      "controlEvaluationRecords": 117300,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4167,
       "quotaRecords": 2370,
       "spentRecords": 2340,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117600,
+      "controlEvaluationRecords": 117600,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4168,
       "quotaRecords": 3060,
       "spentRecords": 3030,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 116700,
+      "controlEvaluationRecords": 116700,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4169,
       "quotaRecords": 3150,
       "spentRecords": 3120,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 116700,
+      "controlEvaluationRecords": 116700,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4170,
       "quotaRecords": 3150,
       "spentRecords": 3120,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 116700,
+      "controlEvaluationRecords": 116700,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4171,
       "quotaRecords": 1710,
       "spentRecords": 1680,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 90000,
+      "controlEvaluationRecords": 118200,
+      "fullyMatched": false,
+      "nearlyMatched": false
     },
     {
       "seed": 4172,
       "quotaRecords": 2700,
       "spentRecords": 2670,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117300,
+      "controlEvaluationRecords": 115200,
+      "fullyMatched": false,
+      "nearlyMatched": false
     },
     {
       "seed": 4173,
       "quotaRecords": 3030,
       "spentRecords": 1830,
       "shortfallRecords": 1200,
-      "fullyMatched": false
+      "treatedEvaluationRecords": 116700,
+      "controlEvaluationRecords": 84900,
+      "fullyMatched": false,
+      "nearlyMatched": false
     },
     {
       "seed": 4174,
       "quotaRecords": 2520,
       "spentRecords": 2490,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117300,
+      "controlEvaluationRecords": 117300,
+      "fullyMatched": false,
+      "nearlyMatched": true
     },
     {
       "seed": 4175,
       "quotaRecords": 2790,
       "spentRecords": 2790,
       "shortfallRecords": 0,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 117000,
+      "controlEvaluationRecords": 117000,
+      "fullyMatched": true,
+      "nearlyMatched": true
     },
     {
       "seed": 4176,
       "quotaRecords": 2250,
       "spentRecords": 960,
       "shortfallRecords": 1290,
-      "fullyMatched": false
+      "treatedEvaluationRecords": 117600,
+      "controlEvaluationRecords": 71100,
+      "fullyMatched": false,
+      "nearlyMatched": false
     },
     {
       "seed": 4177,
       "quotaRecords": 3600,
       "spentRecords": 3570,
       "shortfallRecords": 30,
-      "fullyMatched": true
+      "treatedEvaluationRecords": 116400,
+      "controlEvaluationRecords": 116400,
+      "fullyMatched": false,
+      "nearlyMatched": true
     }
   ]
 }
