@@ -135,6 +135,10 @@ Tuning guides and benchmark research.
   own outcomes (Jin 2011 §5). Off by default; it observes and changes no
   selection. What it measured is in
   [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
+- **[evidence/island-exchange-4159.md](evidence/island-exchange-4159.md)** — the
+  island-exchange study (Issue #4159): a neighbour-only ring against the global
+  champion broadcast on equal budgets. A negative finding: the ring keeps
+  topology diverse but does not beat the broadcast on held-out error.
 - **[evidence/protected-refinement-4158.md](evidence/protected-refinement-4158.md)**
   — a negative result (Issue #4158): holding major topology mutations in a
   protected pen for short refinement rounds lowered their retention and did not
