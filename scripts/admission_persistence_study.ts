@@ -10,6 +10,10 @@
  * deno task admission-persistence-study --seeds=20 --json=/tmp/aps.json
  * ```
  *
+ * Each seed runs in its own child process (a hidden `--single-seed=<n>
+ * --out=<path>` worker mode), so heap growth across seeds cannot end the study;
+ * a child that dies is recorded as a failure for both arms of that seed.
+ *
  * The objective is synthetic (see `scripts/lib/admissionPersistenceStudy.ts`).
  * A measurement harness, not a production code path.
  */
@@ -85,6 +89,106 @@ function pooled(runs: readonly AdmissionArmResult[]) {
   };
 }
 
+type RunFailure = { seed: number; arm: AdmissionArm; message: string };
+type SeedOutcome = {
+  seed: number;
+  runs: AdmissionArmResult[];
+  failures: RunFailure[];
+};
+
+function printRun(seed: number, result: AdmissionArmResult): void {
+  const last = result.persistence.horizons.at(-1);
+  console.log(
+    `  seed ${seed}  ${result.arm.padEnd(8)} holdout ${
+      result.finalHoldoutMse.toFixed(6)
+    }  admission ${
+      ((result.persistence.admissionRate ?? 0) * 100).toFixed(1)
+    }%  contribution@${last?.horizon} ${
+      last?.contributionRateGivenAdmitted === null || last === undefined
+        ? "n/a"
+        : last.contributionRateGivenAdmitted.toFixed(3)
+    }  failures ${result.failures}`,
+  );
+}
+
+/** Worker mode: run both arms for one seed and write the outcome to `outPath`. */
+async function runSingleSeed(
+  seed: number,
+  settings: AdmissionSettings,
+  outPath: string,
+): Promise<void> {
+  const seeded = { ...settings, seed };
+  const corpus = buildStratifiedCorpus(seeded);
+  const outcome: SeedOutcome = { seed, runs: [], failures: [] };
+  for (const arm of ADMISSION_ARMS) {
+    try {
+      outcome.runs.push(runArm(arm, seeded, corpus));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      outcome.failures.push({ seed, arm, message });
+    }
+  }
+  await Deno.writeTextFile(outPath, JSON.stringify(outcome));
+}
+
+/** Run one seed in its own process so its heap is released afterwards. */
+async function runSeedInChild(
+  seed: number,
+  settings: AdmissionSettings,
+  tempDir: string,
+): Promise<SeedOutcome> {
+  const outPath = `${tempDir}/seed-${seed}.json`;
+  const scriptPath = import.meta.filename ??
+    new URL(import.meta.url).pathname;
+  const command = new Deno.Command(Deno.execPath(), {
+    args: [
+      "run",
+      "--allow-read",
+      "--allow-write",
+      "--allow-env",
+      "--allow-ffi",
+      scriptPath,
+      `--single-seed=${seed}`,
+      `--out=${outPath}`,
+      `--generations=${settings.generations}`,
+      `--population=${settings.populationSize}`,
+      `--offspring=${settings.offspringPerGeneration}`,
+      `--records=${settings.recordsPerSplit}`,
+    ],
+    stdout: "inherit",
+    stderr: "piped",
+  });
+  const output = await command.output();
+  const stderr = new TextDecoder().decode(output.stderr);
+  let problem: string | undefined;
+  if (output.code !== 0) {
+    problem = `exit code ${output.code}`;
+  } else {
+    try {
+      const parsed = JSON.parse(await Deno.readTextFile(outPath));
+      if (Array.isArray(parsed?.runs) && Array.isArray(parsed?.failures)) {
+        return parsed as SeedOutcome;
+      }
+      problem = "output file had an unexpected shape";
+    } catch (error) {
+      problem = `output file missing or unparseable (${
+        error instanceof Error ? error.message : String(error)
+      })`;
+    }
+  }
+  const lines = stderr.split("\n").map((l) => l.trim()).filter((l) =>
+    l.length > 0
+  );
+  const cause = lines.findLast((l) => /out of memory|Fatal|error/i.test(l)) ??
+    lines.at(-1) ?? "no stderr output";
+  const message = `seed child failed: ${problem}; stderr: ${cause}`;
+  return {
+    seed,
+    runs: [],
+    failures: ADMISSION_ARMS.map((arm) => ({ seed, arm, message })),
+  };
+}
+
 /** Run the study; `args` are the CLI arguments. */
 export async function main(args: string[]): Promise<number> {
   const seeds = intArg(args, "seeds", PREDECLARED_SEEDS);
@@ -113,6 +217,13 @@ export async function main(args: string[]): Promise<number> {
       DEFAULT_ADMISSION_SETTINGS.recordsPerSplit,
     ),
   };
+  const singleSeed = stringArg(args, "single-seed");
+  const outPath = stringArg(args, "out");
+  if (singleSeed !== undefined) {
+    if (outPath === undefined) throw new Error("--single-seed needs --out");
+    await runSingleSeed(Number(singleSeed), settings, outPath);
+    return 0;
+  }
   const jsonPath = stringArg(args, "json");
   const seedList = Array.from({ length: seeds }, (_, i) => firstSeed + i);
   const runs: AdmissionArmResult[] = [];
@@ -126,31 +237,22 @@ export async function main(args: string[]): Promise<number> {
       `${settings.offspringPerGeneration} offspring, ${settings.recordsPerSplit} records per split`,
   );
 
-  for (const seed of seedList) {
-    const seeded = { ...settings, seed };
-    const corpus = buildStratifiedCorpus(seeded);
-    for (const arm of ADMISSION_ARMS) {
-      try {
-        const result = runArm(arm, seeded, corpus);
-        runs.push(result);
-        const last = result.persistence.horizons.at(-1);
+  const tempDir = await Deno.makeTempDir({ prefix: "admission-study-" });
+  try {
+    for (const seed of seedList) {
+      // deno-lint-ignore no-await-in-loop -- sequential on purpose: one child at a time
+      const outcome = await runSeedInChild(seed, settings, tempDir);
+      runs.push(...outcome.runs);
+      failuresRun.push(...outcome.failures);
+      for (const result of outcome.runs) printRun(seed, result);
+      for (const f of outcome.failures) {
         console.log(
-          `  seed ${seed}  ${arm.padEnd(8)} holdout ${
-            result.finalHoldoutMse.toFixed(6)
-          }  admission ${
-            ((result.persistence.admissionRate ?? 0) * 100).toFixed(1)
-          }%  contribution@${last?.horizon} ${
-            last?.contributionRateGivenAdmitted === null || last === undefined
-              ? "n/a"
-              : last.contributionRateGivenAdmitted.toFixed(3)
-          }  failures ${result.failures}`,
+          `  seed ${seed}  ${f.arm.padEnd(8)} FAILED: ${f.message}`,
         );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        failuresRun.push({ seed, arm, message });
-        console.log(`  seed ${seed}  ${arm.padEnd(8)} FAILED: ${message}`);
       }
     }
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
   }
 
   const byArm = (arm: AdmissionArm) => runs.filter((r) => r.arm === arm);
