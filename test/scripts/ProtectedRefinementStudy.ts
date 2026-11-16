@@ -27,6 +27,8 @@ import {
   chooseRefineRounds,
   classifyMutation,
   DEFAULT_REFINEMENT_SETTINGS,
+  firstRoundRecords,
+  matchedAllocations,
   pairedComparison,
   type RefinementArm,
   type RefinementRunResult,
@@ -193,7 +195,7 @@ async function run(
   // The matched control replays the same seed's protect-refine spend.
   const schedule = arm === "matched-ordinary"
     ? (await runArm("protect-refine", seed, settings, corpus))
-      .refinementByGeneration
+      .refinementSchedule
     : undefined;
   return await runArm(arm, seed, settings, corpus, schedule);
 }
@@ -291,43 +293,109 @@ Deno.test("refinement goes to the descendants the arm names", async () => {
   });
 });
 
+// Large enough that neither arm's population converges to clones before the
+// budget is spent, so both stop on the budget and the arms can be compared.
+const MID: RefinementSettings = {
+  ...DEFAULT_REFINEMENT_SETTINGS,
+  populationSize: 12,
+  budgetRecords: 24_000,
+  trainRecords: 100,
+  holdoutRecords: 60,
+  penCapacity: 3,
+  refineRounds: 2,
+};
+
 Deno.test("matched-ordinary spends the refinement records protect-refine spent", async () => {
   await withRngTestLock(async () => {
-    const corpus = buildStudyCorpus(SMALL);
-    for (const seed of SEEDS) {
+    const corpus = buildStudyCorpus(MID);
+    const firstRound = firstRoundRecords(MID);
+    let equal = 0;
+    let divergent = 0;
+    for (const seed of [4160, 4161, 4162, 4163]) {
       // deno-lint-ignore no-await-in-loop
-      const treated = await runArm("protect-refine", seed, SMALL, corpus);
+      const treated = await runArm("protect-refine", seed, MID, corpus);
       // deno-lint-ignore no-await-in-loop
       const control = await runArm(
         "matched-ordinary",
         seed,
-        SMALL,
+        MID,
         corpus,
-        treated.refinementByGeneration,
+        treated.refinementSchedule,
       );
+      assertEquals(treated.stalled, false, `${seed} treatment`);
+      assertEquals(control.stalled, false, `${seed} control`);
       const quota = treated.recordsByPhase.refinement;
       const spent = control.recordsByPhase.refinement;
       assertEquals(control.refinementQuota, quota, `${seed} quota`);
       // Spend plus the reported shortfall is exactly the quota.
       assertEquals(spent + control.refinementShortfall!, quota, `${seed}`);
-      // Generation by generation, never ahead of the treatment's spend.
-      let allowed = 0;
-      let used = 0;
-      control.refinementByGeneration.forEach((n, i) => {
-        allowed += treated.refinementByGeneration[i] ?? 0;
-        used += n;
-        assert(used <= allowed, `${seed} generation ${i + 1} overspent`);
-      });
-      // A shortfall is explained: the run stalled with no descendants left to
-      // refine, or the shared budget could not pay for one more first round.
-      if (control.refinementShortfall! > 0) {
-        const cannotPay = SMALL.budgetRecords - control.recordsCharged <
-          SMALL.trainRecords;
-        assert(
-          control.stalled || cannotPay,
-          `${seed} unexplained shortfall ${control.refinementShortfall}`,
-        );
-      }
+      // The control spends the whole allocation, to within a round too small
+      // to refine one more descendant, though its mutations differ.
+      assert(
+        control.refinementShortfall! < firstRound,
+        `${seed} shortfall ${control.refinementShortfall}`,
+      );
+      if (control.refinementShortfall === 0) equal++;
+      if (control.majorProduced !== treated.majorProduced) divergent++;
+      // Full evaluations did not take the control's quota: both arms stopped
+      // on the budget with the same evaluation records.
+      assertEquals(
+        control.recordsByPhase.evaluation,
+        treated.recordsByPhase.evaluation,
+        `${seed} evaluation records`,
+      );
+      assert(treated.penPeak > 0, `${seed} the pen was occupied`);
+    }
+    assert(equal > 0, "at least one pair spends exactly the same records");
+    assert(divergent > 0, "the arms drew different numbers of major mutations");
+  });
+});
+
+Deno.test("matched-ordinary reports a stalled control's shortfall rather than hiding it", async () => {
+  await withRngTestLock(async () => {
+    const corpus = buildStudyCorpus(SMALL);
+    // 4158 at SMALL: the population converges to clones and no offspring remain.
+    const treated = await runArm("protect-refine", 4158, SMALL, corpus);
+    const control = await runArm(
+      "matched-ordinary",
+      4158,
+      SMALL,
+      corpus,
+      treated.refinementSchedule,
+    );
+    assert(control.stalled);
+    assertEquals(
+      control.recordsByPhase.refinement + control.refinementShortfall!,
+      treated.recordsByPhase.refinement,
+    );
+  });
+});
+
+Deno.test("matched-ordinary keeps its quota out of reach of full evaluations", async () => {
+  await withRngTestLock(async () => {
+    const corpus = buildStudyCorpus(SMALL);
+    // A quota too large to spend before the budget runs low, due only at the
+    // very end: nothing but the reservation stops full evaluations from using
+    // up the records it is owed.
+    const quota = Math.floor(SMALL.budgetRecords * 0.6);
+    for (const seed of SEEDS) {
+      // deno-lint-ignore no-await-in-loop
+      const r = await runArm("matched-ordinary", seed, SMALL, corpus, [
+        { evaluation: SMALL.budgetRecords, records: quota },
+      ]);
+      assertEquals(r.refinementQuota, quota);
+      assert(
+        r.recordsByPhase.evaluation <= SMALL.budgetRecords - quota,
+        `${seed} evaluations took ${
+          r.recordsByPhase.evaluation - (SMALL.budgetRecords - quota)
+        } reserved records`,
+      );
+      assert(r.recordsCharged <= SMALL.budgetRecords, `${seed} budget`);
+      assertEquals(
+        r.recordsByPhase.refinement + r.refinementShortfall!,
+        quota,
+        `${seed}`,
+      );
     }
   });
 });
@@ -336,16 +404,18 @@ Deno.test("matched-ordinary replays a given schedule whatever mutations it draws
   await withRngTestLock(async () => {
     const corpus = buildStudyCorpus(SMALL);
     const unit = Math.floor((SMALL.trainRecords - 1) / 10) + 1;
-    // Nothing in generation 1, a fixed spend in generation 3, nothing after.
-    const schedule = [0, 0, 6 * unit];
+    // Late in evaluation, a fixed spend; nothing before it.
+    const schedule = [{
+      evaluation: 3 * SMALL.trainRecords * 8,
+      records: 6 * unit,
+    }];
     for (const seed of SEEDS) {
       // deno-lint-ignore no-await-in-loop
       const r = await runArm("matched-ordinary", seed, SMALL, corpus, schedule);
       assertEquals(r.refinementQuota, 6 * unit);
-      assertEquals(
-        r.refinementByGeneration.slice(0, 2).reduce((a, b) => a + b, 0),
-        0,
-      );
+      for (const step of r.refinementSchedule) {
+        assert(step.evaluation >= schedule[0].evaluation, `${seed} early`);
+      }
       assertEquals(r.recordsByPhase.refinement, 6 * unit, `${seed}`);
       assertEquals(r.refinementShortfall, 0);
       // Never refines a major descendant.
@@ -407,7 +477,7 @@ function result(
     ordinaryRetained: 0,
     refinedMajor: 0,
     refinedOrdinary: 0,
-    refinementByGeneration: [],
+    refinementSchedule: [],
     refinementQuota: null,
     refinementShortfall: null,
     penPeak: 0,
@@ -417,6 +487,41 @@ function result(
     stalled: false,
   };
 }
+
+Deno.test("matchedAllocations marks a seed matched only when the shortfall cannot buy another round", () => {
+  const treated = (seed: number, refinement: number) => ({
+    ...result(seed, 0.1),
+    recordsByPhase: { evaluation: 0, refinement },
+  });
+  const control = (seed: number, refinement: number, shortfall: number) => ({
+    ...result(seed, 0.1),
+    arm: "matched-ordinary" as const,
+    recordsByPhase: { evaluation: 0, refinement },
+    refinementQuota: refinement + shortfall,
+    refinementShortfall: shortfall,
+  });
+  const out = matchedAllocations([
+    treated(1, 100),
+    control(1, 100, 0),
+    treated(2, 100),
+    control(2, 70, 30),
+    treated(3, 100),
+    control(3, 40, 60),
+    treated(4, 100),
+  ], 60);
+  assertEquals(out.map((a) => [a.seed, a.fullyMatched]), [
+    [1, true],
+    [2, true],
+    [3, false],
+  ]);
+  assertEquals(out[2], {
+    seed: 3,
+    quotaRecords: 100,
+    spentRecords: 40,
+    shortfallRecords: 60,
+    fullyMatched: false,
+  });
+});
 
 const seedsTo = (n: number) => Array.from({ length: n }, (_, i) => i);
 
@@ -546,9 +651,21 @@ Deno.test("runStudy calibrates on train MSE, validates every arm and accounts th
     }
     assertEquals(report.results.length, ARMS.length * 2);
 
-    // Four comparisons, each paired over both seeds.
-    assertEquals(report.comparisons.length, 4);
-    for (const c of report.comparisons) assertEquals(c.n, 2, c.label);
+    // Five comparisons, each paired over both seeds, except the matched
+    // contrast: it counts only the seeds whose control spent the treatment's
+    // allocation, and the same pairs over every seed follow it.
+    assertEquals(report.comparisons.length, 5);
+    const matchedSeeds = report.matchedAllocation.filter((a) => a.fullyMatched);
+    for (const c of report.comparisons) {
+      assertEquals(
+        c.n,
+        c.label === "protect-refine vs matched-ordinary"
+          ? matchedSeeds.length
+          : 2,
+        c.label,
+      );
+    }
+    assertEquals(report.matchedAllocation.length, 2);
 
     // The chosen depth is the lowest median train MSE; cost is the table's sum.
     assertEquals(report.calibrationTable.length, 3);
@@ -621,7 +738,14 @@ Deno.test("runStudy lists a run that throws and pairs only the seeds both arms c
       assertEquals(report.coverage[arm], { completed: 1, planned: 2 }, arm);
     }
     assert(report.results.every((r) => r.seed === 0));
-    for (const c of report.comparisons) assertEquals(c.n, 1, c.label);
+    const matched = report.matchedAllocation.filter((a) => a.fullyMatched);
+    for (const c of report.comparisons) {
+      assertEquals(
+        c.n,
+        c.label === "protect-refine vs matched-ordinary" ? matched.length : 1,
+        c.label,
+      );
+    }
   });
 });
 
@@ -657,7 +781,7 @@ Deno.test("runStudy validation uses the calibrated refinement depth", async () =
       const schedule = actual.arm === "matched-ordinary"
         ? report.results.find((r) =>
           r.arm === "protect-refine" && r.seed === actual.seed
-        )!.refinementByGeneration
+        )!.refinementSchedule
         : undefined;
       // deno-lint-ignore no-await-in-loop
       const expected = await runArm(

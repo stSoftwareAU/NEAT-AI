@@ -329,6 +329,14 @@ export const ARMS: readonly RefinementArm[] = Object.freeze([
   "matched-ordinary",
 ] as RefinementArm[]);
 
+/** Refinement spent by one generation, and how far evaluation had got. */
+export interface RefinementStep {
+  /** Evaluation records charged before the refinement of this generation. */
+  readonly evaluation: number;
+  /** Refinement records the generation charged. */
+  readonly records: number;
+}
+
 /** What one run produced. */
 export interface RefinementRunResult {
   readonly arm: RefinementArm;
@@ -338,20 +346,23 @@ export interface RefinementRunResult {
   readonly recordsCharged: number;
   readonly recordsByPhase: { evaluation: number; refinement: number };
   /**
-   * Refinement records charged in each generation (index 0 is generation 1),
-   * with trailing zeros trimmed. The `protect-refine` run of a seed publishes
-   * the schedule its `matched-ordinary` partner replays.
+   * Every generation that charged refinement, with the evaluation records
+   * already charged when it did. The `protect-refine` run of a seed publishes
+   * the schedule its `matched-ordinary` partner replays, keyed to evaluation
+   * progress so the control meets it however many generations it takes to get
+   * there.
    */
-  readonly refinementByGeneration: readonly number[];
+  readonly refinementSchedule: readonly RefinementStep[];
   /**
    * `matched-ordinary` only: the refinement records it was allowed, the sum of
    * the schedule it replayed. `null` for every other arm.
    */
   readonly refinementQuota: number | null;
   /**
-   * `matched-ordinary` only: quota records it could not spend, because the
-   * budget ran out or too few ordinary descendants were left to refine. `null`
-   * for every other arm.
+   * `matched-ordinary` only: quota records it could not spend, because too few
+   * ordinary descendants were left to refine, a round did not fit the last
+   * of the quota, or the run stalled. Full evaluations cannot take the quota:
+   * it is reserved out of the budget. `null` for every other arm.
    */
   readonly refinementShortfall: number | null;
   readonly generations: number;
@@ -395,10 +406,11 @@ interface PenEntry extends Candidate {
  * Sets the global generator for the run and restores the caller's afterwards.
  *
  * @param refinementSchedule - Required by `matched-ordinary` and ignored by
- *   every other arm: the refinement records the seed's `protect-refine` run
- *   charged in each generation (its {@link RefinementRunResult.refinementByGeneration}).
- *   The arm spends that same amount, generation by generation, on ordinary
- *   descendants.
+ *   every other arm: the refinement the seed's `protect-refine` run charged
+ *   (its {@link RefinementRunResult.refinementSchedule}). The arm reserves that
+ *   total out of its budget so full evaluations cannot take it, and spends it
+ *   on ordinary descendants as its own evaluation catches up with the point at
+ *   which the treatment spent each part, and the rest in its final generation.
  * @throws {Error} When `matched-ordinary` is given no schedule.
  */
 export async function runArm(
@@ -406,7 +418,7 @@ export async function runArm(
   seed: number,
   settings: RefinementSettings,
   corpus: StudyCorpus,
-  refinementSchedule?: readonly number[],
+  refinementSchedule?: readonly RefinementStep[],
 ): Promise<RefinementRunResult> {
   if (arm === "matched-ordinary" && refinementSchedule === undefined) {
     throw new Error(
@@ -464,7 +476,7 @@ function runSeeded(
   settings: RefinementSettings,
   corpus: StudyCorpus,
   rng: RandomNumberGenerator,
-  refinementSchedule: readonly number[] | undefined,
+  refinementSchedule: readonly RefinementStep[] | undefined,
 ): RefinementRunResult {
   const startedMs = performance.now();
   // `createNeatConfig` installs a fresh unseeded global generator unless it is
@@ -483,8 +495,18 @@ function runSeeded(
 
   let evaluation = 0;
   let refinement = 0;
+  // `matched-ordinary` replays the seed's `protect-refine` refinement.
+  const replayed = arm === "matched-ordinary" ? refinementSchedule : undefined;
+  const quotaTotal = replayed === undefined
+    ? null
+    : replayed.reduce((a, b) => a + b.records, 0);
+  // The quota not yet spent is set aside, so a full evaluation cannot take
+  // the records the control owes its refinement.
+  const reserved = () =>
+    quotaTotal === null ? 0 : Math.max(0, quotaTotal - refinement);
   const canAfford = (n: number) =>
     evaluation + refinement + n <= settings.budgetRecords;
+  const canAffordEvaluation = (n: number) => canAfford(n + reserved());
 
   let population = seedPopulation(settings, rng);
   let pen: PenEntry[] = [];
@@ -500,14 +522,7 @@ function runSeeded(
   let generations = 0;
   let stalled = false;
   let budgetHit = false;
-  const refinementByGeneration: number[] = [];
-  // `matched-ordinary` may spend refinement up to the schedule's running total;
-  // every other arm ignores a schedule it is handed.
-  const replayed = arm === "matched-ordinary" ? refinementSchedule : undefined;
-  const quotaTotal = replayed === undefined
-    ? null
-    : replayed.reduce((a, b) => a + b, 0);
-  let allowance = 0;
+  const scheduleSteps: RefinementStep[] = [];
 
   /**
    * Up to `rounds` refinement rounds, each charged; stops when unaffordable or
@@ -552,7 +567,7 @@ function runSeeded(
     // 1. Score the unscored members of the population on the full train set.
     for (const creature of population) {
       if (creature.score !== undefined) continue;
-      if (!canAfford(corpus.train.length)) {
+      if (!canAffordEvaluation(corpus.train.length)) {
         budgetHit = true;
         break;
       }
@@ -563,7 +578,7 @@ function runSeeded(
     if (budgetHit) break;
     generations = generation;
     population.sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
-    if (!canAfford(corpus.train.length)) break;
+    if (!canAffordEvaluation(corpus.train.length)) break;
 
     // 2. Pen release.
     const competitors: Candidate[] = [];
@@ -619,11 +634,18 @@ function runSeeded(
         } else competitors.push(c);
       }
     } else {
-      // matched-ordinary: replay the seed's protect-refine spend. The quota is
-      // in records, per generation, and unspent records carry forward, so the
-      // allocation is the treatment's whatever the mutation counts, pen
-      // occupancy or ordinary supply of this run.
-      allowance += replayed?.[generation - 1] ?? 0;
+      // matched-ordinary: replay the seed's protect-refine spend. The control
+      // may spend what the treatment had spent by the point its own evaluation
+      // has reached; unspent records carry forward, so the allocation is the
+      // treatment's whatever the mutation counts, pen occupancy or ordinary
+      // supply of this run. In the last generation that can still be scored
+      // the whole remainder is due, because no later generation will come.
+      const evaluationRoom = settings.budgetRecords - quotaTotal! - evaluation;
+      const final = evaluationRoom - candidates.length * corpus.train.length <
+        corpus.train.length;
+      const allowance = final ? quotaTotal! : replayed!
+        .filter((step) => step.evaluation <= evaluation)
+        .reduce((a, step) => a + step.records, 0);
       for (const c of candidates) {
         if (!c.major && refinement < allowance) {
           competitors.push(refine(c, settings.refineRounds, allowance));
@@ -640,12 +662,17 @@ function runSeeded(
     });
     for (const c of toPen) pen.push({ ...c, age: 0 });
     penPeak = Math.max(penPeak, pen.length);
-    refinementByGeneration[generation - 1] = refinement - refinementBefore;
+    if (refinement > refinementBefore) {
+      scheduleSteps.push({
+        evaluation,
+        records: refinement - refinementBefore,
+      });
+    }
 
     // 6. Competition on the full train score.
     const scoredCompetitors: Candidate[] = [];
     for (const c of competitors) {
-      if (!canAfford(corpus.train.length)) {
+      if (!canAffordEvaluation(corpus.train.length)) {
         budgetHit = true;
         break;
       }
@@ -692,13 +719,7 @@ function runSeeded(
     holdoutMse: -scoreCreature(champion, corpus.holdout).score,
     recordsCharged: evaluation + refinement,
     recordsByPhase: { evaluation, refinement },
-    refinementByGeneration: Array.from(
-      refinementByGeneration,
-      (n) => n ?? 0,
-    ).slice(
-      0,
-      refinementByGeneration.findLastIndex((n) => (n ?? 0) > 0) + 1,
-    ),
+    refinementSchedule: scheduleSteps,
     refinementQuota: quotaTotal,
     refinementShortfall: quotaTotal === null ? null : quotaTotal - refinement,
     generations,
@@ -906,13 +927,28 @@ export interface MatchedAllocation {
   readonly quotaRecords: number;
   /** Refinement records `matched-ordinary` charged. */
   readonly spentRecords: number;
-  /** Quota the control could not spend (zero when fully matched). */
+  /** Quota the control could not spend (zero when it spent all of it). */
   readonly shortfallRecords: number;
+  /**
+   * Whether the control spent the treatment's allocation: the shortfall is
+   * under one first refinement round ({@link firstRoundRecords}), so no further
+   * descendant could have been refined with it. Only these seeds feed the
+   * matched-compute contrast; the rest are uncompletable pairs (the control
+   * stalled or ran out of ordinary descendants) and are listed, not hidden.
+   */
+  readonly fullyMatched: boolean;
+}
+
+/** Records of a descendant's first refinement round: it scores itself too. */
+export function firstRoundRecords(settings: RefinementSettings): number {
+  return 2 *
+    (Math.floor((settings.trainRecords - 1) / settings.refineStride) + 1);
 }
 
 /** The matched allocation of every seed with both arms present. */
 export function matchedAllocations(
   results: readonly RefinementRunResult[],
+  firstRound: number,
 ): MatchedAllocation[] {
   const treated = new Map(
     results.filter((r) => r.arm === "protect-refine").map((r) => [r.seed, r]),
@@ -925,6 +961,7 @@ export function matchedAllocations(
       quotaRecords: treated.get(r.seed)!.recordsByPhase.refinement,
       spentRecords: r.recordsByPhase.refinement,
       shortfallRecords: r.refinementShortfall ?? 0,
+      fullyMatched: (r.refinementShortfall ?? 0) < firstRound,
     });
   }
   return out;
@@ -948,7 +985,7 @@ export async function runStudy(options: StudyOptions): Promise<StudyReport> {
     arm: RefinementArm,
     seed: number,
     s: RefinementSettings,
-    refinementSchedule?: readonly number[],
+    refinementSchedule?: readonly RefinementStep[],
   ): Promise<RefinementRunResult | undefined> => {
     try {
       // Runs are sequential: each seeds the global generator.
@@ -1004,7 +1041,7 @@ export async function runStudy(options: StudyOptions): Promise<StudyReport> {
     const chosenSettings = { ...settings, refineRounds: chosen };
     for (let i = 0; i < validationSeeds; i++) {
       const seed = validationBase + i;
-      let schedule: readonly number[] | undefined;
+      let schedule: readonly RefinementStep[] | undefined;
       // `protect-refine` precedes `matched-ordinary` in ARMS, so the schedule
       // the control replays exists by the time it runs.
       for (const arm of ARMS) {
@@ -1021,7 +1058,7 @@ export async function runStudy(options: StudyOptions): Promise<StudyReport> {
         const r = await attempt(arm, seed, chosenSettings, schedule);
         if (r === undefined) continue;
         results.push(r);
-        if (arm === "protect-refine") schedule = r.refinementByGeneration;
+        if (arm === "protect-refine") schedule = r.refinementSchedule;
       }
       say(`validation seed ${validationBase + i} done`);
     }
@@ -1029,12 +1066,29 @@ export async function runStudy(options: StudyOptions): Promise<StudyReport> {
 
   const of = (arm: RefinementArm) => results.filter((r) => r.arm === arm);
   const primary = of("protect-refine");
+  const matchedAllocation = matchedAllocations(
+    results,
+    firstRoundRecords({
+      ...settings,
+      refineRounds: chosen ?? settings.refineRounds,
+    }),
+  );
+  const matchedSeeds = new Set(
+    matchedAllocation.filter((a) => a.fullyMatched).map((a) => a.seed),
+  );
+  const onMatchedSeeds = (rs: readonly RefinementRunResult[]) =>
+    rs.filter((r) => matchedSeeds.has(r.seed));
   const comparisons = chosen === null ? [] : [
     pairedComparison(primary, of("immediate"), "protect-refine vs immediate"),
     pairedComparison(
+      onMatchedSeeds(primary),
+      onMatchedSeeds(of("matched-ordinary")),
+      "protect-refine vs matched-ordinary",
+    ),
+    pairedComparison(
       primary,
       of("matched-ordinary"),
-      "protect-refine vs matched-ordinary",
+      "protect-refine vs matched-ordinary (all seeds, including uncompletable pairs)",
     ),
     pairedComparison(
       primary,
@@ -1081,6 +1135,6 @@ export async function runStudy(options: StudyOptions): Promise<StudyReport> {
     comparisons,
     coverage,
     failures,
-    matchedAllocation: matchedAllocations(results),
+    matchedAllocation,
   };
 }

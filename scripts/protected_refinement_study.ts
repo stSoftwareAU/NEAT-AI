@@ -75,7 +75,8 @@ if (import.meta.main) {
   for (const m of report.matchedAllocation) {
     console.info(
       `  seed ${m.seed} quota ${m.quotaRecords} spent ${m.spentRecords} ` +
-        `shortfall ${m.shortfallRecords}`,
+        `shortfall ${m.shortfallRecords} ` +
+        (m.fullyMatched ? "matched" : "UNCOMPLETABLE"),
     );
   }
 
