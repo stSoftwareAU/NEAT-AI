@@ -135,6 +135,11 @@ Tuning guides and benchmark research.
   own outcomes (Jin 2011 §5). Off by default; it observes and changes no
   selection. What it measured is in
   [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
+- **[evidence/differential-weight-4156.md](evidence/differential-weight-4156.md)**
+  — the opt-in study of differential-weight offspring and delayed population
+  contraction (Issue #4156): a 2×2 at equal records over 30 seeds. The result is
+  negative on a synthetic objective, and nothing in `src/` changes. The paper's
+  method was not read, so it is untested against it and the issue stays open.
 - **[evidence/census-restart-4157.md](evidence/census-restart-4157.md)** — the
   offspring-census restart study (Issue #4157): census-triggered against
   plateau-triggered restarts on a synthetic objective. Negative result; run it

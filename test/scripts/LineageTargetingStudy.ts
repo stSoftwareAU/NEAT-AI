@@ -386,6 +386,10 @@ Deno.test("lineage study - history selects the lowest delta for the relevant str
         candidatesPerTarget: 1,
       };
       const corpus = buildStratifiedCorpus(settings);
+      // `new Creature` draws its hidden squashes from the global generator, so
+      // pin it: an unseeded draw gave a parent whose worst stratum was 0 in
+      // about 3% of runs, which this fixture cannot use.
+      setRandomNumberGenerator(createSeededRng(3));
       const parent = seedPopulation(settings, createSeededRng(7))[2];
       const errors = {
         train: stratumErrors(parent, corpus.train),
