@@ -126,12 +126,16 @@ deno task budget-conditioned-study --code-version=37dfc1bb \
 
 ## Acceptance Criteria
 
-- **missing** — "Read and pin the full method before reproducing it" — reason:
-  the full text still cannot be fetched (the host proxy refuses arxiv.org and
-  its mirrors). The method is pinned only from search-indexed excerpts. The
-  CPPN's other inputs and link-expression threshold, the NEAT settings beyond
-  population size and generations, the task fitness definitions and the values
-  of the three unseen ages remain unpinned (`SOURCE_METHOD.unpinned`).
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **partial** — "Read and pin the full method before reproducing it" — evidence:
+  `scripts/lib/budgetConditionedStudy.ts::SOURCE_METHOD`,
+  `test/scripts/BudgetConditionedStudy.ts::a manifest that did not read the full text names what it could not pin`
+  — reviewer: partial — reason: the host proxy refuses arxiv.org and its
+  mirrors. The method is pinned from search-indexed excerpts only
+  (`fullTextRead: false`): the CPPN, its expression rule and part of Table 3.
+  The rest of Table 3, the fitness equations and the three unseen ages remain in
+  `SOURCE_METHOD.unpinned`.
 
 ## Test Plan
 
@@ -196,6 +200,10 @@ deno task budget-conditioned-study --code-version=37dfc1bb \
 - **Full gate:** `./quality.sh --rust-scorer-bin=<built rust_scorer>` on
   `c67334a5` passed with exit 0: 10,484 passed, 0 failed, 50 ignored. It covered
   fmt, lint, check and all tests, including `test/docs/*.ts`.
+- **After the method pin (`37dfc1bb`):**
+  `deno test -A
+  test/scripts/BudgetConditionedStudy.ts` passed 27 of 27, and
+  `test/docs/*.ts` passed. The full gate is re-run by the worker over this head.
 - **Spelling:** cspell over the changed docs reported 0 issues.
 - **Not checked:**
   - the paper's full text;
