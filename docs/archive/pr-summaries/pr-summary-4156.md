@@ -20,11 +20,18 @@ study on fresh validation seeds:
 - **Fresh validation seeds.** The 8-arm results on 14156–14185 were seen before
   the LPSR arms were designed. That range is now refused like 4156–4185, and all
   12 arms ran on the fresh range 24156–24185.
+- **Equal wall-clock phase.** `runArm` takes an optional `WallClockBudget`
+  (`ms`, injected `now`). The CLI now runs a second phase in which every arm
+  gets the same 600 ms per run on fresh seeds 34156–34185. In that phase the
+  record budget is raised tenfold so the clock is what stops each run, and the
+  contraction schedules read progress from elapsed time. All 360 runs stopped on
+  the clock, with per-arm median wall-clock between 602 and 609 ms.
 
-The result is negative again. No contrast is benefit or harm, and every held-out
-MSE CI95 spans zero. The paper's delayed LPSR is not better here (+0.001361 with
-re-entry, +0.002685 isolated). It also cuts behavioural diversity to 0.72 and
-0.65 of the control, below the 0.8 floor. Nothing under `src/` changes.
+The result is negative again, at equal records and at equal wall-clock. No
+contrast is benefit or harm, and every held-out MSE CI95 spans zero. The paper's
+delayed LPSR is not better here (+0.001361 with re-entry, +0.002685 isolated).
+It also cuts behavioural diversity to 0.72 and 0.65 of the control, below the
+0.8 floor. Nothing under `src/` changes.
 
 The full text is still unread, so the delay cap, F/CR and the injection fraction
 are not pinned. Part of #4156.
@@ -85,13 +92,21 @@ This is a script/CLI change; no UI files are touched. The full record is in
 `docs/evidence/differential-weight-4156.md`, and the machine-readable artefact
 is `docs/evidence/differential-weight-4156.json`.
 
-- **Run.** `codeVersion` `23bd8e8f`, NEAT-AI 7.1.22, Deno 2.9.8.
+- **Run.** `codeVersion` `b224f0df`, NEAT-AI 7.1.22, Deno 2.9.8. The
+  record-budget results and contrasts equal the earlier `23bd8e8f` run field for
+  field, apart from `wallMs` and the new `stoppedBy`.
+- **Equal wall-clock.** 360/360 runs stopped by the 600 ms clock, with no
+  failures. Median records per arm ranged from 219,200 to 240,800. All 11
+  contrasts are `no-benefit`, and every CI95 spans zero. The DE arms under
+  isolation lean better (21, 18 and 23 wins of 30), and isolation leans worse
+  than re-entry (3 of 30). None is established. The table is in the evidence
+  page's "Equal wall-clock" section.
 - **Coverage.** 30/30 seeds for each of the 12 arms, with no failures.
 - **Records.** 86,345,600 validation records charged against a budget of
   86,400,000. Calibration is unchanged: seeds 94156–94160, threshold 0.01406,
   1,200,000 records.
-- **No uncommitted code in the run.** `git diff 23bd8e8f HEAD -- scripts test`
-  is empty apart from the later test-only commit that pins the lpsr trace.
+- **No uncommitted code in the run.** The run used committed head `b224f0df`,
+  and `git diff b224f0df HEAD -- scripts test` is empty.
 
 | Contrast (arm vs control)               | Mean diff  | CI95                   | Wins  | Diversity | Verdict    |
 | --------------------------------------- | ---------- | ---------------------- | ----- | --------- | ---------- |
@@ -138,9 +153,12 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
 - **partial** — Read and pin the full method before reproducing it — evidence:
   the `paper` object in `scripts/differential_weight_study.ts`; the "Paper
   (partly pinned)" section of `docs/evidence/differential-weight-4156.md` —
-  reviewer: partial — reason: only search excerpts could be read, because the
-  proxy refuses arxiv.org. The delay formula and cap, the DE variant, F/CR, the
-  injection fraction and the Solis–Wets parameters are not pinned.
+  reviewer: partial — reason: arxiv.org was still unreachable when retried on
+  2026-11-16 (as were export.arxiv.org, Semantic Scholar, Hugging Face, the
+  Wayback Machine and the reader proxies). The only additions are a third
+  party's notes on sections 4.5, 5.5 and 7.5 and table 6. Section 3's delay
+  formula and cap, the DE variant, F/CR, the injection fraction and the
+  Solis–Wets parameters are still not pinned.
 - **met** — inject approximately 20% differential-evolution weight-only
   offspring across homologous genes — evidence:
   `test/scripts/DifferentialWeightStudy.ts` (DE tests from PR #4165, still
@@ -154,10 +172,17 @@ deno task differential-weight-study --code-version=$(git rev-parse HEAD) \
   `control@isolated` vs `control@reenter` contrast — reviewer: met
 - **met** — Preserve genome alignment and activation semantics — evidence: the
   DE operator is unchanged and nothing under `src/` is touched — reviewer: met
-- **partial** — Hold evaluation and wall-clock budgets equal — evidence:
-  `budgetPolicy` in the manifest — reviewer: partial — reason: the charged
-  records are equal, but wall-clock is measured and not capped, because a cap on
-  a shared container would make runs non-deterministic.
+- **met** — Hold evaluation and wall-clock budgets equal — evidence:
+  - the primary phase holds charged records equal;
+  - `wallClockPhase` in `docs/evidence/differential-weight-4156.json`: every arm
+    gets 600 ms per run on seeds 34156–34185, and 360/360 runs stopped on the
+    clock, with per-arm medians of 602–609 ms;
+  - `runArm`'s `wallClock` parameter in
+    `scripts/lib/differentialWeightStudy.ts`;
+  - `test/scripts/DifferentialWeightStudy.ts::an equal wall-clock budget stops every arm on the clock, before its record budget`
+    and the four tests after it.
+
+  reviewer: met
 - **met** — measure time-to-target, held-out score, variance and diversity —
   evidence: `comparisons` in `docs/evidence/differential-weight-4156.json` —
   reviewer: met
@@ -251,6 +276,17 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
     `control@reenter` on the same seed never changes size.
   - `the study has 12 distinct arms and 11 contrasts that name real arms`.
   - `the default validation seeds are 24156..24185 and overlap neither used range`.
+- **Tests added for the equal wall-clock budget:**
+  - `an equal wall-clock budget stops every arm on the clock, before its record budget`:
+    with a ticking fake clock, all 12 arms report `stoppedBy: "wall-clock"`,
+    charge below the record budget, and stop only once the clock reaches `ms`.
+  - `a wall-clock budget that never runs out changes nothing; one spent at once evaluates nothing`:
+    a frozen clock gives a result equal to the no-budget run. A clock that is
+    spent at once charges 0 records over 0 generations.
+  - `under a wall-clock budget lpsr contracts on the elapsed share, not the records share`.
+  - `runArm refuses a wall-clock budget that is not a positive finite number`
+    (0, −5, ∞, NaN).
+  - `the equal-wall-clock phase uses fresh seeds 34156..34185 and a record budget the clock binds`.
 - **Tests edited.**
   `a validation range inside or touching a used range is reported` gains
   `usedSeedOverlap([14185, 14186])` → `[14185]`. The existing no-contraction
@@ -262,10 +298,11 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
     - Replaced by: `if (arm.contraction === "none") {`, the same guard over the
       renamed field. The assertions under it are unchanged.
 - **Targeted tests.**
-  `deno test -A test/scripts/DifferentialWeightStudy.ts test/scripts/PreSelectionAB.ts`
-  on the final code: 31 passed, 0 failed.
-- **Full gate.** `./quality.sh --rust-scorer-bin=<built rust_scorer>` passed at
-  head 15115d92 with
+  `deno test -A test/scripts/DifferentialWeightStudy.ts < /dev/null` on the
+  final code: 31 passed, 0 failed.
+- **Full gate.** Not yet re-run on the wall-clock commit; the worker re-runs it.
+  It last passed at head 15115d92, with
+  `./quality.sh --rust-scorer-bin=<built rust_scorer>` reporting
   `ok | 10483 passed (5 steps) | 0 failed | 50 ignored (16m9s)`. `rust_scorer`
   was built from a fresh clone of NEAT-AI-scorer, because the checkout has none
   beside it.
@@ -281,7 +318,17 @@ The repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
 - The harness is NEAT-AI's GA-style breeding, not CMA-ES, PSO or L-SHADE. The
   objective is synthetic and the creatures are small, so the result says nothing
   about GRQ-scale runs.
-- Wall-clock is measured, not held equal.
+- Wall-clock is held equal only in the second phase, at 600 ms on a shared
+  container. That phase is not bit-reproducible, and 600 ms is far from the
+  paper's 15 minutes.
+- **The cap can overshoot.** The clock is checked between steps, so a refinement
+  batch (up to 4 evaluations) can run past it, and so can the uncharged
+  speciation and holdout work. 5 of 360 runs took over 650 ms, and the slowest
+  took 902 ms.
+- **One outlier run.** `de+contraction@isolated` at seed 34156 charged 51,200
+  records against a median of about 225,000. This looks like a machine stall. It
+  is kept in the results and is not flagged.
+- In the wall-clock phase, time to target is still counted in records.
 - The pilot's and the first full run's costs remain bounded, not measured.
 - Not checked: whether the 14156-range DE spread finding was noise. The fresh
   range did not replicate it, and no third range was run.

@@ -11,7 +11,9 @@ was not better here either: it also cut behavioural diversity below the 0.8
 floor. Do not read this as evidence for any of these ideas; do not read it as
 evidence against them at GRQ scale either (see [Limits](#limits)). The paper's
 full text could not be fetched, so only part of its method is pinned (see
-[Paper (partly pinned)](#paper-partly-pinned)).
+[Paper (partly pinned)](#paper-partly-pinned)). The same result holds when
+wall-clock, not records, is the budget held equal (see
+[Equal wall-clock](#equal-wall-clock)).
 
 Harness:
 [`scripts/differential_weight_study.ts`](../../scripts/differential_weight_study.ts).
@@ -136,11 +138,14 @@ flowchart TD
 | NEAT-AI-core      | rev `1d44889e405e4e0cfb553321b44cc39e7d771f5f` |
 | Deno              | 2.9.8                                          |
 | Corpus            | `synthetic-tanh-quadratic-v1`, seed 4156       |
-| Run `codeVersion` | `23bd8e8f`                                     |
+| Run `codeVersion` | `b224f0df`                                     |
 
-The run was made from commit `23bd8e8f`. Re-running on that commit reproduces
-the artefact apart from `wallMs` and the version fields. The evidence for this
-is that a re-run at `ccf3d612` reproduced PR #4165's 8-arm contrasts exactly.
+The run was made from commit `b224f0df`. Re-running on that commit reproduces
+the record-budget phase apart from `wallMs` and the version fields. The
+evidence: this run's record-budget results and contrasts equal those of the
+earlier run at `23bd8e8f` field for field, apart from `wallMs` and the added
+`stoppedBy`. The equal-wall-clock phase uses a real clock, so it is not
+bit-reproducible.
 
 ## Results
 
@@ -177,6 +182,50 @@ number of seeds with `finalTrainMse` at or below 0.01406 in every arm (18, 18,
 earlier reading, which looked only at the breeding population's best, missed
 creatures that shipped from an isolated refinement; that run is counted under
 [preparation cost](#preparation-and-search-cost) and not reported.
+
+## Equal wall-clock
+
+The issue asks to hold evaluation **and** wall-clock budgets equal. The
+record-budget phase above holds records equal and only measures wall-clock. A
+second phase therefore holds wall-clock equal:
+
+- Every arm gets the same **600 ms** per run (`WALL_CLOCK_BUDGET_MS`). The value
+  was fixed before this phase ran, at the order of one record-budget run here.
+- The cap is checked before every generation, every evaluation and every
+  refinement. The record budget is raised to 2,400,000 (ten times the primary)
+  so the clock, not the records, stops each run.
+- The contraction schedules read budget progress from the elapsed share of the
+  600 ms, so the 50% delay and the LPSR line run on time.
+- Fresh seeds 34156–34185, disjoint from every other range. Runs are seed-major,
+  and at each seed the arm order is rotated, so drift in machine load falls on
+  every arm alike.
+
+**Budgets held.** All 360 runs (12 arms × 30 seeds) were stopped by the clock,
+with no failures. The median wall-clock per arm was 602–609 ms. The arms
+converted that equal time into different numbers of records: medians run from
+219,200 (`control@isolated`) to 240,800 (`de+contraction@isolated`).
+
+| Contrast (arm vs control)                       |  Mean diff |                    CI95 |  Wins | Diversity | Verdict    |
+| ----------------------------------------------- | ---------: | ----------------------: | ----: | --------: | ---------- |
+| `de@reenter` vs `control@reenter`               |  +0.001548 |  [−0.001946, +0.006964] | 17/30 |      1.03 | no-benefit |
+| `contraction@reenter` vs `control@reenter`      | −0.0008755 | [−0.003361, +0.0006792] | 12/30 |     0.976 | no-benefit |
+| `de+contraction@reenter` vs `control@reenter`   |  +0.001786 |  [−0.001906, +0.006880] | 13/30 |      1.04 | no-benefit |
+| `lpsr@reenter` vs `control@reenter`             |  +0.001237 | [−0.0004057, +0.003629] | 12/30 |     0.737 | no-benefit |
+| `de+lpsr@reenter` vs `control@reenter`          | −0.0004466 |  [−0.002918, +0.002690] | 15/30 |     0.863 | no-benefit |
+| `de@isolated` vs `control@isolated`             |  −0.003508 |   [−0.01050, +0.002695] | 21/30 |      1.09 | no-benefit |
+| `contraction@isolated` vs `control@isolated`    | +0.0008086 | [−0.0002873, +0.002160] | 10/30 |     0.964 | no-benefit |
+| `de+contraction@isolated` vs `control@isolated` |  −0.004233 |  [−0.01072, +0.0009724] | 18/30 |      1.12 | no-benefit |
+| `lpsr@isolated` vs `control@isolated`           | −0.0001307 | [−0.001136, +0.0007898] | 15/30 |     0.714 | no-benefit |
+| `de+lpsr@isolated` vs `control@isolated`        |  −0.004791 |  [−0.01145, +0.0005842] | 23/30 |     0.906 | no-benefit |
+| `control@isolated` vs `control@reenter`         |  +0.005453 |   [−0.001035, +0.01282] |  3/30 |     0.977 | no-benefit |
+
+No contrast is benefit or harm, and every CI95 spans zero. Under isolation the
+three DE arms lean better (21, 18 and 23 wins of 30), and isolation leans worse
+than re-entry (3 wins of 30). Re-entry leaning better is the paper's direction.
+None of these is established, and the record-budget phase did not show the DE
+lean. The delayed LPSR again cuts diversity below the 0.8 floor (0.737 and
+0.714). Per-run results, coverage and contrasts are under `wallClockPhase` in
+the artefact.
 
 ## Coverage
 
@@ -285,9 +334,18 @@ optimization under small evaluation and wall-clock budgets", Luciano Ambrosini,
 v1 submitted 2026-10-19, 39 pages.
 
 **What was read.** Search-engine excerpts of the abstract page and of the PDF
-text, retrieved 2026-11-16. Direct fetches of arxiv.org (abstract and PDF) were
-refused by the container proxy (`CONNECT tunnel failed, response 403`), so the
-full text was **not** read. The manifest records `paper.methodRead: "partial"`.
+text, retrieved 2026-11-16. A second attempt the same day reached two more
+secondary sources through github.com: a copy of the abstract
+(`vip3001003/nofx-papers`), and a third party's reading note
+(`Lee2817794840/feishu-wenxian`). The note covers only the abstract, sections
+4.5, 5.5 and 7.5 and table 6. From it: the shell runs give each solver 5 runs of
+15 minutes, some external tools ran to a preset evaluation count, and the
+1,200-evaluation cap does not apply to the shell. The paper warns that comparing
+at equal evaluations and at equal wall-clock can rank solvers differently. That
+is why this study now reports both. Neither source gives section 3. Direct
+fetches of arxiv.org (abstract and PDF) were refused by the container proxy
+(`CONNECT tunnel failed, response 403`), so the full text was **not** read. The
+manifest records `paper.methodRead: "partial"`.
 
 **Pinned.**
 
@@ -340,7 +398,9 @@ met, and this work does **not** close the issue.
   NEAT-AI's GA-style breeding, not in the paper's optimisers.
 - Seeds and records of the pilot and the first full run were not recorded (see
   [Preparation and search cost](#preparation-and-search-cost)).
-- Wall-clock was measured but not capped; the budget held equal is records.
+- Wall-clock is held equal only in the second phase, at 600 ms per run on a
+  shared container. That phase is not bit-reproducible, and 600 ms is far from
+  the paper's 15 minutes.
 
 ## Reproduce
 
