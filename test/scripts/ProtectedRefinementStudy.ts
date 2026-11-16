@@ -189,7 +189,13 @@ async function run(
   seed: number,
   settings = SMALL,
 ): Promise<RefinementRunResult> {
-  return await runArm(arm, seed, settings, buildStudyCorpus(settings));
+  const corpus = buildStudyCorpus(settings);
+  // The matched control replays the same seed's protect-refine spend.
+  const schedule = arm === "matched-ordinary"
+    ? (await runArm("protect-refine", seed, settings, corpus))
+      .refinementByGeneration
+    : undefined;
+  return await runArm(arm, seed, settings, corpus, schedule);
 }
 
 const withoutWall = (r: RefinementRunResult) => ({ ...r, wallMs: 0 });
@@ -261,13 +267,12 @@ Deno.test("refinement goes to the descendants the arm names", async () => {
       for (const seed of SEEDS) {
         // deno-lint-ignore no-await-in-loop
         const r = await run(arm, seed);
-        // At most `penCapacity` descendants are refined per generation.
-        const cap = SMALL.penCapacity * r.generations;
-        assert(r.refinedMajor <= cap, `${arm} ${seed} major`);
-        assert(r.refinedOrdinary <= cap, `${arm} ${seed} ordinary`);
-        if (arm === "matched-ordinary") {
-          // Matched to the majors produced, never more.
-          assert(r.refinedOrdinary <= r.majorProduced, `${arm} ${seed}`);
+        if (arm !== "matched-ordinary") {
+          // At most `penCapacity` descendants are refined per generation. The
+          // matched control is limited by its record quota instead.
+          const cap = SMALL.penCapacity * r.generations;
+          assert(r.refinedMajor <= cap, `${arm} ${seed} major`);
+          assert(r.refinedOrdinary <= cap, `${arm} ${seed} ordinary`);
         }
         t.major += r.refinedMajor;
         t.ordinary += r.refinedOrdinary;
@@ -283,6 +288,82 @@ Deno.test("refinement goes to the descendants the arm names", async () => {
     }
     assertEquals(sums.get("matched-ordinary")!.major, 0);
     assert(sums.get("matched-ordinary")!.ordinary > 0);
+  });
+});
+
+Deno.test("matched-ordinary spends the refinement records protect-refine spent", async () => {
+  await withRngTestLock(async () => {
+    const corpus = buildStudyCorpus(SMALL);
+    for (const seed of SEEDS) {
+      // deno-lint-ignore no-await-in-loop
+      const treated = await runArm("protect-refine", seed, SMALL, corpus);
+      // deno-lint-ignore no-await-in-loop
+      const control = await runArm(
+        "matched-ordinary",
+        seed,
+        SMALL,
+        corpus,
+        treated.refinementByGeneration,
+      );
+      const quota = treated.recordsByPhase.refinement;
+      const spent = control.recordsByPhase.refinement;
+      assertEquals(control.refinementQuota, quota, `${seed} quota`);
+      // Spend plus the reported shortfall is exactly the quota.
+      assertEquals(spent + control.refinementShortfall!, quota, `${seed}`);
+      // Generation by generation, never ahead of the treatment's spend.
+      let allowed = 0;
+      let used = 0;
+      control.refinementByGeneration.forEach((n, i) => {
+        allowed += treated.refinementByGeneration[i] ?? 0;
+        used += n;
+        assert(used <= allowed, `${seed} generation ${i + 1} overspent`);
+      });
+      // A shortfall is explained: the run stalled with no descendants left to
+      // refine, or the shared budget could not pay for one more first round.
+      if (control.refinementShortfall! > 0) {
+        const cannotPay = SMALL.budgetRecords - control.recordsCharged <
+          SMALL.trainRecords;
+        assert(
+          control.stalled || cannotPay,
+          `${seed} unexplained shortfall ${control.refinementShortfall}`,
+        );
+      }
+    }
+  });
+});
+
+Deno.test("matched-ordinary replays a given schedule whatever mutations it draws", async () => {
+  await withRngTestLock(async () => {
+    const corpus = buildStudyCorpus(SMALL);
+    const unit = Math.floor((SMALL.trainRecords - 1) / 10) + 1;
+    // Nothing in generation 1, a fixed spend in generation 3, nothing after.
+    const schedule = [0, 0, 6 * unit];
+    for (const seed of SEEDS) {
+      // deno-lint-ignore no-await-in-loop
+      const r = await runArm("matched-ordinary", seed, SMALL, corpus, schedule);
+      assertEquals(r.refinementQuota, 6 * unit);
+      assertEquals(
+        r.refinementByGeneration.slice(0, 2).reduce((a, b) => a + b, 0),
+        0,
+      );
+      assertEquals(r.recordsByPhase.refinement, 6 * unit, `${seed}`);
+      assertEquals(r.refinementShortfall, 0);
+      // Never refines a major descendant.
+      assertEquals(r.refinedMajor, 0);
+    }
+  });
+});
+
+Deno.test("matched-ordinary without a schedule is refused", async () => {
+  await withRngTestLock(async () => {
+    const corpus = buildStudyCorpus(SMALL);
+    let message = "";
+    try {
+      await runArm("matched-ordinary", 4158, SMALL, corpus);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    assert(message.includes("refinement schedule"), message);
   });
 });
 
@@ -326,6 +407,9 @@ function result(
     ordinaryRetained: 0,
     refinedMajor: 0,
     refinedOrdinary: 0,
+    refinementByGeneration: [],
+    refinementQuota: null,
+    refinementShortfall: null,
     penPeak: 0,
     speciesCount,
     meanGeneticDistance: 0,
@@ -527,7 +611,11 @@ Deno.test("runStudy lists a run that throws and pairs only the seeds both arms c
     assert(expected.length > 0);
     for (const f of report.failures) {
       assertEquals(f.seed, -1);
-      assertEquals(f.message, expected);
+      if (f.arm === "matched-ordinary") {
+        // Its schedule is the failed protect-refine run's, so it cannot run
+        // and says so rather than going missing.
+        assert(f.message.includes("no refinement schedule"), f.message);
+      } else assertEquals(f.message, expected);
     }
     for (const arm of ARMS) {
       assertEquals(report.coverage[arm], { completed: 1, planned: 2 }, arm);
@@ -566,8 +654,19 @@ Deno.test("runStudy validation uses the calibrated refinement depth", async () =
     const chosen = { ...settings, refineRounds: report.chosenRefineRounds };
     const corpus = buildStudyCorpus(chosen);
     for (const actual of report.results) {
+      const schedule = actual.arm === "matched-ordinary"
+        ? report.results.find((r) =>
+          r.arm === "protect-refine" && r.seed === actual.seed
+        )!.refinementByGeneration
+        : undefined;
       // deno-lint-ignore no-await-in-loop
-      const expected = await runArm(actual.arm, actual.seed, chosen, corpus);
+      const expected = await runArm(
+        actual.arm,
+        actual.seed,
+        chosen,
+        corpus,
+        schedule,
+      );
       assertEquals(withoutWall(actual), withoutWall(expected));
     }
   });

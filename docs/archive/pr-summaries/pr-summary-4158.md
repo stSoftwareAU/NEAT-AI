@@ -7,9 +7,10 @@ compares letting major-mutation descendants compete at once with holding them in
 a small protected pen for short refinement rounds first. It also runs matched
 and ablation controls, all at an equal budget of charged records. It records the
 20-seed result, which is a **negative finding**: protected refinement does not
-beat immediate competition, and spending the same refinement on ordinary
-descendants beats it (`harm` verdict). Nothing under `src/` changed, and nothing
-imports the harness. Closes #4158.
+beat immediate competition, and it does no better or worse than spending the
+same refinement records on ordinary descendants (`no-benefit` on every
+contrast). Nothing under `src/` changed, and nothing imports the harness. Closes
+#4158.
 
 ## Spec
 
@@ -24,8 +25,8 @@ imports the harness. Closes #4158.
   `meanGeneticDistance`, `median` and the `cliArgs` readers.
 - Five arms: `immediate` (control), `protect-refine` (the treatment),
   `protect-only` (no refinement), `refine-only` (no protection) and
-  `matched-ordinary` (the same refinement compute spent on ordinary
-  descendants).
+  `matched-ordinary` (the same refinement records, replayed from the same seed's
+  `protect-refine` run, spent on ordinary descendants).
 
 ### Essential Design Decisions
 
@@ -41,6 +42,19 @@ imports the harness. Closes #4158.
 - Assumption: calibration (seeds 94158–94161) picks R ∈ {2, 3, 4} by median
   **training** MSE, so the holdout never selects. It chose R=2. Wall-clock is
   measured but not capped, and equal charged records stand in for equal compute.
+- **Matched control**: `matched-ordinary` replays the refinement records that
+  the seed's `protect-refine` run charged in each generation
+  (`refinementByGeneration`), spending them on ordinary descendants of its own
+  generation, up to R rounds each. Unspent records carry forward, so the
+  allocation is the treatment's whatever the control's mutation counts, pen
+  occupancy or ordinary supply. The control shares the 120,000-record budget
+  with its own full evaluations, so it can run out first; the unspent quota is
+  reported per run (`refinementQuota`, `refinementShortfall`) and per seed
+  (`matchedAllocation`), and a seed whose `protect-refine` run failed leaves the
+  control as a listed failure rather than running unmatched. An earlier version
+  sized the control from its own generation's major count, which spent a
+  different amount from the treatment (seed 4159: 3,060 records against 2,370;
+  seed 4164: 2,610 against 1,980).
 - Assumption: refinement is a perturbation hill-climb, not backprop. It is
   application-agnostic and charges records exactly as full scoring does.
 
@@ -57,7 +71,7 @@ imports the harness. Closes #4158.
   existing `preSelectionAB.runArm` calls `createNeatConfig` without a seed, so
   its runs are not reproducible per seed. This PR does not change that.
 - `Offspring.breed` declines clones. A converged population can produce no
-  offspring, so 6 of the 100 validation runs reached `maxGenerations` (2,000)
+  offspring, so 4 of the 100 validation runs reached `maxGenerations` (2,000)
   before spending the full budget. They are flagged `stalled` and kept in the
   pairs.
 
@@ -66,31 +80,41 @@ imports the harness. Closes #4158.
 This is a script/CLI change; no UI files are touched. The full record is in
 `docs/evidence/protected-refinement-4158.md`. The machine-readable artefact is
 `docs/evidence/protected-refinement-4158.json`. It holds the manifest (code
-commit 6e9f8619 plus the review change below, NEAT-AI version, Deno version,
+commit 0f4d87f0 plus the review change below, NEAT-AI version, Deno version,
 corpus seed, seeds, settings, criteria and arms), the calibration table, the
 chosen R, the calibration cost, the per-run results, coverage (20/20 for every
-arm, no failures) and the paired comparisons. Each run also records how many
-major and how many ordinary descendants received refinement rounds
-(`refinedMajor`, `refinedOrdinary`). Rerunning the study after adding those two
-counters reproduced every earlier number, apart from `wallMs` and the NEAT-AI
-version.
+arm, no failures), the paired comparisons and the per-seed matched allocation.
+Each run also records how many major and how many ordinary descendants received
+refinement rounds (`refinedMajor`, `refinedOrdinary`) and its refinement records
+per generation. The review change altered only `matched-ordinary`: every other
+arm, the calibration and the chosen R reproduced their earlier numbers, apart
+from `wallMs` and the NEAT-AI version.
 
 Calibration cost 1,362,090 records, reported separately. The diff is the arm's
 held-out MSE minus the baseline's, so a negative diff is better:
 
-| Contrast                           | Mean diff | CI95                 | W/L  | Species ratio | Verdict      |
-| ---------------------------------- | --------- | -------------------- | ---- | ------------- | ------------ |
-| protect-refine vs immediate        | −2.36e-3  | [−2.12e-2, +1.59e-2] | 9/11 | 0.82          | `no-benefit` |
-| protect-refine vs matched-ordinary | +1.07e-2  | [+2.11e-3, +2.21e-2] | 9/11 | 0.97          | `harm`       |
-| protect-refine vs refine-only      | +8.05e-3  | [−1.66e-3, +1.98e-2] | 8/12 | 0.68          | `no-benefit` |
-| protect-refine vs protect-only     | +3.18e-4  | [−9.22e-3, +8.03e-3] | 7/13 | 1.10          | `no-benefit` |
+| Contrast                           | Mean diff | CI95                 | W/L   | Species ratio | Verdict      |
+| ---------------------------------- | --------- | -------------------- | ----- | ------------- | ------------ |
+| protect-refine vs immediate        | −2.36e-3  | [−2.12e-2, +1.59e-2] | 9/11  | 0.82          | `no-benefit` |
+| protect-refine vs matched-ordinary | +4.23e-4  | [−1.33e-2, +1.26e-2] | 10/10 | 1.14          | `no-benefit` |
+| protect-refine vs refine-only      | +8.05e-3  | [−1.66e-3, +1.98e-2] | 8/12  | 0.68          | `no-benefit` |
+| protect-refine vs protect-only     | +3.18e-4  | [−9.22e-3, +8.03e-3] | 7/13  | 1.10          | `no-benefit` |
 
 - Useful structural mutations retained: 25.8% of major descendants survived
   their first full-score competition under `protect-refine`, against 35.4% for
   `immediate` and 39.3% for `refine-only`. Protection lowered retention.
 - Who was refined, summed over 20 runs per arm: `protect-refine` 603 major and 0
   ordinary; `refine-only` 689 major and 0 ordinary; `matched-ordinary` 0 major
-  and 626 ordinary; `immediate` and `protect-only` none.
+  and 597 ordinary; `immediate` and `protect-only` none.
+- Matched allocation: `matched-ordinary` spent 48,660 of the 54,030 refinement
+  records `protect-refine` spent (90.1%). Three seeds matched exactly, nine fell
+  short by one 30-record sub-sample evaluation and eight by more (4161, 4163,
+  4165, 4166, 4169, 4170, 4174, 4175). All 17 seeds with a shortfall ended with
+  fewer than 300 records left, which cannot pay for another full-train score,
+  because the control shares the budget with its own full evaluations. So the
+  contrast holds at 90% of the matched spend, and the control does not hold the
+  count of full evaluations equal: the treatment defers them for penned
+  descendants.
 - Diversity: the median final species count is 1–2 and the median mean genetic
   distance is 0.000 in every arm. The toy population converges to near-clones,
   so diversity cannot separate the arms.
@@ -119,7 +143,7 @@ Criteria heading.
 
 ## Test Plan
 
-- Added `test/scripts/ProtectedRefinementStudy.ts`, with 26 tests:
+- Added `test/scripts/ProtectedRefinementStudy.ts`, with 29 tests:
   - `classifyMutation` flags a new hidden neuron, a changed squash and an added
     or removed synapse, and does not flag a change to weights and biases alone;
   - `refineRound` keeps the structure, never worsens the sub-sample score,
@@ -135,8 +159,16 @@ Criteria heading.
   - refinement goes to the descendants each arm names: `refine-only` and
     `protect-refine` refine majors only, `matched-ordinary` refines ordinary
     descendants only and no more than the majors produced, and `immediate` and
-    `protect-only` refine none; no arm refines more than `penCapacity`
+    `protect-only` refine none; no other arm refines more than `penCapacity`
     descendants per generation;
+  - `matched-ordinary` spends the refinement records the same seed's
+    `protect-refine` run spent: spend plus the reported shortfall equals the
+    quota, the cumulative spend never runs ahead of the cumulative quota at any
+    generation, and every shortfall is explained by a stall or by a budget that
+    cannot pay for another full-train score; given a hand-written schedule it
+    spends exactly that quota in the scheduled generation, whatever mutations it
+    draws, and never refines a major descendant; and it is refused without a
+    schedule;
   - the holdout never guides a run;
   - `pairedComparison` pairs by seed, skipping a seed either arm lacks and
     ignoring order; it reports the arm's and the baseline's retained fraction
@@ -150,7 +182,8 @@ Criteria heading.
     validation result equals a direct `runArm` at the chosen depth, excluding
     wall-clock time), and, when a validation seed throws (a seed
     `createNeatConfig` refuses), lists it in `failures` by arm, seed and the
-    exact message `createNeatConfig` throws, shows coverage below plan and pairs
+    exact message `createNeatConfig` throws (for `matched-ordinary`, that its
+    `protect-refine` schedule is missing), shows coverage below plan and pairs
     only the surviving seed; with no calibration seeds it reports no chosen
     depth, no results or comparisons, zero coverage and one failure naming the
     missing finite calibration MSE;
@@ -167,13 +200,13 @@ Criteria heading.
 - `./quality.sh --rust-scorer-bin=<rust_scorer built from NEAT-AI-scorer>` ran
   on head 3f019550 and exited 0 with
   `ok | 10341 passed (5 steps) | 0 failed | 50 ignored (10m27s)`. That run
-  predates the review change; it covered the first 15 tests only. After the
-  review change, `deno fmt --check`, `deno lint`, `deno check` and
+  predates the review changes; it covered the first 15 tests only. After the
+  latest review change, `deno fmt --check`, `deno lint`, `deno check` and
   `deno test -A test/scripts/ProtectedRefinementStudy.ts test/scripts/PreSelectionAB.ts`
-  were run on the changed files and passed; the full gate was not rerun.
-- Checked that the new test catches a regression: swapping `!c.major` for
-  `c.major` in the `matched-ordinary` branch fails the refinement-allocation
-  test.
+  were run and passed (34 tests); the full gate was not rerun.
+- Checked that the new tests catch a regression: swapping `!c.major` for
+  `c.major` in the `matched-ordinary` branch fails the matched-allocation and
+  refinement-allocation tests.
 
 ## Not done / risks
 
@@ -181,7 +214,11 @@ Criteria heading.
   result says nothing about production-scale creatures or private corpora, and
   no representative production run was made.
 - The paper was not read (see above).
-- Six stalled runs spent less than the full budget, so their arms had less
+- Four stalled runs spent less than the full budget, so their arms had less
   compute. The page lists them by arm.
+- The matched control spent 90.1% of the treatment's refinement records, because
+  it exhausts the shared budget first on 17 seeds. The contrast is at that
+  spend, not at an exact match, and the full-evaluation counts differ between
+  the two arms.
 - The fixed pen capacity of 4 and the sub-sample stride of 10 were not
   calibrated; only R was.

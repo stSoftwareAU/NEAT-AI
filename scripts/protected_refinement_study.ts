@@ -71,6 +71,14 @@ if (import.meta.main) {
     );
   }
 
+  console.info("\nMatched allocation (refinement records, per seed):");
+  for (const m of report.matchedAllocation) {
+    console.info(
+      `  seed ${m.seed} quota ${m.quotaRecords} spent ${m.spentRecords} ` +
+        `shortfall ${m.shortfallRecords}`,
+    );
+  }
+
   console.info("\nCoverage:");
   for (const [arm, cov] of Object.entries(report.coverage)) {
     console.info(`  ${arm.padEnd(18)} ${cov.completed}/${cov.planned}`);
