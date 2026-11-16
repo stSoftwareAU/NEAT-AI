@@ -49,9 +49,9 @@ sampler log, so it is still open. Part of #4099.
 
 ### Undiscoverable Facts
 
-- `GRQ-25-rocket.log` (GRQ-logs `Develop` @ `a9aa34f`, 2026-11-15, neat-ai
-  7.1.19, `option='sampler'`) shows the defect on a release that already has
-  #4104. Lines 461-465 log
+- `GRQ-25-rocket.log` (the downstream production log repo `Develop` @ `a9aa34f`,
+  2026-11-15, neat-ai 7.1.19, `option='sampler'`) shows the defect on a release
+  that already has #4104. Lines 461-465 log
   `[Neat] Waiting for 3 settled result(s) (training: 3,
   discovery: 0) to be merged before finishing`,
   then `[Neat] Training over-run:
@@ -105,8 +105,8 @@ flowchart TD
 
 ### Field evidence checked on 2026-11-16
 
-The three GRQ-logs `Develop` commits since the last audit (2026-11-13T03:28Z)
-that carry an `option='sampler'` log:
+The three `Develop` commits in the downstream production log repo since the last
+audit (2026-11-13T03:28Z) that carry an `option='sampler'` log:
 
 | Log @ commit                    | Release | Observed outcome                                                                                                                                                        |
 | ------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
