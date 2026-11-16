@@ -89,12 +89,14 @@
     "surrogate-feasibility": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_feasibility.ts",
     "evolution-control-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/evolution_control_ab.ts",
     "pre-selection-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/pre_selection_ab.ts",
+    "differential-weight-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/differential_weight_study.ts",
     "census-restart-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/census_restart_study.ts",
     "memetic-gain-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/memetic_gain_study.ts",
     "island-exchange-study": "deno run --allow-read --allow-write --allow-env --allow-ffi --allow-run=git scripts/island_exchange_study.ts",
     "connectivity-prior-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/connectivity_prior_study.ts",
     "surrogate-uncertainty-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_uncertainty_ab.ts",
-    "lineage-targeting-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/lineage_targeting_study.ts"
+    "lineage-targeting-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/lineage_targeting_study.ts",
+    "budget-conditioned-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/budget_conditioned_study.ts"
   },
   "test": {
     "include": [

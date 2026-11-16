@@ -139,10 +139,19 @@ Tuning guides and benchmark research.
   island-exchange study (Issue #4159): a neighbour-only ring against the global
   champion broadcast on equal budgets. A negative finding: the ring keeps
   topology diverse but does not beat the broadcast on held-out error.
+- **[evidence/differential-weight-4156.md](evidence/differential-weight-4156.md)**
+  — the opt-in study of differential-weight offspring and delayed population
+  contraction (Issue #4156): a 2×2 at equal records over 30 seeds. The result is
+  negative on a synthetic objective, and nothing in `src/` changes. The paper's
+  method was not read, so it is untested against it and the issue stays open.
 - **[evidence/census-restart-4157.md](evidence/census-restart-4157.md)** — the
   offspring-census restart study (Issue #4157): census-triggered against
   plateau-triggered restarts on a synthetic objective. Negative result; run it
   with `deno task census-restart-study`.
+- **[evidence/budget-conditioned-4161.md](evidence/budget-conditioned-4161.md)**
+  — one genome expressed at several connection budgets (Issue #4161): a negative
+  result; it was harmful against independent per-budget searches on unseen
+  budgets.
 - **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
   — initial connectivity and input fan-out as priors (Issue #4160): a negative
   result; no sparse start beat the current initialisation.
