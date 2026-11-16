@@ -23,19 +23,47 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #4096:** the event-loop watchdog breach line now ends with
+  `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>` (V8 heap used at the last
+  main-thread heartbeat and the heap limit), and `inFlightPhase` can read
+  `parent-selection` or `result-processing`, which split the old `breeding`
+  window; see `docs/TIMEOUTS.md`.
+
 ### Fixed
 
+- **Issue #4126:** scheduled native training no longer pins a worker thread
+  after quarantine. Workers await `trainDirAsync`, using nonblocking FFI or an
+  asynchronous CLI child. C-heap buffers and an OS loader reference keep late
+  native reads/writes safe after worker termination; abandoned resources can
+  remain until process exit and temporary directories can remain on disk. Native
+  computation itself is not cancelled. Synchronous `trainDir` and the opt-in
+  exit guard retain their behaviour. Native-enabled `evolveDir` uses real
+  workers even with `threads: 1` and refuses an in-process initialisation
+  fallback. The teardown warning now describes unanswered native work as
+  potentially running, rather than asserting that the process cannot exit.
 - **Issue #4146:** a hung native training task now says which backend ran and
   whether a deadline was sent. Each training task writes one
   `[training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no>
   capability=<version|none>`
-  line before its blocking native call. A pooled worker relays the line, with
+  line before invoking native training. A pooled worker relays the line, with
   the `[NEAT-AI] trainDir using ...` lines and the legacy-deadline warning, to
   the parent's logger. A native (`ffi` or `cli`) task also writes two
   `[training-phase]` lines, one as soon as the native call returns
   (`phase=native-returned`) and one when finalisation ends (`phase=finalised`),
   so a hang can be placed inside the native call or after it. See
   [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
+- **Issue #4099:** the `Training <id> completed after <duration>` line is now
+  written when the generation commits, not when `processCompletedResults()`
+  merges the result. `Neat.commitMergedTraining()`, called from the commit
+  branch of `evolve()`, logs it for each merged task, using the durations held
+  in `mergedUncommittedTrainIDs` (now a `Map` of train ID to duration). A task
+  whose generation the hard deadline abandons, or which throws before commit, is
+  logged only as `Training <id> discarded: ...`, so those tasks no longer
+  receive both terminal lines. A trace-store write failure is reported
+  separately and preserves the successful training result and its single
+  terminal outcome.
 - **Issue #4141:** a discovery chunk whose combined analysis failed is no longer
   re-run without the per-chunk deadline: the analysis loop reuses the first
   call's outcome, and the fallback analyses (missing-neuron, helpful-synapse and
@@ -45,9 +73,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   declared `nonblocking: true`, so the worker's thread is no longer blocked and
   the process can exit. The native analysis cannot be cancelled from JavaScript;
   it ends at its Rust-side deadline or when `cancel_analysis_memory_pressure()`
-  is signalled under memory pressure. A training task on a legacy native engine
-  (`neat_ai_backpropagation` 0.1.49 or earlier) can still pin the process, and
-  `exitOnUnreclaimableWorkers` remains the guard for that. See
+  is signalled under memory pressure. The native trainer is awaited too (see the
+  entry above), and `exitOnUnreclaimableWorkers` remains the guard for any other
+  thread that cannot be stopped. See
   [`docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`](./docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md).
 - **Issue #4120:** `build.sh` no longer exits `1` when the release asset
   download fails after the release probe has confirmed the release exists. A
@@ -308,6 +336,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4157:** an opt-in study, `deno task census-restart-study`, compares
+  restarting on an offspring census (Good–Turing unseen estimate over species
+  and quantised-genome identities) against restarting on a score plateau, with a
+  no-restart control and an identical partial reseed. The result is
+  **negative**: no arm meets the benefit criterion, none is harm, and the census
+  fires earlier without beating stagnation. Nothing under `src/` changes. See
+  [`docs/evidence/census-restart-4157.md`](./docs/evidence/census-restart-4157.md).
+
 - **Issue #4161:** opt-in `deno task budget-conditioned-study` compares one
   genome selected at several connection budgets and expressed by an evolved
   priority gene against independent per-budget searches and a magnitude-pruned
@@ -328,7 +364,6 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   confidence interval spans zero and behavioural diversity falls. Nothing in
   `src/` calls it. See
   [docs/evidence/lineage-targeting-4155.md](docs/evidence/lineage-targeting-4155.md).
-
 - **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
   quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in
   native code). The teardown now warns

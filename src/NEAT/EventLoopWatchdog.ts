@@ -28,7 +28,11 @@
  * Liveness. The main thread also bumps a heartbeat in shared memory once at arm
  * and then every `heartbeatIntervalMS` on a timer. The breach line carries
  * `lastHeartbeatAgeMs`, the age of the newest heartbeat at breach, plus the
- * phase the run last declared with `setPhase`. The age is roughly the time
+ * phase the run last declared with `setPhase`. It also carries
+ * `lastHeartbeatHeapUsedMB`, the V8 heap used when the main thread last ticked,
+ * and `heapLimitMB`, the isolate's V8 heap limit, so a blocked loop near the
+ * limit (garbage collection thrash) can be told from one with headroom
+ * (synchronous work). The age is roughly the time
  * since arm or since the last tick. An age far above `heartbeatIntervalMS`
  * means the main loop never got to tick, so it was blocked. An age at or below
  * about one interval means the loop was still turning and the run was simply
@@ -51,6 +55,7 @@
 
 import { getLogger } from "../utils/Logger.ts";
 import { ConfigurationError } from "../errors/ConfigurationError.ts";
+import { readHeapSizeLimit } from "./HeapSizeLimit.ts";
 
 /**
  * Placeholder in `breachLine` that is replaced at breach time with the last
@@ -73,6 +78,8 @@ export const EVENT_LOOP_WATCHDOG_PHASES = [
   "mutation",
   "pre-warm",
   "deduplication",
+  "parent-selection",
+  "result-processing",
 ] as const;
 
 /** A phase name from {@link EVENT_LOOP_WATCHDOG_PHASES}. */
@@ -298,6 +305,13 @@ export function armEventLoopWatchdog(
   const heartbeatBuffer = new SharedArrayBuffer(8);
   const heartbeat = new BigInt64Array(heartbeatBuffer);
 
+  // Two 64-bit slots for the heap, in bytes: slot 0 is V8 heap used at the
+  // latest heartbeat, slot 1 is the V8 heap limit, stored once here. Both must
+  // be set before createHeartbeatBeat below, whose arm-time beat writes slot 0.
+  const heapBuffer = new SharedArrayBuffer(16);
+  const heap = new BigInt64Array(heapBuffer);
+  Atomics.store(heap, 1, BigInt(Math.max(0, Math.round(readHeapSizeLimit()))));
+
   let worker: Worker;
   try {
     worker = new Worker(
@@ -319,7 +333,14 @@ export function armEventLoopWatchdog(
     stallReportMS,
     readGeneration: () => Atomics.load(generation, 0),
     readPhase: () => EVENT_LOOP_WATCHDOG_PHASES[Atomics.load(generation, 1)],
-    storeHeartbeat: (ms) => Atomics.store(heartbeat, 0, BigInt(ms)),
+    storeHeartbeat: (ms) => {
+      Atomics.store(heartbeat, 0, BigInt(ms));
+      Atomics.store(
+        heap,
+        0,
+        BigInt(Math.max(0, Math.round(Deno.memoryUsage().heapUsed))),
+      );
+    },
     warn: (line) => getLogger().warn(line),
   });
   const heartbeatTimer = setInterval(beat, heartbeatIntervalMS);
@@ -348,6 +369,7 @@ export function armEventLoopWatchdog(
     breachLine: options.breachLine,
     generationBuffer,
     heartbeatBuffer,
+    heapBuffer,
     phaseNames: EVENT_LOOP_WATCHDOG_PHASES,
     heartbeatIntervalMS,
   });
