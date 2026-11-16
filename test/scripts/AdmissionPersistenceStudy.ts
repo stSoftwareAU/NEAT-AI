@@ -311,8 +311,13 @@ Deno.test("admission study - persistence bookkeeping is consistent", async () =>
         offspring.filter((i) => i.birth > SMALL.generations - h).length,
       );
     }
-    // Every generation fills the population back to N.
-    assert(result.trace.every((t) => t.founderCladesAlive >= 1));
+    // Every generation keeps between one and N founder clades alive.
+    assert(
+      result.trace.every((t) =>
+        t.founderCladesAlive >= 1 &&
+        t.founderCladesAlive <= SMALL.populationSize
+      ),
+    );
   });
 });
 

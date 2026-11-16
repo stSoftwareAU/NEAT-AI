@@ -14,12 +14,12 @@ export async function gitCommit(): Promise<string> {
   return new TextDecoder().decode(output.stdout).trim();
 }
 
-export /**
+/**
  * Whether `scripts/` or `src/` differ from `HEAD`. A recorded `commit` only
- * names the code that ran when this is false; otherwise `harnessSha256` is the
- * identity to check.
+ * names the code that ran when this is false; when it is true, a caller should
+ * record its own content hash.
  */
-async function dirtyTree(): Promise<boolean> {
+export async function dirtyTree(): Promise<boolean> {
   const output = await new Deno.Command("git", {
     args: ["status", "--porcelain", "--", "scripts", "src"],
     stdout: "piped",

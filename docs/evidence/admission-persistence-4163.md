@@ -58,11 +58,15 @@ default.
 
 The settings, arms and thresholds are constants in code, and the run was made
 from a clean tree at the commit above. They were fixed before the run, and no
-criterion was changed afterwards.
+criterion was changed afterwards. Later commits changed only console labels,
+provenance capture timing, command-line argument validation and comments in
+`scripts/`, not the measured loop, so rerunning at the head gives the same
+numbers.
 
 - **Controls:** uniform parent selection is the control. The `biased` arm is the
-  treatment: it weights parents by the rank of their calibration MSE only, with
-  best-to-worst odds capped at 2:1.
+  treatment: it weights parents by the rank of their calibration mean squared
+  error (MSE, [glossary](../GLOSSARY.md#-acronyms)) only, with best-to-worst
+  odds capped at 2:1.
 - **Seeds and sample size:** 20 seeds, numbered 4163 to 4182, each run in both
   arms with the same starting population, so the comparison is paired.
 - **Compute limits:** 1100 generations per run. Each arm is charged 52,848,000
@@ -70,8 +74,8 @@ criterion was changed afterwards.
   and the two arms are identical on every one of those counts.
 - **Success criteria** (`SUCCESS_CRITERIA`, reused from Issue #4155). The
   treatment **benefits** only if all three hold against the control:
-  1. The upper bound of the bootstrap 95% CI of the mean paired holdout-MSE
-     difference is below 0.
+  1. The upper bound of the bootstrap 95% confidence interval (CI) of the mean
+     paired holdout-MSE difference is below 0.
   2. It wins on at least 70% of seeds.
   3. The median behavioural-diversity ratio is at least 0.8.
 - **Failure criterion:** it is **harmful** if the CI lower bound is above 0.
@@ -104,8 +108,8 @@ Taken from the artefact's `manifest.definitions`.
 seeds included. Holdout records (24,000 per arm in total) are reported
 separately and never charged. The behavioural-diversity probe activations
 (353,280 per arm in total) are counted as `diagnosticRecords` and also never
-charged. Wall-clock times are recorded but indicative only, because the host is
-shared, and no verdict uses them.
+charged. No wall-clock time is recorded, by either script or in the artefact.
+Cost is counted in records only.
 
 ### One generation
 
@@ -138,9 +142,10 @@ birth. Individuals born too late to be read at a horizon are censored there.
 | `biased`  | 100     | 240,000  | 24,000   | 0.200          | 0                       | 0                          | 0.115                       | 0.115 (0.102, 0.128)       |
 | `biased`  | 1000    | 24,000   | 240,000  | 0.200          | 0                       | 0                          | 0.112                       | 0.112 (0.0940, 0.137)      |
 
-The Kaplan-Meier column is the unweighted mean over seeds of each seed's
-estimate. Admitted offspring were 52,985 of 264,000 in the `uniform` arm and
-52,826 of 264,000 in the `biased` arm.
+The Kaplan-Meier (KM) column is the unweighted mean over seeds of each seed's
+estimate of the survival curve, which is derived from `runs[]` rather than the
+command-line `summary`. Admitted offspring were 52,985 of 264,000 in the
+`uniform` arm and 52,826 of 264,000 in the `biased` arm.
 
 **Individual survival is 0 at 100 and 1000 generations in both arms.** No
 individual outlives a population that turns over about a fifth of its members
@@ -152,8 +157,8 @@ themselves present) 100 generations on, and about 11% again at 1000 generations
 #### Admission-rank quartiles
 
 Admitted offspring are split into quartiles by admission rank (0 is best).
-Pooled contribution rate by quartile, weighted by the number of eligible
-offspring:
+Pooled contribution rate by quartile, derived from `runs[]` as the per-seed
+rates weighted by the number of eligible offspring:
 
 | Arm       | Horizon | Quartile 0 | Quartile 1 | Quartile 2 | Quartile 3 |
 | --------- | ------- | ---------- | ---------- | ---------- | ---------- |
@@ -170,7 +175,8 @@ This is an association within the admitted set, and the same in both arms.
 
 #### Population dynamics
 
-Per seed, mean over the 20 seeds, with the range in brackets.
+Per seed, mean over the 20 seeds, with the range in brackets (derived from
+`runs[]`).
 
 | Quantity                        | `uniform`            | `biased`             |
 | ------------------------------- | -------------------- | -------------------- |
@@ -196,6 +202,11 @@ is better.
 | `bestHoldout`       | -4.58e-4  | -1.37e-4    | [-1.08e-3, +1.38e-4] | 11/20 | 9/20   | x0.912          | `no-benefit` |
 | `populationHoldout` | -4.75e-4  | -1.06e-4    | [-1.11e-3, +1.29e-4] | 11/20 | 9/20   | x0.912          | `no-benefit` |
 
+CI95 is the bootstrap 95% confidence interval of the mean paired difference.
+Persistence across seeds (part a) is reported only as pooled rates with the
+per-seed median, minimum and maximum; there is no interval for those. Only the
+paired holdout comparisons carry a bootstrap 95% CI.
+
 Neither arm reached the records-to-target threshold in any seed, so no
 records-to-target comparison exists.
 
@@ -207,6 +218,17 @@ records-to-target comparison exists.
 - The per-run `failures` count is 0 in all 40 runs.
 
 ## Findings
+
+**What "admission" means here.** Admission is survival of this harness's own
+mutation-only mu + lambda truncation by train MSE. It is a stand-in for, not a
+reproduction of, NEAT-AI's production selection and speciation pipeline
+(`src/NEAT/`). The result describes the mechanism on a synthetic task, not
+NEAT-AI's production admission.
+
+**Censoring.** The 1000-generation rates cover only offspring born in
+generations 1 to 100, because all later births are right-censored. They describe
+the early part of each run. The 100-generation rates cover births in generations
+1 to 1000.
 
 This is a **negative result**. The capped 2:1 bias gives no benefit by the
 predeclared criteria. Both verdicts are `no-benefit`: the CI on the mean paired
@@ -226,11 +248,25 @@ establish that admission, rank or lineage membership has causal value.
 
 ## Deviations
 
-- The first 20-seed attempt ran the V8 heap out of memory at seed 12, because
-  the heap grew across seeds inside one process. The CLI was changed to run each
-  seed in its own process and the full run was repeated. The 11 seeds the first
-  attempt completed printed identical per-seed numbers, so the change did not
-  alter results.
+- The first 20-seed attempt ran the V8 JavaScript engine's heap out of memory at
+  seed 12, because the heap grew across seeds inside one process. The CLI was
+  changed to run each seed in its own process and the full run was repeated. The
+  11 seeds the first attempt completed printed identical per-seed numbers, so
+  the change did not alter results.
+
+## Preparation and search costs
+
+Every run made for this study besides the reported one, so that all costs are
+counted:
+
+- A 1-seed, 1100-generation smoke run of both arms.
+- A 2-seed, 60-generation smoke run of the per-seed child-process mode.
+- The aborted first 20-seed attempt: 11 seeds completed and part of the 12th ran
+  before the heap ran out (see Deviations).
+
+The settings (1100 generations, N = 12, lambda = 12, 100 records per split) were
+chosen before any run and not tuned on results. Unit-test runs are synthetic and
+tiny and are not counted as study cost.
 
 ## Maintenance decision
 
@@ -241,8 +277,8 @@ the shared helper `scripts/lib/gitProvenance.ts`.
 
 ## What this does not say
 
-- **Nothing about GRQ-scale creatures.** This is a synthetic task with small
-  creatures and no private corpus.
+- **Nothing about production-scale creatures.** This is a synthetic task with
+  small creatures and no private corpus.
 - **Nothing about the paper.** It was not read.
 - **Nothing that changes ordinary behaviour.** Interfaces and defaults are
   untouched.

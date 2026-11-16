@@ -221,10 +221,18 @@ export async function main(args: string[]): Promise<number> {
   const outPath = stringArg(args, "out");
   if (singleSeed !== undefined) {
     if (outPath === undefined) throw new Error("--single-seed needs --out");
-    await runSingleSeed(Number(singleSeed), settings, outPath);
+    await runSingleSeed(
+      intArg([`--single-seed=${singleSeed}`], "single-seed", 1),
+      settings,
+      outPath,
+    );
     return 0;
   }
   const jsonPath = stringArg(args, "json");
+  // Read provenance before any seed runs, so the manifest names the code that
+  // actually ran.
+  const codeVersion = stringArg(args, "code-version") ?? await gitCommit();
+  const dirty = await dirtyTree();
   const seedList = Array.from({ length: seeds }, (_, i) => firstSeed + i);
   const runs: AdmissionArmResult[] = [];
   const failuresRun: { seed: number; arm: AdmissionArm; message: string }[] =
@@ -318,8 +326,6 @@ export async function main(args: string[]): Promise<number> {
 
   if (jsonPath !== undefined) {
     const denoJson = JSON.parse(await Deno.readTextFile("./deno.json"));
-    const codeVersion = stringArg(args, "code-version") ?? await gitCommit();
-    const dirty = await dirtyTree();
     const neatCoreRev = denoJson.neatCore?.rev;
     if (
       typeof denoJson.version !== "string" || typeof neatCoreRev !== "string"
