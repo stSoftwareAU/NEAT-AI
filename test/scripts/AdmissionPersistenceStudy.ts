@@ -26,7 +26,12 @@ import {
   type SpeciesPersistence,
   validateSettings,
 } from "../../scripts/lib/admissionPersistenceStudy.ts";
-import { pooledBySpecies } from "../../scripts/admission_persistence_study.ts";
+import {
+  pooledBySpecies,
+  SPECIES_SPREAD_MIN_ADMITTED,
+  speciesCsv,
+  speciesDigest,
+} from "../../scripts/admission_persistence_study.ts";
 import {
   buildStratifiedCorpus,
   type Split,
@@ -440,4 +445,58 @@ Deno.test("admission study - the bias reaches selection", async () => {
     const biased = runArm("biased", SMALL, corpus);
     assertNotEquals(uniform.trace, biased.trace);
   });
+});
+
+Deno.test("admission study - speciesDigest and speciesCsv cover every species", () => {
+  const n = SPECIES_SPREAD_MIN_ADMITTED;
+  const row = (species: string, admitted: number, contributors: number) => ({
+    species,
+    seeds: 1,
+    offspring: admitted + 5,
+    admitted,
+    survived: 0,
+    survivedAdmitted: 0,
+    contributors,
+    contributorsAdmitted: contributors,
+    survivalRateGivenAdmitted: admitted === 0 ? null : 0,
+    contributionRateGivenAdmitted: admitted === 0
+      ? null
+      : contributors / admitted,
+  });
+  const rows = [
+    row("A", n, n / 2),
+    row("B", n, n),
+    row("C", 1, 1),
+    row("D", 0, 0),
+  ];
+  const digest = speciesDigest(rows);
+  assertEquals(digest.species, 4);
+  assertEquals(digest.speciesWithAdmitted, 3);
+  assertEquals(digest.neverAdmitted, { species: 1, offspring: 5 });
+  // Only A and B have enough admitted offspring to enter the spread.
+  assertEquals(digest.contributionRateGivenAdmitted, {
+    species: 2,
+    min: 0.5,
+    median: 0.75,
+    max: 1,
+  });
+  assertEquals(digest.largest.length, 4);
+  assertEquals(speciesDigest([]).contributionRateGivenAdmitted, null);
+
+  const pooledArm = {
+    seeds: 1,
+    offspring: 0,
+    admitted: 0,
+    admissionRate: null,
+    meanTurnover: null,
+    horizons: [{ horizon: 100, bySpecies: rows }],
+  } as unknown as Parameters<typeof speciesCsv>[0][string];
+  const csv = speciesCsv({ uniform: pooledArm }).trim().split("\n");
+  assertEquals(
+    csv[0],
+    "arm,horizon,species,seeds,offspring,admitted,survived,survivedAdmitted,contributors,contributorsAdmitted",
+  );
+  // D was never admitted, so it is counted in the digest, not listed.
+  assertEquals(csv.slice(1).map((l) => l.split(",")[2]), ["A", "B", "C"]);
+  assertEquals(csv[1], `uniform,100,A,1,${n + 5},${n},0,0,${n / 2},${n / 2}`);
 });

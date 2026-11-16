@@ -7,7 +7,8 @@
  * comparison with a verdict against criteria fixed in advance.
  *
  * ```bash
- * deno task admission-persistence-study --seeds=20 --json=/tmp/aps.json
+ * deno task admission-persistence-study --seeds=20 --json=/tmp/aps.json \
+ *   --species-csv=/tmp/aps-species.csv
  * ```
  *
  * Each seed runs in its own child process (a hidden `--single-seed=<n>
@@ -129,6 +130,77 @@ export function pooledBySpecies(rows: readonly SpeciesPersistence[]) {
     b.offspring - a.offspring ||
     (a.species < b.species ? -1 : a.species > b.species ? 1 : 0)
   );
+}
+
+type PooledSpecies = ReturnType<typeof pooledBySpecies>[number];
+
+/** Species with fewer admitted offspring than this are left out of the spread. */
+export const SPECIES_SPREAD_MIN_ADMITTED = 30;
+/** Largest species (by offspring) listed in full in the JSON digest. */
+export const SPECIES_DIGEST_TOP = 10;
+
+/**
+ * A compact digest of pooled per-species rows for the JSON artefact: species
+ * counts, the never-admitted remainder, the spread of the per-species rate of
+ * contribution given admission over species with at least
+ * {@link SPECIES_SPREAD_MIN_ADMITTED} admitted offspring, and the
+ * {@link SPECIES_DIGEST_TOP} largest species in full. The full table goes to
+ * the CSV (`--species-csv`).
+ */
+export function speciesDigest(rows: readonly PooledSpecies[]) {
+  const admitted = rows.filter((r) => r.admitted > 0);
+  const never = rows.filter((r) => r.admitted === 0);
+  const rates = rows.filter((r) => r.admitted >= SPECIES_SPREAD_MIN_ADMITTED)
+    .map((r) => r.contributionRateGivenAdmitted!);
+  const survivalRates = rows.filter((r) =>
+    r.admitted >= SPECIES_SPREAD_MIN_ADMITTED
+  ).map((r) => r.survivalRateGivenAdmitted!);
+  const spread = (values: number[]) =>
+    values.length === 0 ? null : {
+      species: values.length,
+      min: Math.min(...values),
+      median: median(values),
+      max: Math.max(...values),
+    };
+  return {
+    species: rows.length,
+    speciesWithAdmitted: admitted.length,
+    speciesInSeveralSeeds: rows.filter((r) => r.seeds > 1).length,
+    neverAdmitted: {
+      species: never.length,
+      offspring: never.reduce((s, r) => s + r.offspring, 0),
+    },
+    spreadMinAdmitted: SPECIES_SPREAD_MIN_ADMITTED,
+    survivalRateGivenAdmitted: spread(survivalRates),
+    contributionRateGivenAdmitted: spread(rates),
+    largest: rows.slice(0, SPECIES_DIGEST_TOP),
+  };
+}
+
+/** CSV of every pooled species with at least one admitted offspring. */
+export function speciesCsv(
+  summary: Record<string, ReturnType<typeof pooled>>,
+): string {
+  const columns = [
+    "species",
+    "seeds",
+    "offspring",
+    "admitted",
+    "survived",
+    "survivedAdmitted",
+    "contributors",
+    "contributorsAdmitted",
+  ] as const;
+  const lines = [["arm", "horizon", ...columns].join(",")];
+  for (const [arm, p] of Object.entries(summary)) {
+    for (const h of p.horizons) {
+      for (const row of h.bySpecies) {
+        if (row.admitted === 0) continue;
+        lines.push([arm, h.horizon, ...columns.map((c) => row[c])].join(","));
+      }
+    }
+  }
+  return `${lines.join("\n")}\n`;
 }
 
 type RunFailure = { seed: number; arm: AdmissionArm; message: string };
@@ -271,6 +343,7 @@ export async function main(args: string[]): Promise<number> {
     return 0;
   }
   const jsonPath = stringArg(args, "json");
+  const speciesCsvPath = stringArg(args, "species-csv");
   // Read provenance before any seed runs, so the manifest names the code that
   // actually ran.
   const codeVersion = stringArg(args, "code-version") ?? await gitCommit();
@@ -443,7 +516,16 @@ export async function main(args: string[]): Promise<number> {
           "lineage/admission associations are predictive correlations, not " +
           "causal value",
       },
-      summary,
+      summary: Object.fromEntries(
+        Object.entries(summary).map(([arm, p]) => [arm, {
+          ...p,
+          horizons: p.horizons.map(({ bySpecies, ...h }) => ({
+            ...h,
+            bySpecies: speciesDigest(bySpecies),
+          })),
+        }]),
+      ),
+      speciesCsv: speciesCsvPath ?? null,
       comparisons,
       coverage: {
         seedsRequested: seeds,
@@ -454,10 +536,25 @@ export async function main(args: string[]): Promise<number> {
         paired: common.size,
       },
       failuresRun,
-      runs,
+      // Per-run species rows are pooled into `summary` and the CSV; repeating
+      // them per run would multiply the artefact's size by the run count.
+      runs: runs.map((r) => ({
+        ...r,
+        persistence: {
+          ...r.persistence,
+          horizons: r.persistence.horizons.map(({ bySpecies, ...h }) => ({
+            ...h,
+            species: bySpecies.length,
+          })),
+        },
+      })),
     };
     await Deno.writeTextFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
     console.log(`\nWrote ${jsonPath}`);
+  }
+  if (speciesCsvPath !== undefined) {
+    await Deno.writeTextFile(speciesCsvPath, speciesCsv(summary));
+    console.log(`Wrote ${speciesCsvPath}`);
   }
 
   if (runs.length === 0) {
