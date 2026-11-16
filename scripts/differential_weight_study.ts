@@ -17,8 +17,10 @@
  *
  * The objective is synthetic and local refinement stands in for backprop; see
  * `scripts/lib/differentialWeightStudy.ts` for what is real and what is not.
- * Records charged are held equal across arms; the holdout and the diversity
- * probe are uncharged; wall-clock is measured and reported, not capped.
+ * Records charged are held equal across arms in the primary phase; the holdout
+ * and the diversity probe are uncharged. A second phase holds wall-clock equal
+ * instead: every arm gets the same per-run wall-clock cap on fresh seeds, with
+ * the record budget raised so the clock is what stops each run.
  *
  * A measurement harness, not a production code path: nothing under `src/`
  * imports it.
@@ -51,6 +53,10 @@ import {
   VALIDATION_BASE_SEED,
   VALIDATION_SEED_COUNT,
   verdict,
+  WALL_CLOCK_BASE_SEED,
+  WALL_CLOCK_BUDGET_MS,
+  WALL_CLOCK_RECORD_BUDGET,
+  type WallClockBudget,
 } from "./lib/differentialWeightStudy.ts";
 
 const ISSUE = 4156;
@@ -136,9 +142,10 @@ async function timedRun(
   seed: number,
   splits: ReturnType<typeof buildSplits>,
   target: number | undefined,
+  wallClock?: WallClockBudget,
 ): Promise<TimedResult> {
   const started = performance.now();
-  const result = await runArm(arm, settings, seed, splits, target);
+  const result = await runArm(arm, settings, seed, splits, target, wallClock);
   return { result, wallMs: performance.now() - started };
 }
 
@@ -271,67 +278,72 @@ if (import.meta.main) {
   }
 
   // Comparisons over seeds where both arms completed.
-  const comparisons = PREDECLARED_CONTRASTS.map((contrast) => {
-    const armRuns = runs.get(contrast.arm)!;
-    const controlRuns = runs.get(contrast.control)!;
-    const seeds = validationSeeds.filter((seed) =>
-      armRuns.has(seed) && controlRuns.has(seed)
-    );
-    const a = seeds.map((seed) => armRuns.get(seed)!);
-    const c = seeds.map((seed) => controlRuns.get(seed)!);
-    const label = `${contrast.arm} vs ${contrast.control}`;
-    if (seeds.length === 0) {
-      return { label, ...contrast, seeds: 0, verdict: "no-benefit" as const };
-    }
-    const holdout = pairedComparison(
-      a.map((r) => r.result.finalHoldoutMse),
-      c.map((r) => r.result.finalHoldoutMse),
-      BOOTSTRAP_RESAMPLES,
-      BOOTSTRAP_SEED,
-    );
-    const spread = seeds.length >= 2
-      ? sdRatio(
+  const compare = (
+    runs: Map<string, Map<number, TimedResult>>,
+    validationSeeds: readonly number[],
+  ) =>
+    PREDECLARED_CONTRASTS.map((contrast) => {
+      const armRuns = runs.get(contrast.arm)!;
+      const controlRuns = runs.get(contrast.control)!;
+      const seeds = validationSeeds.filter((seed) =>
+        armRuns.has(seed) && controlRuns.has(seed)
+      );
+      const a = seeds.map((seed) => armRuns.get(seed)!);
+      const c = seeds.map((seed) => controlRuns.get(seed)!);
+      const label = `${contrast.arm} vs ${contrast.control}`;
+      if (seeds.length === 0) {
+        return { label, ...contrast, seeds: 0, verdict: "no-benefit" as const };
+      }
+      const holdout = pairedComparison(
         a.map((r) => r.result.finalHoldoutMse),
         c.map((r) => r.result.finalHoldoutMse),
         BOOTSTRAP_RESAMPLES,
         BOOTSTRAP_SEED,
-      )
-      : null;
-    const pairedTimes = seeds.flatMap((_, i) => {
-      const x = a[i].result.timeToTargetRecords;
-      const y = c[i].result.timeToTargetRecords;
-      return x !== null && y !== null ? [x - y] : [];
+      );
+      const spread = seeds.length >= 2
+        ? sdRatio(
+          a.map((r) => r.result.finalHoldoutMse),
+          c.map((r) => r.result.finalHoldoutMse),
+          BOOTSTRAP_RESAMPLES,
+          BOOTSTRAP_SEED,
+        )
+        : null;
+      const pairedTimes = seeds.flatMap((_, i) => {
+        const x = a[i].result.timeToTargetRecords;
+        const y = c[i].result.timeToTargetRecords;
+        return x !== null && y !== null ? [x - y] : [];
+      });
+      const diversityRatio = mean(a.map((r) =>
+        r.result.meanBehaviouralDiversity
+      )) /
+        mean(c.map((r) => r.result.meanBehaviouralDiversity));
+      const speciesRatio = mean(a.map((r) => r.result.meanSpeciesCount)) /
+        mean(c.map((r) => r.result.meanSpeciesCount));
+      const wallClockMedianRatio = median(a.map((r) => r.wallMs)) /
+        median(c.map((r) => r.wallMs));
+      return {
+        label,
+        ...contrast,
+        seeds: seeds.length,
+        heldOutMse: holdout,
+        sdRatio: spread,
+        timeToTarget: {
+          reachedArm: a.filter((r) => r.result.timeToTargetRecords !== null)
+            .length,
+          reachedControl: c.filter((r) => r.result.timeToTargetRecords !== null)
+            .length,
+          pairedSeeds: pairedTimes.length,
+          medianPairedDifferenceRecords: pairedTimes.length === 0
+            ? null
+            : median(pairedTimes),
+        },
+        diversityRatio,
+        speciesCountRatio: speciesRatio,
+        wallClockMedianRatio,
+        verdict: verdict(holdout, diversityRatio, SUCCESS_CRITERIA),
+      };
     });
-    const diversityRatio = mean(a.map((r) =>
-      r.result.meanBehaviouralDiversity
-    )) /
-      mean(c.map((r) => r.result.meanBehaviouralDiversity));
-    const speciesRatio = mean(a.map((r) => r.result.meanSpeciesCount)) /
-      mean(c.map((r) => r.result.meanSpeciesCount));
-    const wallClockMedianRatio = median(a.map((r) => r.wallMs)) /
-      median(c.map((r) => r.wallMs));
-    return {
-      label,
-      ...contrast,
-      seeds: seeds.length,
-      heldOutMse: holdout,
-      sdRatio: spread,
-      timeToTarget: {
-        reachedArm: a.filter((r) => r.result.timeToTargetRecords !== null)
-          .length,
-        reachedControl: c.filter((r) => r.result.timeToTargetRecords !== null)
-          .length,
-        pairedSeeds: pairedTimes.length,
-        medianPairedDifferenceRecords: pairedTimes.length === 0
-          ? null
-          : median(pairedTimes),
-      },
-      diversityRatio,
-      speciesCountRatio: speciesRatio,
-      wallClockMedianRatio,
-      verdict: verdict(holdout, diversityRatio, SUCCESS_CRITERIA),
-    };
-  });
+  const comparisons = compare(runs, validationSeeds);
 
   // Human summary.
   console.info(
@@ -382,6 +394,120 @@ if (import.meta.main) {
     );
   }
 
+  // Equal-wall-clock phase: the same per-run wall-clock for every arm, on
+  // fresh seeds. Seed-major, with the arm order rotated per seed, so drift in
+  // machine load falls on every arm alike rather than on whichever ran last.
+  const wallClockMs = numberArg(args, "wall-clock-ms", WALL_CLOCK_BUDGET_MS);
+  const wallClockSettings: StudySettings = {
+    ...settings,
+    recordBudget: WALL_CLOCK_RECORD_BUDGET,
+  };
+  validateSettings(wallClockSettings);
+  const wallClockSeeds = Array.from(
+    { length: seedCount },
+    (_, i) => WALL_CLOCK_BASE_SEED + i,
+  );
+  const wallClockUsed = usedSeedOverlap(wallClockSeeds);
+  if (
+    wallClockUsed.length > 0 ||
+    wallClockSeeds.some((seed) =>
+      validationSeeds.includes(seed) || calibrationSeeds.includes(seed)
+    )
+  ) {
+    throw new Error(
+      `equal-wall-clock seeds must be fresh: ${wallClockSeeds[0]}-${
+        wallClockSeeds[wallClockSeeds.length - 1]
+      }`,
+    );
+  }
+  const wallRuns = new Map<string, Map<number, TimedResult>>(
+    STUDY_ARMS.map((arm) => [arm.name, new Map()]),
+  );
+  if (wallClockMs > 0) {
+    console.info(
+      `\nEqual-wall-clock phase: ${wallClockMs} ms per run, record budget ` +
+        `${wallClockSettings.recordBudget}, seeds ${wallClockSeeds[0]}-${
+          wallClockSeeds[wallClockSeeds.length - 1]
+        }`,
+    );
+    for (const [index, seed] of wallClockSeeds.entries()) {
+      const offset = index % STUDY_ARMS.length;
+      const order = [
+        ...STUDY_ARMS.slice(offset),
+        ...STUDY_ARMS.slice(0, offset),
+      ];
+      for (const arm of order) {
+        try {
+          // deno-lint-ignore no-await-in-loop
+          const timed = await timedRun(
+            arm,
+            wallClockSettings,
+            seed,
+            splits,
+            target,
+            { ms: wallClockMs, now: () => performance.now() },
+          );
+          wallRuns.get(arm.name)!.set(seed, timed);
+        } catch (error) {
+          failures.push({
+            arm: `${arm.name} (wall-clock)`,
+            seed,
+            error: String(error),
+          });
+          console.error(`  ${arm.name} seed ${seed} (wall-clock) FAILED`);
+        }
+      }
+    }
+  }
+  const wallComparisons = wallClockMs > 0
+    ? compare(wallRuns, wallClockSeeds)
+    : [];
+  const wallCoverage = STUDY_ARMS.map((arm) => {
+    const done = [...wallRuns.get(arm.name)!.values()];
+    return {
+      arm: arm.name,
+      completed: done.length,
+      attempted: wallClockMs > 0 ? wallClockSeeds.length : 0,
+      stoppedByWallClock: done.filter((run) =>
+        run.result.stoppedBy === "wall-clock"
+      ).length,
+      medianWallMs: done.length === 0
+        ? null
+        : median(done.map((r) => r.wallMs)),
+      medianRecordsCharged: done.length === 0
+        ? null
+        : median(done.map((r) => r.result.recordsCharged)),
+      medianHoldoutMse: done.length === 0
+        ? null
+        : median(done.map((r) => r.result.finalHoldoutMse)),
+    };
+  });
+  if (wallClockMs > 0) {
+    console.info("\nEqual-wall-clock contrasts (held-out MSE, arm - control):");
+    for (const c of wallComparisons) {
+      if (c.seeds === 0 || !("heldOutMse" in c)) {
+        console.info(`  ${c.label}: no paired seeds`);
+        continue;
+      }
+      const h = c.heldOutMse;
+      console.info(
+        `  ${c.label.padEnd(48)} n=${h.n} diff ${fmt(h.meanDiff)} ci95 [${
+          fmt(h.ci95[0])
+        }, ${fmt(h.ci95[1])}] wins ${h.wins}/${h.n} diversity x${
+          fmt(c.diversityRatio, 3)
+        } wall x${fmt(c.wallClockMedianRatio, 3)} -> ${c.verdict}`,
+      );
+    }
+    for (const row of wallCoverage) {
+      console.info(
+        `  ${row.arm.padEnd(24)} ${row.completed}/${row.attempted} ` +
+          `stopped by clock ${row.stoppedByWallClock}  median wall ${
+            fmt(row.medianWallMs ?? Number.NaN, 4)
+          } ms  median records ${row.medianRecordsCharged}`,
+      );
+    }
+  }
+
   if (jsonPath !== undefined) {
     const firstSeed = validationSeeds[0];
     const perRun = STUDY_ARMS.flatMap((arm) =>
@@ -420,7 +546,7 @@ if (import.meta.main) {
       contractionPolicy:
         "adaptive (contraction, de+contraction): contraction uses the existing adaptive shrink rule, never growing, only after the delay; the production highDiversityThreshold is 0.8 but a 3-seed pilot showed 1.3-2.3 species per 24 creatures so the shrink branch never fired; the study sets contractionHighDiversityThreshold to 0, so the rule contracts on every post-delay plateau, bounded below by minPopulationFraction 0.5; the rule's low-diversity grow branch is disabled (lowDiversityThreshold 0) because it is checked first and would pre-empt the shrink; linear (lpsr, de+lpsr): the paper's budget-aware delayed L-SHADE linear population-size reduction, held at the base size until contractionDelayFraction of the record budget, then linear to lpsrMinPopulationSize (4, L-SHADE's N_min) at budget exhaustion, never growing; the paper's own delay cap value was not obtained",
       budgetPolicy:
-        "records charged held equal; holdout and diversity probe uncharged; wall-clock measured and reported, not capped",
+        "two phases. Primary (validationSeeds): records charged held equal, holdout and diversity probe uncharged, wall-clock measured. Equal-wall-clock (wallClockPhase): every arm gets the same per-run wall-clock cap, checked before every evaluation and refinement, on fresh seeds, with the record budget raised tenfold so the clock is what stops each run; contraction schedules read the elapsed share of the wall-clock as budget progress. The wall-clock phase is not bit-reproducible, because the clock is real, so its arm order is rotated per seed to spread machine-load drift across arms",
       preparation: {
         note:
           "records charged by every run that shaped the design or the harness, counted as search cost alongside calibration; bounds are 240,000 records per run, which is the most one run can charge",
@@ -465,7 +591,30 @@ if (import.meta.main) {
       jsonPath,
       `${
         JSON.stringify(
-          { manifest, coverage, failures, comparisons, results: perRun },
+          {
+            manifest,
+            coverage,
+            failures,
+            comparisons,
+            results: perRun,
+            wallClockPhase: {
+              wallClockMs,
+              recordBudget: wallClockSettings.recordBudget,
+              seeds: wallClockSeeds,
+              armOrder:
+                "seed-major; at seed index i the arms run in STUDY_ARMS order rotated left by i mod 12",
+              coverage: wallCoverage,
+              comparisons: wallComparisons,
+              results: STUDY_ARMS.flatMap((arm) =>
+                wallClockSeeds.flatMap((seed) => {
+                  const timed = wallRuns.get(arm.name)!.get(seed);
+                  if (timed === undefined) return [];
+                  const { trace: _trace, ...rest } = timed.result;
+                  return [{ ...rest, wallMs: timed.wallMs }];
+                })
+              ),
+            },
+          },
           jsonSafe,
           2,
         )

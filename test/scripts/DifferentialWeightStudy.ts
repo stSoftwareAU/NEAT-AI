@@ -47,6 +47,10 @@ import {
   VALIDATION_BASE_SEED,
   VALIDATION_SEED_COUNT,
   verdict,
+  WALL_CLOCK_BASE_SEED,
+  WALL_CLOCK_BUDGET_MS,
+  WALL_CLOCK_RECORD_BUDGET,
+  type WallClockBudget,
 } from "../../scripts/lib/differentialWeightStudy.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
 
@@ -848,4 +852,123 @@ Deno.test("the default validation seeds are 24156..24185 and overlap neither use
   assertEquals(seeds[seeds.length - 1], 24185);
   assertEquals(USED_SEED_RANGES.length, 2);
   assertEquals(usedSeedOverlap(seeds), []);
+});
+
+/** A clock that advances `step` ms every time it is read. */
+function tickingClock(step: number): () => number {
+  let t = 0;
+  return () => {
+    const now = t;
+    t += step;
+    return now;
+  };
+}
+
+Deno.test("an equal wall-clock budget stops every arm on the clock, before its record budget", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    const settings = { ...SMALL, recordBudget: 60 * 8 * 1000 };
+    for (const arm of STUDY_ARMS) {
+      let last = 0;
+      const tick = tickingClock(1);
+      const wallClock: WallClockBudget = {
+        ms: 120,
+        now: () => (last = tick()),
+      };
+      // deno-lint-ignore no-await-in-loop
+      const result = await runArm(
+        arm,
+        settings,
+        5,
+        splits,
+        undefined,
+        wallClock,
+      );
+      assertEquals(result.stoppedBy, "wall-clock", arm.name);
+      assert(result.recordsCharged < settings.recordBudget, arm.name);
+      assert(result.generations >= 2, arm.name);
+      // It stopped only once the budget was spent, not before.
+      assert(last >= wallClock.ms, arm.name);
+      assert(Number.isFinite(result.finalHoldoutMse), arm.name);
+    }
+  });
+});
+
+Deno.test("a wall-clock budget that never runs out changes nothing; one spent at once evaluates nothing", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    const arm = STUDY_ARMS.find((x) => x.name === "de+lpsr@reenter")!;
+    const plain = await runArm(arm, SMALL, 11, splits, 0.05);
+    assertEquals(plain.stoppedBy, "records");
+    const frozen = await runArm(arm, SMALL, 11, splits, 0.05, {
+      ms: 1,
+      now: () => 0,
+    });
+    assertEquals(frozen, plain);
+
+    let reads = 0;
+    const spent = await runArm(arm, SMALL, 11, splits, 0.05, {
+      ms: 10,
+      now: () => (reads++ === 0 ? 0 : 1e9),
+    });
+    assertEquals(spent.stoppedBy, "wall-clock");
+    assertEquals(spent.recordsCharged, 0);
+    assertEquals(spent.evaluations, 0);
+    assertEquals(spent.generations, 0);
+  });
+});
+
+Deno.test("under a wall-clock budget lpsr contracts on the elapsed share, not the records share", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    const settings = { ...SMALL, recordBudget: 60 * 8 * 1000 };
+    const arm = STUDY_ARMS.find((x) => x.name === "lpsr@reenter")!;
+    const result = await runArm(arm, settings, 5, splits, undefined, {
+      ms: 300,
+      now: tickingClock(1),
+    });
+    assertEquals(result.stoppedBy, "wall-clock");
+    const delay = settings.contractionDelayFraction * settings.recordBudget;
+    // The records alone never reach the delay, so only the clock can contract.
+    assert(result.recordsCharged < delay);
+    assert(result.contractionEvents > 0);
+    assert(result.finalPopulationSize < settings.populationSize);
+    assertEquals(result.trace[0].populationSize, settings.populationSize);
+  });
+});
+
+Deno.test("runArm refuses a wall-clock budget that is not a positive finite number", async () => {
+  const splits = buildSplits(SMALL);
+  const arm = STUDY_ARMS[0];
+  for (const ms of [0, -5, Infinity, Number.NaN]) {
+    let threw = false;
+    try {
+      // deno-lint-ignore no-await-in-loop
+      await runArm(arm, SMALL, 1, splits, undefined, { ms, now: () => 0 });
+    } catch (error) {
+      threw = String(error).includes("wallClock.ms");
+    }
+    assert(threw, String(ms));
+  }
+});
+
+Deno.test("the equal-wall-clock phase uses fresh seeds 34156..34185 and a record budget the clock binds", () => {
+  const seeds = Array.from(
+    { length: VALIDATION_SEED_COUNT },
+    (_, i) => WALL_CLOCK_BASE_SEED + i,
+  );
+  assertEquals(seeds[0], 34156);
+  assertEquals(seeds[seeds.length - 1], 34185);
+  assertEquals(usedSeedOverlap(seeds), []);
+  const validation = Array.from(
+    { length: VALIDATION_SEED_COUNT },
+    (_, i) => VALIDATION_BASE_SEED + i,
+  );
+  assertEquals(seeds.filter((seed) => validation.includes(seed)), []);
+  assert(WALL_CLOCK_BUDGET_MS > 0);
+  assert(WALL_CLOCK_RECORD_BUDGET > DEFAULT_STUDY_SETTINGS.recordBudget);
+  validateSettings({
+    ...DEFAULT_STUDY_SETTINGS,
+    recordBudget: WALL_CLOCK_RECORD_BUDGET,
+  });
 });

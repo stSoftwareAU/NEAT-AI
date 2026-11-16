@@ -101,6 +101,39 @@ export function usedSeedOverlap(seeds: readonly number[]): number[] {
     USED_SEED_RANGES.some(([first, last]) => seed >= first && seed <= last)
   );
 }
+/**
+ * First seed of the equal-wall-clock phase: `base .. base + count - 1`, with
+ * `VALIDATION_SEED_COUNT` seeds. A fresh range, disjoint from the record-budget
+ * validation, the calibration and every used range, so the phase that caps
+ * wall-clock is also measured on seeds no design decision saw.
+ */
+export const WALL_CLOCK_BASE_SEED = 34156;
+/**
+ * The wall-clock every run gets in the equal-wall-clock phase, in milliseconds.
+ * Fixed before that phase ran: 600 ms is the order of one record-budget run
+ * here (the 24156 run's median was about 0.6 s), so each arm gets roughly a
+ * record-budget run's time, the same for every arm.
+ */
+export const WALL_CLOCK_BUDGET_MS = 600;
+/**
+ * Record budget during the equal-wall-clock phase: ten times the record-budget
+ * phase's, so the wall-clock cap, not the records, is what stops a run.
+ */
+export const WALL_CLOCK_RECORD_BUDGET = 2_400_000;
+
+/**
+ * An equal wall-clock budget for one run: the run stops once `ms` have elapsed
+ * on `now`, and contraction schedules read their progress from the elapsed
+ * share of `ms` (or the records share, whichever is further on). `now` is
+ * injected so a test can drive the clock deterministically.
+ */
+export interface WallClockBudget {
+  /** Milliseconds each run may take. Must be positive and finite. */
+  readonly ms: number;
+  /** Monotonic clock in milliseconds, such as `performance.now`. */
+  readonly now: () => number;
+}
+
 /** First calibration seed — a range disjoint from the validation seeds. */
 export const CALIBRATION_BASE_SEED = 94156;
 /** How many calibration seeds set the time-to-target threshold. */
@@ -693,6 +726,12 @@ export interface ArmResult {
   readonly firstContractionRecords: number | null;
   readonly finalPopulationSize: number;
   /**
+   * What ended the run: the record budget, or the wall-clock budget when one
+   * was given. A run under an equal wall-clock budget that reports `records`
+   * charged the whole (raised) record budget first.
+   */
+  readonly stoppedBy: "records" | "wall-clock";
+  /**
    * Offspring slots requested over the run (target size less elites and any
    * re-entered refinement, summed over generations that bred).
    */
@@ -727,6 +766,8 @@ function mean(values: readonly number[]): number {
  * Run one arm at one seed.
  *
  * @param target - Training MSE the time-to-target is read against, if any.
+ * @param wallClock - An equal wall-clock budget; omitted, only records bind
+ *   and the clock is never read.
  */
 // deno-lint-ignore require-await
 export async function runArm(
@@ -735,8 +776,17 @@ export async function runArm(
   seed: number,
   splits: StudySplits,
   target?: number,
+  wallClock?: WallClockBudget,
 ): Promise<ArmResult> {
   validateSettings(settings);
+  if (
+    wallClock !== undefined &&
+    !(wallClock.ms > 0 && Number.isFinite(wallClock.ms))
+  ) {
+    throw new Error(
+      `wallClock.ms must be a positive finite number, got ${wallClock.ms}`,
+    );
+  }
   // `createNeatConfig` replaces the global generator, so the caller's is
   // captured first and the seed applied after the config exists.
   const previousRng = getRandomNumberGenerator();
@@ -750,7 +800,16 @@ export async function runArm(
     const rng = createSeededRng(seed + 1_000_003);
     // Synchronous today; the run is `async` so a caller treats it like the
     // other harnesses and nothing changes if a stage becomes asynchronous.
-    return runSeededArm(arm, settings, seed, splits, target, config, rng);
+    return runSeededArm(
+      arm,
+      settings,
+      seed,
+      splits,
+      target,
+      config,
+      rng,
+      wallClock,
+    );
   } finally {
     setRandomNumberGenerator(previousRng);
   }
@@ -769,8 +828,17 @@ function runSeededArm(
   target: number | undefined,
   config: ReturnType<typeof createNeatConfig>,
   rng: RandomNumberGenerator,
+  wallClock: WallClockBudget | undefined,
 ): ArmResult {
   const { train } = splits;
+  const startedAt = wallClock?.now() ?? 0;
+  let stoppedBy: "records" | "wall-clock" = "records";
+  const wallClockSpent = (): boolean => {
+    if (wallClock === undefined) return false;
+    if (wallClock.now() - startedAt < wallClock.ms) return false;
+    stoppedBy = "wall-clock";
+    return true;
+  };
   const mutator = new Mutator(config);
   let population = seedPopulation(settings, rng);
   let isolatedBest: Creature | undefined;
@@ -806,7 +874,22 @@ function runSeededArm(
     return scored.score;
   };
 
+  /**
+   * Budget spent, in records, as the contraction schedules read it. Without a
+   * wall-clock budget it is exactly `recordsCharged`; with one it is the
+   * further on of the records and the elapsed share of the wall-clock.
+   */
+  const budgetSpent = (): number => {
+    if (wallClock === undefined) return recordsCharged;
+    const elapsed = Math.min(
+      1,
+      (wallClock.now() - startedAt) / wallClock.ms,
+    );
+    return Math.max(recordsCharged, elapsed * settings.recordBudget);
+  };
+
   while (recordsCharged < settings.recordBudget) {
+    if (wallClockSpent()) break;
     generation++;
     const chargedAtStart = recordsCharged;
 
@@ -814,7 +897,10 @@ function runSeededArm(
     let exhausted = false;
     for (const creature of population) {
       if (creature.score !== undefined) continue;
-      if (recordsCharged + train.length > settings.recordBudget) {
+      if (
+        recordsCharged + train.length > settings.recordBudget ||
+        wallClockSpent()
+      ) {
         exhausted = true;
         break;
       }
@@ -851,7 +937,7 @@ function runSeededArm(
           currentSize: size,
           speciesCount,
           scoreHistory: history,
-          recordsCharged,
+          recordsCharged: budgetSpent(),
           recordBudget: settings.recordBudget,
           settings,
         })
@@ -860,7 +946,7 @@ function runSeededArm(
           delayedLinearSize({
             basePopulationSize: settings.populationSize,
             minPopulationSize: settings.lpsrMinPopulationSize,
-            recordsCharged,
+            recordsCharged: budgetSpent(),
             recordBudget: settings.recordBudget,
             delayFraction: settings.contractionDelayFraction,
           }),
@@ -888,7 +974,8 @@ function runSeededArm(
     const refinementCost = settings.refinementCandidates * train.length;
     if (
       Number.isFinite(bestScore) &&
-      recordsCharged + refinementCost <= settings.recordBudget
+      recordsCharged + refinementCost <= settings.recordBudget &&
+      !wallClockSpent()
     ) {
       const refinement = refineWeights(
         population[0],
@@ -997,6 +1084,7 @@ function runSeededArm(
     contractionEvents,
     firstContractionRecords,
     finalPopulationSize: size,
+    stoppedBy,
     slotsRequested,
     unfilledSlots,
     deSlotsRequested,
