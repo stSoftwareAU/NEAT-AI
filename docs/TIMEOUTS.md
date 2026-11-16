@@ -178,6 +178,14 @@ neither gates the persist. A run whose generation throws never reaches this
 teardown; its failure cleanup (Issue #4072) makes the same two calls after
 terminating the workers, so those tasks are named there too.
 
+On a normal finish, `finishUp()` also checks `trainingComplete` and
+`discoveryComplete`, even when neither in-progress map contains work. A queued
+result keeps the loop open for another generation to process it. In `evolveDir`,
+`evolveEnv` and `evolveRL`, the over-run guard can stop that generation from
+starting, and the hard deadline can abandon it; those bounds take precedence
+over merging a late result. The teardown then names the unmerged result as
+discarded rather than extending the run to re-score it.
+
 A discovery or replay creature that `processCompletedResults()` already merged
 into a generation the hard deadline then abandons (Issue #4050) has left
 `neat.discoveryComplete` and the replay queue, so this teardown cannot see it.
@@ -188,9 +196,13 @@ the `trainingComplete` scan above cannot see it. When the hard deadline abandons
 that generation before it commits (Issue #4050), the generation's trained
 creatures are dropped with it, and each task is logged
 `Training <id> discarded: generation abandoned past the hard deadline` exactly
-once (Issue #4107). `processCompletedResults()` records the merged IDs on the
-`Neat` instance (`mergedUncommittedTrainIDs`) and the commit clears them. Two
-places name what is left, and whichever runs first clears the set:
+once (Issue #4107). `processCompletedResults()` records the merged IDs, with
+each result's duration, on the `Neat` instance (`mergedUncommittedTrainIDs`).
+The `Training <id> completed after <duration>` line is not written at merge
+time: the commit (`Neat.commitMergedTraining()`) logs it for each recorded task
+and clears them, so an abandoned or failed generation's task is logged only as
+discarded and never carries both lines (Issue #4099). Two places name what is
+left, and whichever runs first clears the map:
 
 - the abandoned branch of `evolve()`, when the abandoned generation reaches its
   commit guard;

@@ -15,7 +15,7 @@ import {
   creatureForProblem,
 } from "@architecture/CreatureFactory.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
-import { repairInvalidIfNeuronsInCreature } from "@architecture/RepairInvalidIfNeurons.ts";
+import { repairInvalidIfNeuronsInCreature } from "../../src/architecture/RepairInvalidIfNeurons.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 
