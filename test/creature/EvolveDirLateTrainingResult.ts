@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { evolveDir, type EvolveDirDeps } from "@creature/CreatureTraining.ts";
 import type { Neat } from "@neat/Neat.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
@@ -313,7 +314,8 @@ interface OverrunOutcome {
   captured: Neat;
   plain: string;
   taskID: string | undefined;
-  discoveryEvents: number;
+  discoveryOutcomes: string[];
+  discoveredUUID: string;
   stored: Creature[];
 }
 
@@ -348,7 +350,8 @@ async function runOverrunWithSettledResult(
   // this keeps the test's own reference from being reported as unhandled.
   response.catch(() => {});
   let taskID: string | undefined;
-  let discoveryEvents = 0;
+  const discoveryOutcomes: string[] = [];
+  const discoveredUUID = CreatureUtil.makeUUID(Creature.fromJSON(trainedJSON));
 
   const train = (_creature: Creature, _options: unknown, label?: string) => {
     taskID = (label ?? _creature.uuid!).slice(-8);
@@ -377,7 +380,9 @@ async function runOverrunWithSettledResult(
     creatureStore,
     timeoutMinutes: 1,
     onTrainingEvent: (event) => {
-      if (event.kind === "discovery_complete") discoveryEvents++;
+      if (event.kind === "discovery_complete") {
+        discoveryOutcomes.push(event.outcome);
+      }
     },
   };
 
@@ -410,7 +415,7 @@ async function runOverrunWithSettledResult(
               neat.recordDiscoveryComplete("disc-4099", neat.abandonEpoch, {
                 taskID: 4099,
                 duration: 1,
-                discover: { ID: "disc-4099", creature: trainedJSON },
+                discover: { ID: "disc-4099", improvedCreature: trainedJSON },
               } as unknown as ResponseData);
               return out;
             }
@@ -443,7 +448,8 @@ async function runOverrunWithSettledResult(
       captured,
       plain: stripAnsi(lines.join("\n")),
       taskID,
-      discoveryEvents,
+      discoveryOutcomes,
+      discoveredUUID,
       stored: await loadStoredCreatures(creatureStore),
     });
   } finally {
@@ -545,7 +551,14 @@ Deno.test({
   fn: () =>
     runOverrunWithSettledResult(
       "discovery",
-      ({ result, plain, discoveryEvents }) => {
+      ({
+        result,
+        captured,
+        plain,
+        discoveryOutcomes,
+        discoveredUUID,
+        stored,
+      }) => {
         assertEquals(result.terminationReason, "overrun");
         assertEquals(
           result.generation,
@@ -553,9 +566,17 @@ Deno.test({
           `the over-run stop runs exactly one merge generation; got: ${plain}`,
         );
         assertEquals(
-          discoveryEvents,
-          1,
+          discoveryOutcomes,
+          ["improved"],
           `the discovery result must be merged exactly once; got: ${plain}`,
+        );
+        assert(
+          captured.population.some((c) => c.uuid === discoveredUUID),
+          "the discovered creature must reach the returned population",
+        );
+        assert(
+          stored.some((c) => CreatureUtil.makeUUID(c) === discoveredUUID),
+          "the discovered creature must reach the persisted creature store",
         );
         assert(
           !plain.includes("Discovery disc-4099 discarded"),

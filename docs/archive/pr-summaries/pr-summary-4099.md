@@ -233,7 +233,10 @@ asserts an internal flag or the number of `evolve()` calls:
     the worker rejects, `generation === 1`, the task is named once as failed,
     and no creature is contributed;
   - `evolveDir: a discovery result settled when the time budget runs out is merged by one over-run pass (Issue #4099)`:
-    `generation === 2`, one `discovery_complete` event, no `discarded` line.
+    the worker answers with an `improvedCreature`; asserts `generation === 2`,
+    exactly one `discovery_complete` event with outcome `improved`, no
+    `discarded` line, and the discovered creature (matched by its content uuid)
+    in both the returned population and the store.
 - `test/creature/EvolveEnvHardDeadline_test.ts::evolveEnv: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
 - `test/creature/EvolveRLHardDeadline_test.ts::evolveRL: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
   Both settle the result once, after the first generation, and assert the
