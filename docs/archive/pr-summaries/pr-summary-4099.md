@@ -222,8 +222,8 @@ stubbed `WorkerHandler` training promise, or the `recordTrainingComplete` /
 `recordDiscoveryComplete` recording seam the response handler uses). None
 asserts an internal flag or the number of `evolve()` calls:
 
-- `test/creature/EvolveDirLateTrainingResult.ts`, three over-run cases that
-  share one fixture:
+- `test/creature/EvolveDirLateTrainingResult.ts`, four over-run cases that share
+  one fixture:
   - `evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`.
     It drives the real scheduler, worker-response handler, `evolve()`, commit
     and creature store, and asserts `terminationReason === "overrun"`,
@@ -236,7 +236,15 @@ asserts an internal flag or the number of `evolve()` calls:
     the worker answers with an `improvedCreature`; asserts `generation === 2`,
     exactly one `discovery_complete` event with outcome `improved`, no
     `discarded` line, and the discovered creature (matched by its content uuid)
-    in both the returned population and the store.
+    in both the returned population and the store;
+  - `evolveDir: the over-run merge pass is granted once; a result settling after it is discarded at teardown (Issue #4099)`:
+    one result is merged by the over-run pass, then a second worker result
+    settles after that pass, sequenced from the fixture's own state. Asserts
+    `terminationReason === "overrun"`, `generation === 2`, exactly one
+    `completed` line for the first result, exactly one
+    `Training second99 discarded at teardown` line and no `completed` line for
+    the second. With the once-only guard in `claimOverrunMergePass()` removed
+    this test fails (`generation` becomes 3); the guard was restored afterwards.
 - `test/creature/EvolveEnvHardDeadline_test.ts::evolveEnv: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
 - `test/creature/EvolveRLHardDeadline_test.ts::evolveRL: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
   Both settle the result once, after the first generation, and assert the

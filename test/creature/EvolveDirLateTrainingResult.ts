@@ -307,7 +307,14 @@ Deno.test({
   },
 });
 
-type OverrunSettled = "training" | "failed-training" | "discovery";
+type OverrunSettled =
+  | "training"
+  | "failed-training"
+  | "discovery"
+  | "training-then-second";
+
+/** Eight characters, so the log names it the same way as a dispatched task. */
+const SECOND_TRAIN_ID = "second99";
 
 interface OverrunOutcome {
   result: Awaited<ReturnType<typeof evolveDir>>;
@@ -403,8 +410,24 @@ async function runOverrunWithSettledResult(
 
         const realEvolve = neat.evolve.bind(neat);
         let settledAlready = false;
+        let secondSettled = false;
         neat.evolve = async (...args: Parameters<Neat["evolve"]>) => {
           const out = await realEvolve(...args);
+          if (
+            settled === "training-then-second" && settledAlready &&
+            !secondSettled
+          ) {
+            // The first result has been merged and committed by the over-run
+            // pass; a second worker answers only now, after that pass.
+            secondSettled = true;
+            neat.trainingInProgress.set(SECOND_TRAIN_ID, Promise.resolve());
+            neat.recordTrainingComplete(SECOND_TRAIN_ID, neat.abandonEpoch, {
+              taskID: 4100,
+              duration: 1,
+              train: { ID: SECOND_TRAIN_ID, creature: trainedJSON, error: 0 },
+            } as ResponseData);
+            return out;
+          }
           if (!settledAlready) {
             settledAlready = true;
             nowMS = startMS + 90_000;
@@ -581,6 +604,42 @@ Deno.test({
         assert(
           !plain.includes("Discovery disc-4099 discarded"),
           `the settled discovery result must not be discarded; got: ${plain}`,
+        );
+      },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveDir: the over-run merge pass is granted once; a result settling after it is discarded at teardown (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    runOverrunWithSettledResult(
+      "training-then-second",
+      ({ result, plain, taskID }) => {
+        assert(taskID, "a worker training task must have been dispatched");
+        assertEquals(result.terminationReason, "overrun");
+        assertEquals(
+          result.generation,
+          2,
+          `a second result must not earn a second merge generation; got: ${plain}`,
+        );
+        assertEquals(
+          completionLines(plain, taskID),
+          1,
+          `the first result must have exactly one completion; got: ${plain}`,
+        );
+        assertEquals(
+          plain.split(`Training ${SECOND_TRAIN_ID} discarded at teardown`)
+            .length - 1,
+          1,
+          `the second result must be named as discarded exactly once; got: ${plain}`,
+        );
+        assertEquals(
+          completionLines(plain, SECOND_TRAIN_ID),
+          0,
+          `the second result must not be merged; got: ${plain}`,
         );
       },
     ),
