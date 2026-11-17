@@ -256,6 +256,14 @@ Existing tests edited (no assertion removed):
   empty, failed-only, discovery-only and bounded cases are covered through
   `evolveDir` as listed above.
 
+- `test/validate/CreatureValidatePack.ts`: the `makeCreature` helper and the
+  wide creature pin `LOGISTIC` for the hidden and output squashes. Left random,
+  an `IF` output pick made construction add role synapses (5 connections, not
+  3), which failed
+  `packed: a healthy creature is answered from the buffer
+  alone` in CI. No
+  assertion changed; unrelated to the over-run change.
+
 Callers and siblings checked:
 
 - All three loops' over-run branches carry the claim: `evolveDir`, `evolveEnv`
