@@ -131,6 +131,7 @@
       "bench/IncrementalScoreUpdate.ts",
       "bench/MainThreadScoreWork.ts",
       "bench/MaxWeightBiasRecalculation.ts",
+      "bench/PredictiveCodingDeadlineLarge.ts",
       "bench/RandomImmigrantsStagnationEscape.ts",
       "bench/RevisitDiagnostic.ts",
       "bench/ScoreCalculationCache.ts",

@@ -96,16 +96,20 @@ flowchart LR
 
 - **symptom** — scheduled training tasks overran the per-task deadline, returned
   no result and were cancelled and quarantined (`timedOut=0 abandoned=2`)
-- **status** — `reproduced` on an equivalently large fixture.
-  `bench/PredictiveCodingDeadlineLarge.ts` builds a creature with 76,500
-  synapses (the captured hang creature has 63,317) and 200 records, and calls
-  `trainDir` in predictive-coding mode with a deadline 2 s away. With the base
-  versions of the five changed production files restored (`--no-check`), the run
-  was still going at 900 s and was killed by `timeout` (exit 124). At the head
-  it returns in about 3.4 s: `timedOut=true bestMeasure=unmeasured`, about 1.4 s
-  past the deadline, which is one sample on this creature. The unit regression
-  tests also failed on base (0 passed, 3 failed with `AssertionError`). The
-  captured creature itself is only on sloth@GRQ-3.
+- **status** — `verified` on an equivalently large fixture.
+  `bench/PredictiveCodingDeadlineLarge.ts`, run as
+  `deno run -A
+  bench/PredictiveCodingDeadlineLarge.ts 2000 200` (a 2,000 ms
+  deadline and 200 records; the script's default is 2,000 records), builds a
+  creature with 76,500 synapses (the captured hang creature has 63,317) and
+  calls `trainDir` in predictive-coding mode with a deadline 2 s away. With the
+  base versions of the five changed production files restored (`--no-check`),
+  the run was still going at 900 s and was killed by `timeout` (exit 124). At
+  the head it returns in about 3.4 s: `timedOut=true bestMeasure=unmeasured`,
+  about 1.4 s past the deadline, which is one sample on this creature. The unit
+  regression tests also failed on base: the first three `trainDir` tests fail
+  with `AssertionError`, and the fourth cannot load there because it needs the
+  new clock seam. The captured creature itself is only on sloth@GRQ-3.
 - **regression test** —
   `test/architecture/training/PredictiveCodingDeadline.ts::predictive-coding trainDir past its deadline is an unmeasured timeout`
 
@@ -193,7 +197,7 @@ flowchart LR
   - With a counter clock, exactly one iteration completes before the second
     times out.
   - With no deadline, every iteration completes.
-- Added `test/architecture/training/PredictiveCodingDeadline.ts`, 3 tests
+- Added `test/architecture/training/PredictiveCodingDeadline.ts`, 4 tests
   through the real `trainDir` entry point:
   - An expired `hardDeadlineTS` gives `timedOut: true`,
     `bestMeasure:
@@ -211,10 +215,13 @@ flowchart LR
     packaging mutated so a timed-out result is always `unmeasured`, this test
     fails and the other three pass.
 - Added `bench/PredictiveCodingDeadlineLarge.ts`, the large-fixture reproduction
-  under Reproduction.
-- Red on base: the three `trainDir` tests failed against the base production
-  files (0 passed, 3 failed). The trainer-level tests failed type-checking on
-  base, because their options and fields do not exist there.
+  under Reproduction. It is a standalone `deno run` harness, so it is listed in
+  `bench.exclude` in `deno.json` and `deno task bench` does not execute it.
+- Red on base: the first three `trainDir` tests fail by `AssertionError` against
+  the base production files; the fourth cannot load there because it needs the
+  new `__setPredictiveCodingNowForTests` clock seam. The trainer-level tests
+  failed type-checking on base, because their options and fields do not exist
+  there.
 - Head: those 7 tests plus
   `test/architecture/training/PredictiveCodingBackendReport.ts` passed (8
   passed, 0 failed). That existing test, which pins the `[training-backend]`
