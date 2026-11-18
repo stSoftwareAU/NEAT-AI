@@ -17,8 +17,9 @@ carried error. The trainer also writes a `[training-phase] phase=finalised` line
 to the parent log, and `docs/TIMEOUTS.md` now says which `[training-phase]`
 lines a predictive-coding task writes and how to read their absence.
 
-Part of #4146. The native-engine branches stay unconfirmed, and closing needs a
-field run.
+Part of #4146. The native-engine branches stay unconfirmed, the backend of the
+original GRQ-3 / 7.1.12 incident stays unconfirmed, and closing needs a field
+run.
 
 ## Spec
 
@@ -120,16 +121,19 @@ flowchart LR
   `test/architecture/training/PredictiveCodingDeadline.ts`) — reviewer: met —
   reason: delivered by the merged #4149 on the base branch; this diff adds only
   the predictive-coding `finalised` phase line
-- **met** — Root cause pinned to one of the three branches above with a
+- **partial** — Root cause pinned to one of the three branches above with a
   reproduction on the captured creature or an equivalently large fixture —
   evidence: the field log lines under Evidence,
   `bench/PredictiveCodingDeadlineLarge.ts` (76,500 synapses: base still running
   at 900 s against a 2 s deadline, head returns in about 3.4 s),
-  `test/architecture/training/PredictiveCodingDeadline.ts` — reviewer: met —
-  reason: the field log (GRQ-25, 7.1.19, not the GRQ-3 7.1.12 incident) pins the
-  cause to the predictive-coding trainer, which reached `trainDir` but matches
-  none of the three branches as written; the reviewer ran the head half of the
-  bench (`timedOut=true` in 5.3 s), not the 900 s base half
+  `test/architecture/training/PredictiveCodingDeadline.ts` — reviewer: partial —
+  reason: delivered: the predictive-coding trainer ignoring the deadline is
+  pinned from the GRQ-25 / 7.1.19 log and reproduced by
+  `bench/PredictiveCodingDeadlineLarge.ts` (the reviewer ran the head half of
+  the bench, `timedOut=true` in 5.3 s, not the 900 s base half). Left: that
+  cause is outside the three listed branches, and the backend of the GRQ-3 /
+  7.1.12 incident is unconfirmed until a field run on a release with the
+  `[training-backend]` line shows which trainer ran there
 - **missing** — If branch 1: the engine checks the deadline inside an epoch (or
   at a bounded batch interval) — reviewer: missing — reason: the field log shows
   that branch 1 did not occur (no native call ran). Earlier offline measurements
