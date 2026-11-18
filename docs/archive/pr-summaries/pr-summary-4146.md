@@ -1,236 +1,210 @@
 ## Summary
 
-Third step for #4146. #4149 made each training task write one
-`[training-backend]` line, and #4150 added `[training-phase]` lines, both
-relayed to the parent log. This step narrows the root cause with measurements on
-a creature about the size of the one in the issue, and commits a bench so the
-finalisation measurement can be repeated
-(`bench/TrainingFinalisationLargeCreature.ts`). No production code changes.
+The `[training-backend]` lines added by #4149 have now reached a field log, and
+they show what was holding the workers. On sloth@GRQ-25 (2026-11-15, neat-ai
+7.1.19, sampler loop 1), both hung tasks ran on `backend=wasm`. The run was in
+predictive-coding learn mode. The predictive-coding trainer
+(`trainWithPredictiveCoding`) never read the per-task deadline, and every
+iteration reads every record of every file. On a large creature it ran minutes
+past the deadline, until the watchdog cancelled the task and quarantined the
+worker.
 
-The finding: with the engine the host runs (`NEAT-AI-Backpropagation` `947cbb5`,
-v0.1.50, rebuilt from source on this host), the native trainer **does** honour
-the deadline on a creature of this size, and the TypeScript finalisation that
-follows takes well under a second. Neither of the two stages the issue's branch
-1 and the finalisation hypothesis point at can hold a worker for minutes. The
-hold has to come from somewhere the log cannot yet show, and the `[training-*]`
-lines from #4149/#4150 are what will show it on the next sloth@GRQ-3 run on a
-release that carries them (7.1.14, the latest field report, predates them).
-Branch 2 (capability probe) and branch 3 (task never reached `trainDir`) stay
-open. The issue is not closed by this step.
+This PR makes the predictive-coding trainer stop at the task's single deadline,
+which it checks after every sample. It discards the partial iteration and
+returns a `timedOut` result. That result carries best measure `full` when at
+least one iteration completed, and `unmeasured` otherwise, with the creature's
+carried error. The trainer also writes a `[training-phase] phase=finalised` line
+to the parent log.
 
-Part of #4146.
-
-Version bump: `deno.json` was auto-incremented to 7.1.17 by CI (commit
-ebf33d4f); the merged commit records the final version.
+Part of #4146. The native-engine branches stay unconfirmed, and closing needs a
+field run.
 
 ## Spec
 
 ### Intent and Rationale
 
-- The log cannot say whether a task sat in the native call, in finalisation, or
-  never reached `trainDir`. Before waiting for a field log, rule out what can be
-  ruled out offline: run the real engine and the real finalisation code on a
-  fixture of the reported size.
+- The field log answers the issue's open question. The task reached `trainDir`
+  but took the predictive-coding path, which none of the issue's three branches
+  covers. That path is the one with no deadline, so the fix goes there and not
+  into the native engine.
+- The check runs after every sample, as the standard TypeScript loop does
+  (`TrainingEpoch.ts`). Even a single iteration over the full corpus can outlast
+  the task budget.
 
 ### Essential Design Decisions
 
-- The bench lives in `bench/` (timing is not allowed in `test/`, per AGENTS.md)
-  and asserts nothing; it only reports `Deno.bench` timings.
-- No production change: the offline measurements do not reproduce a fault, and a
-  fault that has not been reproduced is not fixed on a guess.
+- A partial iteration is discarded: no best-error update and no Hebbian update.
+  Its error covers only some of the records, so scoring from it would give the
+  creature a score it did not earn. This follows the native path's rule
+  (`packageTrainingResult`: never score a partial measure).
+- When no iteration completed, the result is `bestMeasure: "unmeasured"` with
+  `error` set to the `error` or `untrained-error` tag, or `NaN`. The scheduler's
+  existing `isUnmeasuredTimeout` then skips scoring. `preTrainingErrorTag` is
+  exported from `RustTrainDirBridge.ts` and reused, not copied.
+- The deadline is computed once with `computeTimeoutTS` from
+  `trainingTimeOutMinutes` and `hardDeadlineTS`, which is the same value the
+  other trainers use.
+- A run that does not time out returns the old result shape, with no `timedOut`
+  or `bestMeasure` key. The `[training-backend]` line is unchanged
+  (`deadlineSent` still means a native request carried a deadline).
 
 ### Undiscoverable Facts
 
-- The engine and FFI measurements were taken in uncommitted scratch scripts
-  under `/tmp` (a generator for the fixture, a CLI run, and an FFI run through
-  `nativeBackpropTrain`); only the finalisation stage is in the committed bench.
-  Commands and output are quoted under Evidence.
-- The captured creatures (`~/logs/training-hangs/*.json` on sloth@GRQ-3) are not
-  reachable from this host.
+- The evidence is in GRQ-logs history at commit `c2f87347` (file
+  `GRQ-25-sloth.log`; the 2026-11-17 triage deleted it), quoted under Evidence.
+- The diff alone cannot show that this is the predictive-coding trainer and not
+  the standard TypeScript loop, because both print `backend=wasm`. The log shows
+  it: `Sampler learn mode: predictiveCoding`, `costName: MSE`, and only
+  forward-only creatures, so none of the other skip-Rust reasons applies. With
+  Rust enabled, the standard loop throws instead of running, unless a skip
+  reason sends it there (`runTrainingLoop`).
+- The earlier reports (7.1.12 to 7.1.17) were all sampler runs. They predate the
+  backend line, so their trainer cannot be confirmed from their logs.
 
 ## Evidence
 
-Engine fixture (an uncommitted scratch generator under `/tmp`, not the committed
-builder): 50 inputs, 5 outputs, 9,630 hidden neurons, 64,992 synapses
-(forward-only, `TANH`, seeded), plus a 200,000-record `.bin` corpus (44 MB).
-Host: 21 cores, linux. Engine built with
-`cargo build --release --locked -p neat_ai_backpropagation` at `947cbb5`.
-
-Native engine, deadline 40 s ahead, CLI:
+Fetched with
+`gh api 'repos/stSoftwareAU/GRQ-logs/contents/GRQ-25-sloth.log?ref=c2f8734767aa9129b30ca155462f959234b4a24f'`:
 
 ```text
-neat_ai_backpropagation train creature.json data --epochs 2 --output-dir out1 --seed 1 --deadline-epoch-ms <now+40000>
-real 0m40.109s
+69:  Sampler learn mode: predictiveCoding
+394: [neat-ai] running version 7.1.19
+456: [training-backend] task=b679fd6f backend=wasm deadlineSent=no capability=none
+457: [training-backend] task=3b5090f5 backend=wasm deadlineSent=no capability=none
+546: [Neat] Stuck-task watchdog abandoning 2 training task(s) past per-task deadline: b679fd6f, 3b5090f5
+547: Worker task 2 on worker-13 was cancelled after 346431ms without a response: training task b679fd6f passed its per-task deadline without returning a result (GRQ #4489)
+793: [training-outcomes] tasks=2 scheduled=2 completed=0 timedOut=0 abandoned=2 ...
 ```
 
-The run stopped 109 ms past the deadline. (The fixture's synapse order was not
-canonical, so the engine rejected the finished creature at the end; the deadline
-timing is unaffected.)
-
-Native engine, FFI through the repository's own `nativeBackpropTrain`
-(`NEAT_AI_BACKPROP_LIB_PATH` pointing at the rebuilt library; the capability
-probe reported `deadlineEpochMs`, version 1):
-
-```text
-deadline 40000 ms: returned after ms past deadline: 304
-  timedOut: true, phase: accumulation, weightsChanged: true, best: partial (256 records)
-deadline 8000 ms:  returned after ms past deadline: 294
-  timedOut: true, completed: 0
-```
-
-So an epoch that is longer than the deadline returns `timedOut: true` with
-changed weights about 0.3 s past the deadline, through both the CLI and FFI.
-This is a measurement on this fixture; it does not cover the production corpus
-or a 16 GB macOS host.
-
-TypeScript finalisation on a creature of the issue's size (50 inputs, 5 outputs,
-9,629 hidden neurons = 9,684 neurons, 63,317 synapses), from the committed bench
-(`deno bench --allow-read --allow-write --allow-env --allow-ffi
-bench/TrainingFinalisationLargeCreature.ts`,
-average per iteration, re-run on the final head on a shared 7-core aarch64 Linux
-host, so indicative only):
-
-| stage                           | time     |
-| ------------------------------- | -------- |
-| `Creature.fromJSON`             | 34.0 ms  |
-| `creature.loadFrom(exportJSON)` | 35.6 ms  |
-| `creature.exportJSON()`         | 5.6 ms   |
-| `creature.traceJSON()`          | 8.9 ms   |
-| `compactUnused(trace, 0.1)`     | 198.8 ms |
-
-Limit of that table: the trace comes from a never-activated creature, so
-`compactUnused` times the copy and identity setup, not a removal pass over a
-trained creature.
-
-Code read: the engine's `run_train_until` reads the deadline at entry, before
-every baseline batch, every accumulated record and every candidate batch
-(`backpropagation/src/train.rs`, doc comment on `run_train_until`); the
-record-sample planning that runs before the first check only opens each corpus
-file's header and counts records (`sampling.rs`, `plan_record_sample`).
+The log has no `[training-phase]` line, which matches the code on the base
+branch: only the native path wrote one.
 
 ```mermaid
 flowchart LR
-    A[task dispatched] --> B[buildTrainRequestFields]
-    B --> C{backend}
-    C -->|ffi / cli| D[native train + deadline]
-    C -->|wasm| W[TS loop]
-    D -->|measured: stops ~0.1-0.3 s past deadline| E[packageTrainingResult]
-    E -->|measured: well under 1 s| F[result to parent]
-    D -.->|[training-phase] native-returned| L[parent log]
-    E -.->|[training-phase] finalised| L
+    S[scheduleTraining<br/>hardDeadlineTS] --> T{trainDir}
+    T -->|predictiveCoding.enabled| PC[trainWithPredictiveCoding]
+    T -->|eligible| N[native ffi / cli + deadline]
+    PC -->|before: no deadline, ran until watchdog| X[cancelled + quarantined]
+    PC -->|now: deadline checked after every sample| R[timedOut result<br/>full / unmeasured]
+    R --> P["[training-phase] phase=finalised"]
 ```
 
 ## Reproduction
 
-- **symptom** — training tasks overran the per-task deadline, returned no result
-  and were quarantined (held 342–435 s on sloth@GRQ-3)
-- **status** — `not-run` — reason: the production hang needs the captured
-  creature and corpus on a 16 GB macOS host; a fixture of the reported size with
-  the same engine returned within 0.3 s of its deadline, so the field fault did
-  not reproduce here. No fix is shipped on that basis.
-- **regression test** — none; no fault was reproduced
+- **symptom** — scheduled training tasks overran the per-task deadline, returned
+  no result and were cancelled and quarantined (`timedOut=0 abandoned=2`)
+- **status** — `partial` — reason: the regression tests failed on base and pass
+  after the fix. I restored the base versions of the five changed production
+  files and ran `test/architecture/training/PredictiveCodingDeadline.ts` with
+  `--no-check`: 0 passed, 3 failed with `AssertionError`. Those tests use a
+  small creature with an already-expired deadline, not the captured creature or
+  the production corpus.
+- **regression test** —
+  `test/architecture/training/PredictiveCodingDeadline.ts::predictive-coding trainDir past its deadline is an unmeasured timeout`
 
 ## Acceptance Criteria
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
 - **met** — The worker logs, into the parent run log, which `trainDir` backend
-  ran and whether a deadline was forwarded (one line per task:
-  `backend=ffi|cli|wasm deadlineSent=yes|no capability=<version|none>`). A
-  regression test asserts the line reaches the parent's logger from inside a
-  worker. — evidence: `test/workers/TrainDirBackendRelay.ts`,
-  `test/workers/TrainDirBackendRelayWiring.ts`,
-  `test/architecture/training/RustTrainDirBackendReport.ts` (delivered by the
-  merged #4149, not by this diff) — reviewer: missing — reason: the reviewer saw
-  only this diff, which adds the bench and its large-creature fixture; the
-  criterion is satisfied by #4149 already on the base branch
+  ran and whether a deadline was forwarded — evidence:
+  `test/workers/TrainDirBackendRelay.ts`,
+  `test/workers/TrainDirBackendRelayWiring.ts` (both from the merged #4149; this
+  diff adds the `finalised` phase line for predictive-coding tasks in
+  `test/architecture/training/PredictiveCodingDeadline.ts`) — reviewer: met —
+  reason: the reviewer counted base code; this diff alone does not deliver it
 - **partial** — Root cause pinned to one of the three branches above with a
-  reproduction on the captured creature or an equivalently large fixture. —
-  evidence: `bench/TrainingFinalisationLargeCreature.ts` and the measurements
-  under Evidence — reviewer: missing — reason: an equivalently large fixture
-  shows branch 1 (engine checks the deadline too rarely) and slow TS
-  finalisation do not reproduce, but branches 2 and 3 are not ruled out and no
-  hang was reproduced; the reviewer's note that the fixture is only about the
-  reported size is accepted
+  reproduction on the captured creature or an equivalently large fixture —
+  evidence: the field log lines under Evidence,
+  `test/architecture/training/PredictiveCodingDeadline.ts` — reviewer: partial —
+  reason: the field log pins the cause outside the three listed branches, to the
+  predictive-coding trainer. It is reproduced on a small fixture with an expired
+  deadline, not on the captured creature, which is only on sloth@GRQ-3.
 - **missing** — If branch 1: the engine checks the deadline inside an epoch (or
-  at a bounded batch interval) — coordinate with NEAT-AI-Backpropagation#214.
-  Regression: a fixture where one epoch is longer than the deadline returns
-  `timedOut: true` with changed weights within deadline + 30 s through both FFI
-  and CLI. — reviewer: missing — reason: conditional on branch 1, which the
-  measurements do not support (CLI 109 ms and FFI 294–304 ms past the deadline);
-  the engine already checks per record
+  at a bounded batch interval) — reviewer: missing — reason: the field log shows
+  that branch 1 did not occur (no native call ran). Earlier offline measurements
+  had the engine stopping 0.1 to 0.3 s past the deadline.
 - **missing** — If branch 2: capability probe failure is loud and the regression
-  covers the `$CARGO_HOME/lib` install layout GRQ uses. — reviewer: missing —
-  reason: branch 2 is unconfirmed; the `~/.cargo/lib` layout test came with
-  #4149
+  covers the `$CARGO_HOME/lib` install layout GRQ uses — reviewer: missing —
+  reason: branch 2 is not the cause. The layout test
+  (`test/architecture/training/NativeBackpropCargoLibLayout.ts`) came with an
+  earlier PR.
 - **missing** — Closing requires a quoted
-  `[training-outcomes] … timedOut=N≥1 abandoned=0` line from a sampler or learn
-  run on sloth@GRQ-3 (or another 16 GB host) on the fixed release, not
-  inspection. — reviewer: missing — reason: needs a host run on a released build
-- **unrequested** — `bench/TrainingFinalisationLargeCreature.ts` — reviewer:
-  unrequested — reason: not named by a criterion; it records the finalisation
-  measurement that narrows the root cause the second criterion asks for, and
-  changes no behaviour
+  `[training-outcomes] … timedOut=N≥1
+  abandoned=0` line from a sampler or
+  learn run on sloth@GRQ-3 (or another 16 GB host) on the fixed release —
+  reviewer: missing — reason: needs a field run on a release carrying this PR
+- **unrequested** — the predictive-coding trainer honours the task deadline
+  (`src/predictiveCoding/PredictiveCodingTrainer.ts`,
+  `src/architecture/training/TrainingPredictiveCoding.ts`) — reviewer:
+  unrequested — reason: this is the fix for the cause the field log pinned; the
+  issue's own branches did not foresee it
+- **unrequested** — a `[training-phase] phase=finalised` line and an info line
+  for predictive-coding tasks — reviewer: unrequested — reason: the next field
+  log can then show whether a predictive-coding task settled, and how far from
+  its deadline
+- **unrequested** — `msFromDeadline` extracted into `TrainDirBackendReport.ts`
+  and `preTrainingErrorTag` exported — reviewer: unrequested — reason: reuse in
+  place of copies; the native path's behaviour is unchanged
+- **unrequested** — docs in `docs/PREDICTIVE_CODING.md`, `docs/TIMEOUTS.md`,
+  `src/config/TrainOptions.ts`, `src/architecture/training/TrainingTypes.ts` and
+  `CHANGELOG.md` — reviewer: unrequested — reason: each describes the changed
+  deadline behaviour
+- **unrequested** — the two new test files — reviewer: unrequested — reason:
+  they are the regression tests for the fix
 
 ## Standards Review
 
 <!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
 
-- **clean** — no violations reported. The repository has no
-  `CODING-STANDARDS.md`, so the reviewer used `AGENTS.md` and
-  `docs/ENGINEERING_PRINCIPLES.md`: the file is in `bench/` (timing allowed,
-  `Deno.bench` only), Australian English, no `console.*`, UUID-only fixture,
-  `loadFrom(json, false)` matches the signature at `src/Creature.ts`, no
-  workflow files or named-but-absent tests
+- **clean** — no violations. The repository has no `CODING-STANDARDS.md`, so the
+  reviewer used `AGENTS.md` and `docs/ENGINEERING_PRINCIPLES.md`. It checked:
+  logging only through `getLogger()`; `Date.now()` used only for the relative
+  deadline; no timing APIs and no `Deno.env.set` in the tests; behaviour-level
+  assertions; creature UUID provenance (the discarded iteration makes no edit,
+  and the `loadFrom` restore is a safe harbour); DRY reuse of
+  `computeTimeoutTS`, `preTrainingErrorTag` and `msFromDeadline`; no fallback
+  path and no new dependency; Australian English. Neither standards file names a
+  rule as enforced by review only.
 
 ## Test Plan
 
-- Added `bench/TrainingFinalisationLargeCreature.ts` (a `Deno.bench` file, no
-  assertions). Run on the final head: all five cases ran, results in the
-  Evidence table.
-- Moved the fixture builder out of the bench into
-  `test/fixtures/LargeCreatureFixture.ts` (parameterised by a shape) and added
-  `test/fixtures/LargeCreatureFixture.test.ts` (6 tests at head). The shape now
-  builds exactly the issue's totals: 50 inputs + 5 outputs + 9,629 hidden =
-  9,684 neurons, and 63,317 synapses (the outward-connection fix-up runs before
-  the random fill, so the synapse count lands on the target). The first test
-  builds `ISSUE_4146_SHAPE` and asserts those two totals as literals; the others
-  pin, on a small shape: neuron counts, uuids, biases and squash; forward-only
-  and input and output counts; synapse uniqueness, the weight bound and the
-  exact count; feed-forward ordering; the input-fed first hidden neurons; the
-  output-fed last hidden neurons; the outward-connection fix-up; seed
-  determinism with no RNG state shared between calls; and a
-  `Creature.fromJSON`/`exportJSON` round trip. Run on the final head:
-  `deno test test/fixtures/LargeCreatureFixture.test.ts`, 6 passed, 0 failed.
-  Run with the previous builder (9,630 hidden, fix-up after the fill): 4 passed,
-  2 failed (the issue-shape totals test and the exact synapse-count test).
-- `./quality.sh --skip-tests --skip-discovery`: passed on the previous head
-  (format, lint, type check, WASM sync); on the final head only `deno fmt` and
-  the test file above were run. The full test stage was not run: this host has
-  no native `rust_scorer`. The diff adds one test file and changes no production
-  code.
-- Related existing tests were not edited.
+- Added `test/predictiveCoding/PredictiveCodingDeadline.ts`, 3 tests at the
+  trainer level:
+  - A deadline that has already passed stops the trainer with no completed
+    iteration, and the creature's export is unchanged.
+  - With a counter clock, exactly one iteration completes before the second
+    times out.
+  - With no deadline, every iteration completes.
+- Added `test/architecture/training/PredictiveCodingDeadline.ts`, 3 tests
+  through the real `trainDir` entry point:
+  - An expired `hardDeadlineTS` gives `timedOut: true`,
+    `bestMeasure:
+    "unmeasured"`, the `untrained-error` value, and one
+    `phase=finalised
+    timedOut=yes` line.
+  - The same case with no tag gives `NaN`.
+  - With no deadline, the result has no `timedOut` key and the phase line reads
+    `timedOut=no msFromDeadline=none`.
+- Red on base: the three `trainDir` tests failed against the base production
+  files (0 passed, 3 failed). The trainer-level tests failed type-checking on
+  base, because their options and fields do not exist there.
+- Head: those 6 tests plus
+  `test/architecture/training/PredictiveCodingBackendReport.ts` passed (7
+  passed, 0 failed). That existing test, which pins the `[training-backend]`
+  line, is unedited and still passes.
+- `./quality.sh --rust-scorer-bin=<locally built rust_scorer>` on commit
+  `f9659387`: passed, 10,484 passed, 0 failed, 50 ignored. The scorer was built
+  from NEAT-AI-scorer `742c5df`.
+- No existing test assertion was removed or edited.
+- Callers checked: `trainDir` and `trainDirAsync` both reach
+  `trainDirPredictiveCoding` through `runPredictiveCoding`. `scheduleTraining`
+  passes `hardDeadlineTS` and `predictiveCoding` to the worker
+  (`src/NEAT/NeatScheduling.ts`). The native `msFromDeadlineNow` now delegates
+  to `msFromDeadline` with the same clock seam.
 
-## Mutation check
-
-The earlier survivors in the fixture builder (previously in the bench) are now
-covered by the test above; the builder lives at
-`test/fixtures/LargeCreatureFixture.ts:42-113`. The bench is
-`bench/TrainingFinalisationLargeCreature.ts` (94 lines), and its five
-`Deno.bench` registrations are at lines 56-94.
-
-- `bench/TrainingFinalisationLargeCreature.ts` bench registrations (`group`,
-  `name` and the `fn` bodies of the five `Deno.bench` cases) exempt
-  (untestable): a `Deno.bench` file is not imported by any test and timing is
-  not allowed in `test/` (AGENTS.md); the cases only call library functions that
-  have their own tests.
-
-## Unmet criteria in this run
-
-The `missing` criteria stay open. The next step needs a sloth@GRQ-3 sampler or
-learn run on a release that carries #4149 and #4150, so the parent log shows
-whether the held task was inside the native call or never reached `trainDir`.
-
-Not done / not checked: the production corpus and the captured creatures; a 16
-GB macOS host; branch 2 and branch 3; a trained-creature compaction pass in the
-bench.
+Not done or not checked: the captured hang creatures and the production corpus
+are only on the field hosts. A run that ends with `iteration: 1` but no
+completed iteration is reported as one iteration, the same convention as the
+native path. The predictive-coding trainer still ignores `trainingSampleRate`,
+which is why one iteration is so long; that is outside this issue.
