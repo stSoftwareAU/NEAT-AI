@@ -124,6 +124,9 @@ predicate, applying the same one-generation floor
   queueing cannot renew it. On the native `trainDir` trainer the deadline is
   forwarded to the engine only when the engine can enforce it (Issue #4119); see
   [the native trainer and the per-task deadline](#-the-native-trainer-and-the-per-task-deadline-issue-4119).
+  The predictive-coding trainer (`predictiveCoding.enabled`) checks the same
+  deadline after every sample and returns a `timedOut` result, discarding the
+  partial iteration (Issue #4146).
 - **Discovery replay** — `DiscoveryReplayQueue.scheduleReplay()` refuses to
   start a replay once the cap has passed, and
   `waitForCompletion(hardDeadlineTS)` drops any queued replay and signals the

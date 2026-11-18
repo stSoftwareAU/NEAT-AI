@@ -4,6 +4,8 @@
  * Issue #2399: Extracted from Training.ts. Issue #1556 delegates
  * standard training to the local-learning Predictive Coding trainer and
  * packages a {@link TrainingResult} compatible with the standard pipeline.
+ * Issue #4146: the trainer honours the task deadline (`trainingTimeOutMinutes` /
+ * `hardDeadlineTS`) and reports a `timedOut` result.
  */
 
 import type { CostInterface } from "@costs/CostInterface.ts";
@@ -20,7 +22,14 @@ import {
   resolveIterations,
   resolveTargetError,
 } from "@architecture/training/TrainingSetup.ts";
-import { reportTrainDirBackend } from "@architecture/training/TrainDirBackendReport.ts";
+import {
+  msFromDeadline,
+  reportTrainDirBackend,
+  reportTrainDirPhase,
+} from "@architecture/training/TrainDirBackendReport.ts";
+import { computeTimeoutTS } from "@architecture/training/TrainingOutcome.ts";
+import { preTrainingErrorTag } from "@architecture/training/RustTrainDirBridge.ts";
+import { getLogger } from "@utils/Logger.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
 /**
@@ -37,6 +46,12 @@ export function trainDirPredictiveCoding(
     ...DEFAULT_PREDICTIVE_CODING_CONFIG,
     ...pcOverrides,
   };
+  // Issue #4146: the task's one deadline, computed once.
+  const timeoutTS = computeTimeoutTS(
+    Date.now(),
+    options.trainingTimeOutMinutes ?? 0,
+    options.hardDeadlineTS,
+  );
   const iterations = resolveIterations(options);
   const targetError = resolveTargetError(options);
 
@@ -51,6 +66,9 @@ export function trainDirPredictiveCoding(
     capability: "none",
   });
 
+  // Read before the trainer: its best-creature restore may drop tags.
+  const carriedError = preTrainingErrorTag(creature);
+
   const pcResult = trainWithPredictiveCoding(
     creature,
     binaryFiles,
@@ -60,6 +78,7 @@ export function trainDirPredictiveCoding(
       iterations,
       targetError,
       log: options.log,
+      timeoutTS,
     },
   );
 
@@ -103,11 +122,38 @@ export function trainDirPredictiveCoding(
     addTag(compactExport, "pc-changed", String(pcResult.changed));
   }
 
-  return {
-    ID,
-    iteration: pcResult.iterations,
-    error: pcResult.error,
-    trace,
-    compact: compactExport,
-  };
+  let result: TrainingResult;
+  if (pcResult.timedOut) {
+    const measured = pcResult.completedIterations > 0;
+    getLogger().info(
+      `Training ${ID} stopped by its deadline (predictive coding, ${pcResult.completedIterations} full iteration(s), best measure: ${
+        measured ? "full" : "unmeasured"
+      })`,
+    );
+    result = {
+      ID,
+      iteration: Math.max(1, pcResult.completedIterations),
+      // Never score a partial measure (same convention as the native path).
+      error: measured ? pcResult.error : carriedError ?? Number.NaN,
+      trace,
+      compact: compactExport,
+      timedOut: true,
+      bestMeasure: measured ? "full" : "unmeasured",
+    };
+  } else {
+    result = {
+      ID,
+      iteration: pcResult.iterations,
+      error: pcResult.error,
+      trace,
+      compact: compactExport,
+    };
+  }
+
+  reportTrainDirPhase(ID, {
+    phase: "finalised",
+    timedOut: pcResult.timedOut,
+    msFromDeadline: msFromDeadline(timeoutTS, Date.now()),
+  });
+  return result;
 }
