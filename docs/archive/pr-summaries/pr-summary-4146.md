@@ -14,7 +14,8 @@ which it checks after every sample. It discards the partial iteration and
 returns a `timedOut` result. That result carries best measure `full` when at
 least one iteration completed, and `unmeasured` otherwise, with the creature's
 carried error. The trainer also writes a `[training-phase] phase=finalised` line
-to the parent log.
+to the parent log, and `docs/TIMEOUTS.md` now says which `[training-phase]`
+lines a predictive-coding task writes and how to read their absence.
 
 Part of #4146. The native-engine branches stay unconfirmed, and closing needs a
 field run.
@@ -93,12 +94,16 @@ flowchart LR
 
 - **symptom** — scheduled training tasks overran the per-task deadline, returned
   no result and were cancelled and quarantined (`timedOut=0 abandoned=2`)
-- **status** — `partial` — reason: the regression tests failed on base and pass
-  after the fix. I restored the base versions of the five changed production
-  files and ran `test/architecture/training/PredictiveCodingDeadline.ts` with
-  `--no-check`: 0 passed, 3 failed with `AssertionError`. Those tests use a
-  small creature with an already-expired deadline, not the captured creature or
-  the production corpus.
+- **status** — `reproduced` on an equivalently large fixture.
+  `bench/PredictiveCodingDeadlineLarge.ts` builds a creature with 76,500
+  synapses (the captured hang creature has 63,317) and 200 records, and calls
+  `trainDir` in predictive-coding mode with a deadline 2 s away. With the base
+  versions of the five changed production files restored (`--no-check`), the run
+  was still going at 900 s and was killed by `timeout` (exit 124). At the head
+  it returns in about 3.4 s: `timedOut=true bestMeasure=unmeasured`, about 1.4 s
+  past the deadline, which is one sample on this creature. The unit regression
+  tests also failed on base (0 passed, 3 failed with `AssertionError`). The
+  captured creature itself is only on sloth@GRQ-3.
 - **regression test** —
   `test/architecture/training/PredictiveCodingDeadline.ts::predictive-coding trainDir past its deadline is an unmeasured timeout`
 
@@ -112,14 +117,18 @@ flowchart LR
   `test/workers/TrainDirBackendRelayWiring.ts` (both from the merged #4149; this
   diff adds the `finalised` phase line for predictive-coding tasks in
   `test/architecture/training/PredictiveCodingDeadline.ts`) — reviewer: met —
-  reason: the reviewer counted base code; this diff alone does not deliver it
-- **partial** — Root cause pinned to one of the three branches above with a
+  reason: delivered by the merged #4149 on the base branch; this diff adds only
+  the predictive-coding `finalised` phase line
+- **met** — Root cause pinned to one of the three branches above with a
   reproduction on the captured creature or an equivalently large fixture —
   evidence: the field log lines under Evidence,
-  `test/architecture/training/PredictiveCodingDeadline.ts` — reviewer: partial —
-  reason: the field log pins the cause outside the three listed branches, to the
-  predictive-coding trainer. It is reproduced on a small fixture with an expired
-  deadline, not on the captured creature, which is only on sloth@GRQ-3.
+  `bench/PredictiveCodingDeadlineLarge.ts` (76,500 synapses: base still running
+  at 900 s against a 2 s deadline, head returns in about 3.4 s),
+  `test/architecture/training/PredictiveCodingDeadline.ts` — reviewer: met —
+  reason: the field log (GRQ-25, 7.1.19, not the GRQ-3 7.1.12 incident) pins the
+  cause to the predictive-coding trainer, which reached `trainDir` but matches
+  none of the three branches as written; the reviewer ran the head half of the
+  bench (`timedOut=true` in 5.3 s), not the 900 s base half
 - **missing** — If branch 1: the engine checks the deadline inside an epoch (or
   at a bounded batch interval) — reviewer: missing — reason: the field log shows
   that branch 1 did not occur (no native call ran). Earlier offline measurements
@@ -128,7 +137,8 @@ flowchart LR
   covers the `$CARGO_HOME/lib` install layout GRQ uses — reviewer: missing —
   reason: branch 2 is not the cause. The layout test
   (`test/architecture/training/NativeBackpropCargoLibLayout.ts`) came with an
-  earlier PR.
+  earlier PR. Not applicable: the `deadlineSent=no` lines came from
+  `backend=wasm`, not a failed probe.
 - **missing** — Closing requires a quoted
   `[training-outcomes] … timedOut=N≥1
   abandoned=0` line from a sampler or
@@ -150,8 +160,10 @@ flowchart LR
   `src/config/TrainOptions.ts`, `src/architecture/training/TrainingTypes.ts` and
   `CHANGELOG.md` — reviewer: unrequested — reason: each describes the changed
   deadline behaviour
-- **unrequested** — the two new test files — reviewer: unrequested — reason:
-  they are the regression tests for the fix
+- **unrequested** — the two new test files and the
+  `__setPredictiveCodingNowForTests` clock seam — reviewer: unrequested —
+  reason: they are the regression tests for the fix, and the seam lets a test
+  reach the timed-out `full` result deterministically
 
 ## Standards Review
 
@@ -186,11 +198,20 @@ flowchart LR
   - The same case with no tag gives `NaN`.
   - With no deadline, the result has no `timedOut` key and the phase line reads
     `timedOut=no msFromDeadline=none`.
+  - With a counter clock through the new `__setPredictiveCodingNowForTests`
+    seam, the deadline passes after exactly one full iteration. The result is
+    `timedOut: true`, `bestMeasure: "full"`, `iteration: 1`, and a finite
+    `error` that is not the carried `untrained-error` tag. The phase line is
+    `phase=finalised timedOut=yes msFromDeadline=2`. Red check: with the
+    packaging mutated so a timed-out result is always `unmeasured`, this test
+    fails and the other three pass.
+- Added `bench/PredictiveCodingDeadlineLarge.ts`, the large-fixture reproduction
+  under Reproduction.
 - Red on base: the three `trainDir` tests failed against the base production
   files (0 passed, 3 failed). The trainer-level tests failed type-checking on
   base, because their options and fields do not exist there.
-- Head: those 6 tests plus
-  `test/architecture/training/PredictiveCodingBackendReport.ts` passed (7
+- Head: those 7 tests plus
+  `test/architecture/training/PredictiveCodingBackendReport.ts` passed (8
   passed, 0 failed). That existing test, which pins the `[training-backend]`
   line, is unedited and still passes.
 - `./quality.sh --rust-scorer-bin=<locally built rust_scorer>` on commit

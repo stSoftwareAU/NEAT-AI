@@ -32,6 +32,14 @@ import { preTrainingErrorTag } from "@architecture/training/RustTrainDirBridge.t
 import { getLogger } from "@utils/Logger.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
+// Isolated clock seam for deterministic deadline tests (Issue #4146): it
+// computes the task deadline, is the trainer's per-sample clock, and times the
+// `finalised` phase line.
+let predictiveCodingNow: () => number = Date.now;
+export function __setPredictiveCodingNowForTests(now?: () => number): void {
+  predictiveCodingNow = now ?? Date.now;
+}
+
 /**
  * Trains a creature using Predictive Coding local learning rules.
  */
@@ -47,8 +55,9 @@ export function trainDirPredictiveCoding(
     ...pcOverrides,
   };
   // Issue #4146: the task's one deadline, computed once.
+  const now = predictiveCodingNow;
   const timeoutTS = computeTimeoutTS(
-    Date.now(),
+    now(),
     options.trainingTimeOutMinutes ?? 0,
     options.hardDeadlineTS,
   );
@@ -79,6 +88,7 @@ export function trainDirPredictiveCoding(
       targetError,
       log: options.log,
       timeoutTS,
+      now,
     },
   );
 
@@ -153,7 +163,7 @@ export function trainDirPredictiveCoding(
   reportTrainDirPhase(ID, {
     phase: "finalised",
     timedOut: pcResult.timedOut,
-    msFromDeadline: msFromDeadline(timeoutTS, Date.now()),
+    msFromDeadline: msFromDeadline(timeoutTS, now()),
   });
   return result;
 }

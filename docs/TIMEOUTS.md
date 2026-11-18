@@ -499,7 +499,9 @@ log:
   so it reports `deadlineSent=no capability=none`).
 - `deadlineSent` is `yes` when the request carried the deadline
   (`deadlineEpochMs` or `--deadline-epoch-ms`), and `no` otherwise: a legacy
-  engine, no timeout, or the WASM loop.
+  engine, no timeout, or the WASM loop. It stays `no` on a predictive-coding
+  task even though that trainer enforces the deadline itself, because no native
+  request was sent.
 - `capability` is the `deadline` capability version the engine advertised (`1`
   for a deadline-capable engine), or `none` when it advertised none.
 
@@ -511,7 +513,10 @@ legacy-deadline warning take the same route. A `deadlineSent=no` line on a
 so only the stuck-task watchdog can stop it.
 
 A native (`ffi` or `cli`) task also writes two `[training-phase]` lines at info
-level, after the backend line. The WASM loop writes neither.
+level, after the backend line. A predictive-coding task (`backend=wasm`) writes
+one: a `phase=finalised timedOut=yes|no msFromDeadline=…` line when its result
+is packaged, and no `native-returned` line, because it makes no native call. The
+standard TypeScript loop (also `backend=wasm`) writes neither.
 
 ```text
 [training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no|unknown> msFromDeadline=<integer|none>
@@ -539,6 +544,8 @@ relay. Read them as follows:
   call had not returned, or it threw. The task's error, if any, says which.
 - A `native-returned` line with no `finalised` line means the task hung after
   the native call returned: in parsing, packaging or finalisation.
+- On a predictive-coding task, a `[training-backend]` line with no `finalised`
+  line means the predictive-coding trainer had not returned.
 
 ## 🔀 How the deadline propagates
 

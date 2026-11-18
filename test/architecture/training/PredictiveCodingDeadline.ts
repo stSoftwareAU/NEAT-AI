@@ -13,6 +13,7 @@ import {
 } from "@architecture/DataSet.ts";
 import { trainDir } from "@architecture/Training.ts";
 import { setTrainDirReporter } from "@architecture/training/TrainDirBackendReport.ts";
+import { __setPredictiveCodingNowForTests } from "@architecture/training/TrainingPredictiveCoding.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 
@@ -92,4 +93,32 @@ Deno.test("predictive-coding trainDir with no deadline is unchanged", () => {
     phases[0].endsWith("phase=finalised timedOut=no msFromDeadline=none"),
     phases[0],
   );
+});
+
+Deno.test("predictive-coding trainDir timed out after one full iteration is a full measure", () => {
+  // A counter clock: one call computes the deadline (now = 0, so the deadline
+  // is hardDeadlineTS = 3), then one call per sample. The first iteration's two
+  // samples see 1 and 2; the second iteration's see 3 and then 4 > 3, so the
+  // deadline passes after exactly one full iteration. The phase line reads 5.
+  let tick = 0;
+  __setPredictiveCodingNowForTests(() => tick++);
+  try {
+    const { result, lines } = run(
+      { hardDeadlineTS: 3, iterations: 50, targetError: 0 },
+      "123",
+    );
+    assertEquals(result.timedOut, true);
+    assertEquals(result.bestMeasure, "full");
+    assertEquals(result.iteration, 1);
+    assert(Number.isFinite(result.error), String(result.error));
+    assert(result.error !== 123, "error must be measured, not the carried tag");
+    const phases = phaseLines(lines);
+    assertEquals(phases.length, 1);
+    assertEquals(
+      phases[0],
+      `[training-phase] task=${result.ID} phase=finalised timedOut=yes msFromDeadline=2`,
+    );
+  } finally {
+    __setPredictiveCodingNowForTests(undefined);
+  }
 });
