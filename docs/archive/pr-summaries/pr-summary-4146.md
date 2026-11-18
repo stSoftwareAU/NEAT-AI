@@ -51,8 +51,9 @@ field run.
 
 ### Undiscoverable Facts
 
-- The evidence is in GRQ-logs history at commit `c2f87347` (file
-  `GRQ-25-sloth.log`; the 2026-11-17 triage deleted it), quoted under Evidence.
+- The evidence is in the private production-log repository history at commit
+  `c2f87347` (file `GRQ-25-sloth.log`; the 2026-11-17 triage deleted it), quoted
+  under Evidence.
 - The diff alone cannot show that this is the predictive-coding trainer and not
   the standard TypeScript loop, because both print `backend=wasm`. The log shows
   it: `Sampler learn mode: predictiveCoding`, `costName: MSE`, and only
@@ -64,8 +65,8 @@ field run.
 
 ## Evidence
 
-Fetched with
-`gh api 'repos/stSoftwareAU/GRQ-logs/contents/GRQ-25-sloth.log?ref=c2f8734767aa9129b30ca155462f959234b4a24f'`:
+Fetched from the private production-log repository (commit
+`c2f8734767aa9129b30ca155462f959234b4a24f`, file `GRQ-25-sloth.log`):
 
 ```text
 69:  Sampler learn mode: predictiveCoding
