@@ -1,86 +1,102 @@
-# Experiment: pin what can be read of arXiv 2611.06522 (Issue #4163)
+# Experiment: pin the method of arXiv 2611.06522 (Issue #4163)
 
 ## Summary
 
-This is a follow-up to #4178, which merged the admission-versus-persistence
-study harness and its 20-seed negative finding. It changes documentation only.
-The evidence page `docs/evidence/admission-persistence-4163.md` now records what
-can be verified about the cited paper, arXiv 2611.06522. Facts pinned from
-arXiv's own announcement are kept apart from facts that come only from search
-excerpts, and the page lists what is still unread. `docs/cspell.json` gains the
-author and repository names the page quotes. The worker's handover note for the
-interrupted earlier run, `docs/archive/handover/issue-4163.md`, is on this
-branch too. Nothing under `src/`, `scripts/` or `test/` changed.
-
-The paper's full method still cannot be read from this host, so this is Part of
-#4163.
+#4178 merged the admission-versus-persistence study harness and its 20-seed
+negative finding. #4183 then pinned the abstract of the cited paper, but left
+one part of the issue missing: "Read and pin the full method before reproducing
+it". The egress proxy still blocks arxiv.org. This PR pins the full method from
+a text conversion of arXiv's v1 PDF that is committed in a public GitHub
+repository. The page states how the harness differs from that method. Only
+documentation changes: the evidence page, the issue's CHANGELOG entry and four
+new spelling words. Nothing under `src/`, `scripts/` or `test/` changed. With
+this, nothing the issue asks for is left undone. Closes #4163.
 
 ## Spec
 
 ### Intent and Rationale
 
-- The issue says "Read and pin the full method before reproducing it". #4178 had
-  only a search engine's summary of the paper. This PR pins the parts that arXiv
-  itself published (title, authors, version, categories and the abstract's
-  findings), labels the rest as unverified, and names what is not pinned.
+- The issue asks for the paper's method to be read and pinned before it is
+  reproduced. The harness came first. So the page now pins the method, records
+  where the text came from, and compares the harness with the paper point by
+  point instead of claiming a reproduction.
 
 ### Essential Design Decisions
 
-- Pinned facts come only from arXiv's own announcement text. Search-engine
-  excerpts sit under a separate "unverified" heading, and the page notes that
-  one excerpt cited #4178 itself, so those excerpts are not independent
-  evidence.
-- The page still says the harness is **not** a reproduction of the paper. The
-  study's `no-benefit` verdict for the 2:1-capped bias points the same way as
-  the abstract's "moderate bias matches uniform sampling", but it is recorded as
-  neither a replication nor evidence for the paper.
+- The page cites the source as a third-party conversion of arXiv's PDF, not
+  arXiv itself. It gives the git blob SHAs and the PDF's SHA-256, so anyone can
+  check the text against arXiv later.
+- The page gives no figure values, only numbers stated in the text. The
+  conversion's `images/` directory is empty.
+- The harness bias, `oddsCap ** (1 - r)` with r a rank scaled to [0, 1], is
+  stated as a rank-softmax at τ = 1/ln 2 ≈ 1.44 in the paper's notation. The
+  page says the [0, 1] rank scaling is inferred from the paper's stated ratio
+  exp(1/τ).
+- The study is still recorded as neither a replication of the paper nor evidence
+  for it.
 
 ### Undiscoverable Facts
 
-- The egress proxy refuses arXiv and its mirrors. In the earlier run, `curl` to
-  `arxiv.org` (abstract, HTML, PDF), `export.arxiv.org`, `web.archive.org` and
-  the Semantic Scholar API all failed with
-  `CONNECT tunnel failed, response
-  403`. In this run, `curl -m 15` to
-  `arxiv.org/abs`, `arxiv.org/pdf`, `export.arxiv.org`, a third-party arXiv
-  mirror, `huggingface.co/papers` and the Semantic Scholar API each returned no
-  HTTP status (`000`).
-- The pinned text is arXiv's cs.NE RSS item for 5 November 2026, as committed in
-  the public repository `ehijano/rss_fetch`
-  (`rss_data/cs.NE/2026-11-05_cs.NE.xml`). Re-read in this run with
-  `gh api repos/ehijano/rss_fetch/contents/rss_data/cs.NE/2026-11-05_cs.NE.xml`:
-  the item reads `2611.06522v1 Announce Type: new`, and it carries the authors
-  "Corrado Calamita, Matteo Mendicini, Luca Ferrari, Riccardo Bertamini" and the
-  phrase "moderate bias matches uniform sampling, and strong bias reduces
-  QD-score".
+- arxiv.org is still unreachable from this host. On 2026-11-20, `curl -m 15` to
+  `arxiv.org/abs`, `arxiv.org/pdf`, `export.arxiv.org` and `semanticscholar.org`
+  returned `000`. A web fetch of `arxiv.org/html/2611.06522v1` returned
+  `proxy refused the connection`.
+- `gh search code "Predicting Durable Offspring"` found
+  `ZhangCurosr/zhangcursor-papers-arxiv-ai-001`. Its directory
+  `2026-11-05/From-Admission-to-Retention-Predicting-Durable-Offspring-in_7ae711e2/`
+  holds `full.md`, `paper.pdf` and `meta.json`. The `meta.json` `source` is
+  `https://arxiv.org/pdf/2611.06522v1.pdf`. In the conversion, the 1024-capacity
+  fitness-sweep row of Table 3 reads "r ∈ {0.1, 0.5}". The page reads it as τ.
 
 ## Evidence
 
-Documentation only; no UI files and no code. The record is the "Question and
-scope" section and the "What this study does not show" list in
-`docs/evidence/admission-persistence-4163.md`. The harness, its tests and the
-artefacts (`docs/evidence/admission-persistence-4163.json`,
-`docs/evidence/admission-persistence-4163-species.csv`) are unchanged from
-#4178.
+Documentation only: there are no UI files and no code. The record is the
+"Question and scope" section of `docs/evidence/admission-persistence-4163.md`.
+It covers provenance, "The paper's method, pinned", "The paper's findings,
+pinned" and "How this harness relates to the paper". The "Nothing that confirms
+the paper" bullet in "What this does not say" now reflects the read text. The
+Issue #4163 entry in `CHANGELOG.md` gains one sentence, and `docs/cspell.json`
+gains `Brax`, `Curosr`, `semanticscholar` and `zhangcursor`.
+
+The rewritten sections follow `docs/DOC_STYLE.md` rule 1. Each acronym is
+expanded and linked where the page first uses it: multilayer perceptron (MLP),
+exponentially weighted moving average (EWMA), area under the receiver operating
+characteristic curve (AUC) and quality-diversity (QD, linked to
+`docs/comparison/TRAINING_PARADIGMS.md#-quality-diversity-qd`). The "mean
+squared error (MSE, glossary)" expansion moved up to MSE's first use, the
+harness-comparison table. The later Controls bullet now says "calibration MSE".
+
+Docs sweep:
+
+- I grepped the evidence page, `README.md`, `docs/README.md` and `CHANGELOG.md`
+  for `2611`, `abstract`, `unread`, `not pinned` and `4163`.
+- In the evidence page, the only stale sentences were the old "Not pinned"
+  paragraph and the "Nothing that confirms the paper" bullet. Both are replaced.
+- The `docs/README.md` index entry for the page (lines 173–176) is still true.
 
 ## Acceptance Criteria
 
-- **missing** — "Read and pin the full method before reproducing it" — reason:
-  only arXiv's announcement of the paper could be read, because the egress proxy
-  refuses arXiv and its mirrors. Title, authors, version, categories and the
-  abstract's findings are pinned. The archive capacities, the persistence
-  definition, the candidate signals, the bias rule and its settings, the seeds
-  and the statistics are not. The harness is not a reproduction of the paper.
+The issue states no acceptance-criteria heading, and this PR leaves nothing it
+asks for undone, so there are no `missing` entries.
 
 ## Test Plan
 
-- No test was added or changed; the diff is documentation only.
-- `./quality.sh --rust-scorer-bin=<rust_scorer built from stSoftwareAU/NEAT-AI-scorer 742c5df>`
-  ran once, in the foreground, on head `464414b3` (the last commit before this
-  summary). It exited 0: 10,577 passed, 0 failed, 50 ignored. The tree was clean
-  afterwards, so the format and lint steps changed nothing. The gate does not
-  run without a native scorer, and the cached binary had been evicted, so it was
-  rebuilt with `cargo build --release -p rust_scorer`.
-- Not checked: the paper's full text. See the `missing` entry above.
+- No test was added or changed, because the diff is documentation only.
+- `deno run --no-config --no-lock -A npm:cspell@8 lint --no-progress -c docs/cspell.json docs/evidence/admission-persistence-4163.md CHANGELOG.md`
+  reported `Files checked: 2, Issues found: 0 in 0 files.`
+- `deno fmt --check` on the three edited files passed.
+- After the acronym fix, `deno fmt --check` and cspell on the evidence page
+  passed, and `deno test -A --parallel test/docs/*.ts` reported
+  `ok | 318 passed | 0 failed`.
+- `./quality.sh < /dev/null` stopped at once with
+  `Native rust_scorer is required (quality.sh default) but was not found`. This
+  host has no `rust_scorer` binary and no `../NEAT-AI-scorer` checkout.
+- `./quality.sh --skip-tests < /dev/null` then exited 0. Deps, fmt, lint, bash
+  syntax and `deno check` passed, and the WASM pin was verified. The discovery
+  verification was skipped because `../NEAT-AI-Discovery` is absent.
+- The test stage did not run here. The diff touches no code or test, so CI's
+  test run is the check for it.
+
+<!-- vibe-quality-gate-skipped stage="tests" reason="rust_scorer binary absent on this host; diff is documentation only; ./quality.sh --skip-tests passed" -->
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

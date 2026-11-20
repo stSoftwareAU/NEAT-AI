@@ -18,55 +18,129 @@ quality of an offspring at admission predict how much of the population descends
 from it many generations later, and would weighting parents by that signal beat
 choosing them uniformly?
 
-The issue cites arXiv 2611.06522. The paper itself still cannot be fetched from
-this host. On 2026-11-20 the egress proxy again refused `arxiv.org` (abstract,
-HTML and PDF), `export.arxiv.org`, `web.archive.org` and the Semantic Scholar
-API, each with `curl: (56) CONNECT tunnel failed, response 403`. A web fetch of
-`arxiv.org/html/2611.06522` returned `proxy refused the connection`.
+**Provenance.** The issue cites arXiv 2611.06522. arxiv.org is still unreachable
+from this host: on 2026-11-20 `curl -m 15` to `arxiv.org/abs`, `arxiv.org/pdf`,
+`export.arxiv.org` and `semanticscholar.org` returned no HTTP status (`000`),
+and a web fetch of `arxiv.org/html/2611.06522v1` returned
+`proxy refused the connection`. The full text was instead fetched on 2026-11-20
+with `gh api` from a third-party conversion in the public GitHub repository
+`ZhangCurosr/zhangcursor-papers-arxiv-ai-001`, directory
+`2026-11-05/From-Admission-to-Retention-Predicting-Durable-Offspring-in_7ae711e2/`.
+It holds `full.md` (git blob `14a35cce37efbf87237cf3f9ff32ce9d7261fe67`, 23,221
+bytes), `paper.pdf` (git blob `d9e9b9a8ab6f2eed37b5a9fa6744843f6a8f0035`,
+SHA-256 `68dbd8b226d3e27b1ce32ab8bef5cf767f3e8b2e288f6677536ad43424d5e0ad`,
+621,050 bytes) and `meta.json`, whose `source` is
+`https://arxiv.org/pdf/2611.06522v1.pdf`. The latest commit touching `full.md`
+is `e6e700264f08e4f0dc1480ff5bbb427319751d87` (2026-11-05). A sibling directory
+ending `_75a97c8f` holds a byte-identical `full.md`. So the source is a
+third-party text conversion of arXiv's v1 PDF, not arXiv itself. Its `images/`
+directory is empty, so Figures 1 and 2 are not available; only numbers quoted in
+the text are pinned here. Its title, authors and abstract match arXiv's
+announcement; it gives the authors' affiliation as BAINSA – Board of AI and
+Neuroscience Student Association. A copy of arXiv's own cs.NE RSS item for 5
+November 2026 is also committed in `ehijano/rss_fetch`
+(`rss_data/cs.NE/2026-11-05_cs.NE.xml`).
 
-**Pinned (from arXiv's own announcement).** A copy of arXiv's cs.NE RSS item for
-5 November 2026, committed in the public GitHub repository `ehijano/rss_fetch`
-(`rss_data/cs.NE/2026-11-05_cs.NE.xml`), gives the following. The same abstract
-text appears in other feed archives found by `gh search code "2611.06522"`.
+### The paper's method, pinned
 
-- Title: "From Admission to Retention: Predicting Durable Offspring in
-  Quality-Diversity Search"; authors Corrado Calamita, Matteo Mendicini, Luca
-  Ferrari and Riccardo Bertamini; version v1; categories cs.NE and cs.AI.
-- The study uses an unstructured quality-diversity (QD) archive. It tests
-  whether signals available before an individual has reproduced distinguish
-  offspring that merely enter the archive from those still retained generations
-  later.
-- The tasks are a planar-arm benchmark and two robotic-locomotion tasks. The
-  same signals are often associated with entry and persistence in opposite
-  directions.
-- Lineage depth is the clearest such signal. Its persistence discrimination
-  grows with population capacity, which is associated with lower turnover.
-- Biasing parent selection toward the signals most associated with survival does
-  not improve search: "moderate bias matches uniform sampling, and strong bias
-  reduces QD-score".
+Everything below is what the text states.
 
-**Reported in search excerpts, unverified (2026-11-20).** These come from a
-search engine's summaries of the HTML page, not from the paper. One of those
-summaries cited this repository's own pull request #4178 as a source, so they
-are not independent evidence.
+- **Algorithm.** Dominated Novelty Search (DNS). Competition fitness is the mean
+  unnormalised Euclidean descriptor distance to the k = 3 nearest individuals of
+  equal or higher fitness in archive ∪ offspring. It is +∞ when there are none,
+  and averaged over fewer when fewer than k exist. The pooled set is ranked by
+  it and truncated to capacity, so eviction is global and recurrent. Parents are
+  sampled uniformly.
+- **Capacity.** 256, 1024 and 4096, with 256 offspring per generation, so the
+  offspring-to-slot ratios are 1.00, 0.25 and 0.06. Each measurement run is
+  10,000 generations.
+- **Variation.** Iso+LineDD with σ_iso = 0.005 and σ_line = 0.05.
+- **Domains.**
+  - Arm: 128 joint angles, end-effector descriptor in [0, 1]², objective
+    −std(angles).
+  - Omnidirectional Ant (Brax): final-position descriptor in [−30, 30]², forward
+    reward removed, horizon 1000.
+  - Walker 2D (Brax): multilayer perceptron
+    ([MLP](https://en.wikipedia.org/wiki/Multilayer_perceptron)) [16] policy,
+    feet-contact descriptor, standard reward, horizon 1000.
+- **Outcomes.** Entry is an offspring kept in the archive immediately after
+  creation. Persistence is still being in the archive H generations later
+  (individual survival). H = 1000 is the main result; H ∈ {100, 1000} is checked
+  on all tasks and H = 10 on Arm only, because Brax logs every tenth generation.
+  Offspring born too close to the run end are excluded (right-censoring).
+- **Signals.** Twelve, in five groups (Table 1). Ancestry entropy is undefined
+  at capacity 4096, so that condition has 11.
 
-- The setup builds on Dominated Novelty Search (DNS).
-- Entry means an offspring is kept in the archive right after it is created.
-  Offspring created too close to the end of a run to measure persistence are
-  excluded.
-- The bias is a rank-softmax over a signal with a temperature τ (for example τ =
-  0.5 and τ = 2.0 on Omnidirectional Ant at capacity 1024 over 10,000
-  generations).
-- Survival is measured 1000 generations after entry.
+  | Group              | Cold-start | Signals                                                                                                                                                                      |
+  | ------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | Lineage at birth   | yes        | depth; ancestral-fitness exponentially weighted moving average ([EWMA](https://en.wikipedia.org/wiki/Exponential_smoothing)); ancestry entropy; competition fitness at birth |
+  | Current state      | yes        | age                                                                                                                                                                          |
+  | Archive state      | yes        | parent fitness; current competition fitness                                                                                                                                  |
+  | Mating event       | no         | \|λ\|; compositional residual; child fitness                                                                                                                                 |
+  | Offspring feedback | no         | curiosity; offspring survival rate                                                                                                                                           |
 
-**Not pinned.** The full method is still unread: the archive capacities per
-task, the exact persistence definition, every candidate signal, the bias rule
-and its settings, seeds and the statistics. No method detail or number from the
-paper is used in the harness. The harness implements this repository's own
-reading of the issue text, including its "capped roughly 2:1 odds" bias, which
-comes from the issue, not from the paper. It is **not** a reproduction of the
-paper. The committed artefact `admission-persistence-4163.json` holds no paper
-record, so this section is the only record of what was read.
+  Lineage depth is the number of reproduction steps from the founder along the
+  base-parent chain.
+- **Statistic.** Area under the receiver operating characteristic curve
+  ([AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve)),
+  AUC = Pr(g⁺ > g⁻) + ½Pr(g⁺ = g⁻) over parent signal values, and Δ = |AUC −
+  0.5|. There is one AUC per signal per run, and runs (not the ≈2.5 × 10⁷
+  correlated pairs) are the unit of analysis. All AUCs are measured under
+  uniform selection.
+- **Intervention.** Rank-softmax P(i) ∝ exp(rank(g_i)/τ) over occupied slots,
+  with a most-to-least ratio of exp(1/τ) and tie-averaged ranks.
+- **Seeds and sweeps (Table 3).** Measurement: 5 seeds at 256, 10 at 1024, 5 at
+  4096. Fitness sweep on Omnidirectional Ant at 1024 and 4096, 4,000
+  generations, uniform against τ ∈ {0.1, 0.5}, 10 seeds. Depth sweep on
+  Omnidirectional Ant at 1024, 10,000 generations, ±depth with τ ∈ {0.5, 2.0},
+  10 seeds. The 1024 fitness-sweep row reads "r ∈ {0.1, 0.5}" in the conversion;
+  it is read here as τ, as in the 4096 row.
+- **Outcome metrics.** Projected quality-diversity (QD,
+  [training paradigms](../comparison/TRAINING_PARADIGMS.md#-quality-diversity-qd))
+  score (QD-score), projected coverage, mean novelty and maximum fitness.
+
+### The paper's findings, pinned
+
+- At capacity 1024 and H = 1000, several cold-start signals reverse direction
+  between entry and persistence on all three tasks. Shallower lineage depth is
+  associated with entry and deeper with persistence.
+- Lineage-depth persistence AUC rises monotonically with capacity on all three
+  tasks, while entry AUC falls below chance.
+- On Omnidirectional Ant, lineage-depth persistence discrimination rises from
+  0.097 to 0.198 while the lineage-depth interquartile range drops from ≈94 to
+  ≈16.
+- Parent-fitness persistence Δ on Omnidirectional Ant rises from 0.027 to 0.138
+  (capacity 256 to 4096).
+- Fitness bias at τ = 0.5 gives QD-score 4.04 × 10⁶ against 4.02 × 10⁶ for
+  uniform at capacity 4096 over 10 seeds. τ = 0.1 is −64.4% at 4096 and −43.6%
+  at 1024. The loss comes through coverage (0.9999 to 0.517) and mean novelty
+  (0.848 to 0.544), with maximum fitness essentially unchanged.
+- Depth sweep at capacity 1024: τ = 0.5 gives 3.130 × 10⁶ (coverage 0.767), τ =
+  2.0 gives 3.112 × 10⁶, inverted gives 3.125 × 10⁶ (coverage 0.769), and
+  uniform gives 3.156 × 10⁶ (coverage 0.773). Every difference is within the
+  between-seed spread.
+- The authors limit the claims to predictive association, DNS, one variation
+  operator and three domains.
+
+### How this harness relates to the paper
+
+The harness is **not** a reproduction of the paper, and it was built before the
+method was read.
+
+| Aspect         | Paper                                                                                                             | Harness                                                                                                                                                                                           |
+| -------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Search         | DNS archive with global re-ranking, on robotics QD tasks                                                          | Mutation-only mu + lambda truncation by train mean squared error (MSE, [glossary](../GLOSSARY.md#-acronyms)) on `synthetic-quadrant-v1` (N = 12, lambda = 12, 1100 generations)                   |
+| Persistence    | Individual survival only                                                                                          | Individual survival and descendant contribution                                                                                                                                                   |
+| Analysis       | Per-run AUC of parent signal values                                                                               | Admission and persistence rates by rank                                                                                                                                                           |
+| Signal         | Twelve signals, including lineage depth as a selection signal                                                     | Calibration MSE rank, nearest to the paper's archive-state "parent fitness" baseline; lineage depth is not used as a selection signal                                                             |
+| Bias           | Rank-softmax with ratio exp(1/τ); τ = 0.5 (ratio e² ≈ 7.39) and τ = 2.0 (ratio e^0.5 ≈ 1.65) both matched uniform | Weight `oddsCap ** (1 - r)`, r the tie-averaged rank scaled to [0, 1] (`parentWeights` in `scripts/lib/admissionPersistenceStudy.ts`): ratio 2, that is τ = 1/ln 2 ≈ 1.44 in the paper's notation |
+| Seeds          | 5 to 10 per cell                                                                                                  | 20 paired                                                                                                                                                                                         |
+| Success metric | Projected QD-score and coverage                                                                                   | Holdout MSE plus a diversity ratio                                                                                                                                                                |
+
+The harness's rank-softmax equivalence assumes the paper scales ranks to [0, 1].
+That scaling is inferred from the stated ratio exp(1/τ), which the text does not
+spell out otherwise. On that reading the harness bias sits between the paper's τ
+= 2.0 and τ = 0.5.
 
 ## Reproduce
 
@@ -112,9 +186,8 @@ provenance capture timing, command-line argument validation and comments in
 numbers.
 
 - **Controls:** uniform parent selection is the control. The `biased` arm is the
-  treatment: it weights parents by the rank of their calibration mean squared
-  error (MSE, [glossary](../GLOSSARY.md#-acronyms)) only, with best-to-worst
-  odds capped at 2:1.
+  treatment: it weights parents by the rank of their calibration MSE only, with
+  best-to-worst odds capped at 2:1.
 - **Seeds and sample size:** 20 seeds, numbered 4163 to 4182, each run in both
   arms with the same starting population, so the comparison is paired.
 - **Compute limits:** 1100 generations per run. Each arm is charged 52,848,000
@@ -369,11 +442,11 @@ the shared helper `scripts/lib/gitProvenance.ts`.
 
 - **Nothing about production-scale creatures.** This is a synthetic task with
   small creatures and no private corpus.
-- **Nothing that confirms the paper.** Only its abstract was read. This study's
-  `no-benefit` verdict for a 2:1-capped bias points the same way as the
-  abstract's "moderate bias matches uniform sampling". But the task and the
-  selection loop differ, and the paper's bias rule is not pinned, so it is
-  neither a replication nor evidence for the paper.
+- **Nothing that confirms the paper.** The full text was read and its method is
+  pinned above. This study's `no-benefit` verdict for a 2:1-capped bias (τ ≈
+  1.44) points the same way as the paper's moderate-bias null. But the task,
+  selection loop, signal and analysis differ, so it is neither a replication nor
+  evidence for the paper.
 - **Nothing that changes ordinary behaviour.** Interfaces and defaults are
   untouched.
 
