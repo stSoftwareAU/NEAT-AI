@@ -857,6 +857,14 @@ function runSeededArm(
   };
 }
 
+/**
+ * What {@link pairedComparison} reads from a run. Any harness whose runs carry
+ * these fields can reuse the comparison.
+ */
+export type PairedInput =
+  & Pick<ArmResult, "seed" | "finalHoldoutMse" | "meanBehaviouralDiversity">
+  & { toTarget: { recordsScored: number } | null };
+
 /** The paired comparison of an arm against a control, over shared seeds. */
 export interface PairedComparison {
   n: number;
@@ -885,8 +893,8 @@ export interface PairedComparison {
  * @throws {Error} When the seeds do not match one for one.
  */
 export function pairedComparison(
-  control: readonly ArmResult[],
-  arm: readonly ArmResult[],
+  control: readonly PairedInput[],
+  arm: readonly PairedInput[],
   bootstrapSamples = 2000,
   seed = 4155,
 ): PairedComparison {

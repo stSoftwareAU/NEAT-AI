@@ -386,6 +386,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4163:** an opt-in `deno task admission-persistence-study` harness
+  that measures whether admission to the population predicts durable lineage
+  contribution, and whether a capped 2:1 parent bias by calibration rank beats
+  uniform selection at equal charged records. The commit and dirty-tree
+  provenance is now shared in `scripts/lib/gitProvenance.ts`. The 20-seed result
+  is negative: no benefit by the predeclared criteria, individual survival is 0
+  at 100 and 1000 generations, and about 11% of admitted offspring still have a
+  living descendant after 100 and 1000 generations. Persistence is also broken
+  down per Genus species at birth (`--species-csv`) and per founder clade.
+  Nothing in `src/` calls it. See
+  [docs/evidence/admission-persistence-4163.md](docs/evidence/admission-persistence-4163.md).
 - **Issue #4159:** an opt-in island-exchange study
   (`deno task island-exchange-study`) comparing three arms on equal budgets
   (350,100 scored records per seed, 20 pre-declared seeds): no exchange, a

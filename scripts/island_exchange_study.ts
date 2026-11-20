@@ -22,26 +22,13 @@
  */
 
 import { intArg, stringArg } from "./lib/cliArgs.ts";
+import { dirtyTree, gitCommit } from "./lib/gitProvenance.ts";
 import {
   type ArmComparison,
   DEFAULT_ISLAND_SETTINGS,
   type IslandStudySettings,
   runStudy,
 } from "./lib/islandExchangeStudy.ts";
-
-async function gitCommit(): Promise<string> {
-  const output = await new Deno.Command("git", {
-    args: ["rev-parse", "HEAD"],
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
-  if (!output.success) {
-    throw new Error(
-      `git rev-parse HEAD failed: ${new TextDecoder().decode(output.stderr)}`,
-    );
-  }
-  return new TextDecoder().decode(output.stdout).trim();
-}
 
 /**
  * Files whose content decides what a run measures. Their hash is recorded so a
@@ -76,25 +63,6 @@ async function harnessSha256(): Promise<string> {
     (b) => b.toString(16).padStart(2, "0"),
   )
     .join("");
-}
-
-/**
- * Whether `scripts/` or `src/` differ from `HEAD`. A recorded `commit` only
- * names the code that ran when this is false; otherwise `harnessSha256` is the
- * identity to check.
- */
-async function dirtyTree(): Promise<boolean> {
-  const output = await new Deno.Command("git", {
-    args: ["status", "--porcelain", "--", "scripts", "src"],
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
-  if (!output.success) {
-    throw new Error(
-      `git status failed: ${new TextDecoder().decode(output.stderr)}`,
-    );
-  }
-  return new TextDecoder().decode(output.stdout).trim().length > 0;
 }
 
 function describe(c: ArmComparison): string {
