@@ -431,7 +431,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   new forward edge under eight fixed weight draws with eight matched Float32
   weight-only nudges. Result: the primary median-paired versus best-draw test is
   no-benefit (holdout precision +0.175, 95% CI [-0.0088, 0.381]). Nothing in
-  `src/` calls it; see
+  `src/` calls it. The paper's method is now pinned on the evidence page from
+  the authors' LaTeX source; the harness adapts it (eight weight draws, not the
+  paper's K ≥ 25) rather than reproducing it. See
   [the evidence page](docs/evidence/topology-weight-luck-4162.md).
 - **Issue #4161:** opt-in `deno task budget-conditioned-study` compares one
   genome selected at several connection budgets and expressed by an evolved
