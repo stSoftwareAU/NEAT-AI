@@ -105,6 +105,14 @@ iteration and returns a `timedOut` result: best measure `full` after at least
 one complete iteration, else `unmeasured`, so the scheduler does not score a
 partial measure (Issue #4146). See [TIMEOUTS.md](./TIMEOUTS.md).
 
+Each iteration reads only the sampled records. `trainingSampleRate` takes
+`ceil(rate × records)` from each file, shuffled unless `disableRandomSamples`
+(or `feedbackLoop`) is set, in which case it takes the file's leading records.
+The set is chosen once per task, so every iteration is measured on the same
+records. This is the same rule the standard TypeScript loop uses, so a scheduled
+task on a large corpus can complete iterations inside its deadline (Issue
+#4180).
+
 ---
 
 ## 1. 🔬 Background & Theory
