@@ -1,7 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
-import { evolveDir } from "@creature/CreatureTraining.ts";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { evolveDir, type EvolveDirDeps } from "@creature/CreatureTraining.ts";
 import type { Neat } from "@neat/Neat.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import {
@@ -304,4 +305,342 @@ Deno.test({
       await Deno.remove(dataSetDir, { recursive: true });
     }
   },
+});
+
+type OverrunSettled =
+  | "training"
+  | "failed-training"
+  | "discovery"
+  | "training-then-second";
+
+/** Eight characters, so the log names it the same way as a dispatched task. */
+const SECOND_TRAIN_ID = "second99";
+
+interface OverrunOutcome {
+  result: Awaited<ReturnType<typeof evolveDir>>;
+  captured: Neat;
+  plain: string;
+  taskID: string | undefined;
+  discoveryOutcomes: string[];
+  discoveredUUID: string;
+  stored: Creature[];
+}
+
+/**
+ * Run `evolveDir` to a time-budget end, settling one result at the worker
+ * boundary after the last requested generation returns. The clock is injected
+ * so the soft budget is spent but the hard cap is not reached. `settled`
+ * chooses what the worker answers: a good training result, a rejected
+ * (failed) training task, or a discovery result.
+ */
+async function runOverrunWithSettledResult(
+  settled: OverrunSettled,
+  check: (outcome: OverrunOutcome) => void,
+): Promise<void> {
+  await initWasmForTests();
+  const { json: trainedJSON, value } = constantCreature();
+  const dataSetDir = makeDataDir(constantDataSet(value), 2000);
+  const creatureStore = await Deno.makeTempDir({ prefix: "neat-4099-" });
+  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+  const lines: string[] = [];
+  const previousLogger = getLogger();
+  const originalTrainTracked = WorkerHandler.prototype.trainTracked;
+  const originalTrain = WorkerHandler.prototype.train;
+  let captured: Neat | undefined;
+  let resolveTraining!: (response: ResponseData) => void;
+  let rejectTraining!: (cause: Error) => void;
+  const response = new Promise<ResponseData>((resolve, reject) => {
+    resolveTraining = resolve;
+    rejectTraining = reject;
+  });
+  // The failed-training worker rejection is observed by the production handler;
+  // this keeps the test's own reference from being reported as unhandled.
+  response.catch(() => {});
+  let taskID: string | undefined;
+  const discoveryOutcomes: string[] = [];
+  const discoveredUUID = CreatureUtil.makeUUID(Creature.fromJSON(trainedJSON));
+
+  const train = (_creature: Creature, _options: unknown, label?: string) => {
+    taskID = (label ?? _creature.uuid!).slice(-8);
+    return response;
+  };
+  WorkerHandler.prototype.trainTracked = function (
+    c: Creature,
+    options: unknown,
+    label?: string,
+  ) {
+    return { taskID: 4099, response: train(c, options, label) };
+  };
+  WorkerHandler.prototype.train = train;
+
+  // Injected clock: the soft budget (60 s) is exceeded when the result
+  // settles, but the hard cap (start + 120 s) has not been reached.
+  const startMS = Date.now();
+  let nowMS = startMS;
+
+  const options: NeatOptions = {
+    populationSize: 10,
+    iterations: 1,
+    trainPerGen: settled === "discovery" ? 0 : 1,
+    threads: 1,
+    verbose: false,
+    creatureStore,
+    timeoutMinutes: 1,
+    onTrainingEvent: (event) => {
+      if (event.kind === "discovery_complete") {
+        discoveryOutcomes.push(event.outcome);
+      }
+    },
+  };
+
+  try {
+    const deps: EvolveDirDeps = {
+      startTimeMS: startMS,
+      now: () => nowMS,
+      overrunEnforcementFactor: 1,
+      onNeatReady: (neat) => {
+        captured = neat;
+        const recorder: Logger = {
+          debug: (...a: unknown[]) => lines.push(a.join(" ")),
+          info: (...a: unknown[]) => lines.push(a.join(" ")),
+          warn: (...a: unknown[]) => lines.push(a.join(" ")),
+          error: (...a: unknown[]) => lines.push(a.join(" ")),
+        };
+        setLogger(recorder);
+
+        const realEvolve = neat.evolve.bind(neat);
+        let settledAlready = false;
+        let secondSettled = false;
+        neat.evolve = async (...args: Parameters<Neat["evolve"]>) => {
+          const out = await realEvolve(...args);
+          if (
+            settled === "training-then-second" && settledAlready &&
+            !secondSettled
+          ) {
+            // The first result has been merged and committed by the over-run
+            // pass; a second worker answers only now, after that pass.
+            secondSettled = true;
+            neat.trainingInProgress.set(SECOND_TRAIN_ID, Promise.resolve());
+            neat.recordTrainingComplete(SECOND_TRAIN_ID, neat.abandonEpoch, {
+              taskID: 4100,
+              duration: 1,
+              train: { ID: SECOND_TRAIN_ID, creature: trainedJSON, error: 0 },
+            } as ResponseData);
+            return out;
+          }
+          if (!settledAlready) {
+            settledAlready = true;
+            nowMS = startMS + 90_000;
+            if (settled === "discovery") {
+              // The discovery worker answers through the same recording seam
+              // the production response handler uses.
+              neat.discoveryInProgress.set("disc-4099", Promise.resolve());
+              neat.recordDiscoveryComplete("disc-4099", neat.abandonEpoch, {
+                taskID: 4099,
+                duration: 1,
+                discover: { ID: "disc-4099", improvedCreature: trainedJSON },
+              } as unknown as ResponseData);
+              return out;
+            }
+            assert(
+              taskID,
+              "the last requested generation must schedule training",
+            );
+            if (settled === "failed-training") {
+              rejectTraining(new Error("worker crashed"));
+            } else {
+              resolveTraining({
+                taskID: 4099,
+                duration: 1,
+                train: { ID: taskID, creature: trainedJSON, error: 0 },
+              } as ResponseData);
+            }
+            // The production response handler registered before this await;
+            // let it receive the answer before evolveDir reaches the loop top.
+            await response.catch(() => {});
+          }
+          return out;
+        };
+      },
+    };
+    const result = await evolveDir(creature, dataSetDir, options, deps);
+
+    assert(captured, "the run must construct a population");
+    check({
+      result,
+      captured,
+      plain: stripAnsi(lines.join("\n")),
+      taskID,
+      discoveryOutcomes,
+      discoveredUUID,
+      stored: await loadStoredCreatures(creatureStore),
+    });
+  } finally {
+    WorkerHandler.prototype.trainTracked = originalTrainTracked;
+    WorkerHandler.prototype.train = originalTrain;
+    setLogger(previousLogger);
+    await Deno.remove(dataSetDir, { recursive: true });
+    await Deno.remove(creatureStore, { recursive: true });
+  }
+}
+
+function completionLines(plain: string, taskID: string | undefined): number {
+  return plain.split("\n").filter((line) =>
+    new RegExp(`Training\\s+${taskID}\\s+completed`).test(line)
+  ).length;
+}
+
+Deno.test({
+  name:
+    "evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    runOverrunWithSettledResult(
+      "training",
+      ({ result, captured, plain, taskID, stored }) => {
+        assert(taskID, "a worker training task must have been dispatched");
+        assertEquals(
+          result.terminationReason,
+          "overrun",
+          "the run must end on the over-run path",
+        );
+        assert(
+          plain.includes("Training over-run"),
+          `the over-run branch must have run; got: ${plain}`,
+        );
+        assertEquals(
+          result.generation,
+          2,
+          `the over-run stop runs exactly one merge generation; got: ${plain}`,
+        );
+        assertEquals(
+          completionLines(plain, taskID),
+          1,
+          `the settled result must have exactly one completion; got: ${plain}`,
+        );
+        assert(
+          !plain.includes(`Training ${taskID} discarded`),
+          `the settled result must not be discarded; got: ${plain}`,
+        );
+        assert(
+          stored.some((c) => getTag(c, "trainID") === taskID),
+          "the settled worker result must reach the persisted creature store",
+        );
+        assert(
+          captured.population.some((c) => getTag(c, "trainID") === taskID),
+          "the settled worker result must reach the returned population",
+        );
+      },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveDir: a failed training task at the time budget end is reported as failed and starts no merge generation (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    runOverrunWithSettledResult(
+      "failed-training",
+      ({ result, captured, plain, taskID, stored }) => {
+        assert(taskID, "a worker training task must have been dispatched");
+        assertEquals(result.terminationReason, "overrun");
+        assertEquals(
+          result.generation,
+          1,
+          `a failed result has nothing to merge, so no further generation runs; got: ${plain}`,
+        );
+        assertEquals(
+          plain.split(`Training failed for creature ${taskID}`).length - 1,
+          1,
+          `the failed task must be named exactly once; got: ${plain}`,
+        );
+        assertEquals(completionLines(plain, taskID), 0);
+        assert(
+          !stored.some((c) => getTag(c, "trainID") === taskID) &&
+            !captured.population.some((c) => getTag(c, "trainID") === taskID),
+          "a failed task must not contribute a creature",
+        );
+      },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveDir: a discovery result settled when the time budget runs out is merged by one over-run pass (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    runOverrunWithSettledResult(
+      "discovery",
+      ({
+        result,
+        captured,
+        plain,
+        discoveryOutcomes,
+        discoveredUUID,
+        stored,
+      }) => {
+        assertEquals(result.terminationReason, "overrun");
+        assertEquals(
+          result.generation,
+          2,
+          `the over-run stop runs exactly one merge generation; got: ${plain}`,
+        );
+        assertEquals(
+          discoveryOutcomes,
+          ["improved"],
+          `the discovery result must be merged exactly once; got: ${plain}`,
+        );
+        assert(
+          captured.population.some((c) => c.uuid === discoveredUUID),
+          "the discovered creature must reach the returned population",
+        );
+        assert(
+          stored.some((c) => CreatureUtil.makeUUID(c) === discoveredUUID),
+          "the discovered creature must reach the persisted creature store",
+        );
+        assert(
+          !plain.includes("Discovery disc-4099 discarded"),
+          `the settled discovery result must not be discarded; got: ${plain}`,
+        );
+      },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveDir: the over-run merge pass is granted once; a result settling after it is discarded at teardown (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    runOverrunWithSettledResult(
+      "training-then-second",
+      ({ result, plain, taskID }) => {
+        assert(taskID, "a worker training task must have been dispatched");
+        assertEquals(result.terminationReason, "overrun");
+        assertEquals(
+          result.generation,
+          2,
+          `a second result must not earn a second merge generation; got: ${plain}`,
+        );
+        assertEquals(
+          completionLines(plain, taskID),
+          1,
+          `the first result must have exactly one completion; got: ${plain}`,
+        );
+        assertEquals(
+          plain.split(`Training ${SECOND_TRAIN_ID} discarded at teardown`)
+            .length - 1,
+          1,
+          `the second result must be named as discarded exactly once; got: ${plain}`,
+        );
+        assertEquals(
+          completionLines(plain, SECOND_TRAIN_ID),
+          0,
+          `the second result must not be merged; got: ${plain}`,
+        );
+      },
+    ),
 });

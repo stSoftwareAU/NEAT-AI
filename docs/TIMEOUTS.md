@@ -105,8 +105,9 @@ predicate, applying the same one-generation floor
   `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` are kept, GRQ #4794) and named in the log.
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
-  starting new generations and finishes with the population committed. This is
-  graceful self-termination, not the hard-deadline abandon.
+  starting new generations and finishes with the population committed, after at
+  most one more generation to merge settled training or discovery results (Issue
+  #4099). This is graceful self-termination, not the hard-deadline abandon.
 - **Finish-up wait** — `Neat.awaitInFlightTasks()` caps its own timeout at the
   time remaining before `hardDeadlineTS`, measured on the evolve loop's own
   clock. A never-resolving in-flight promise can therefore never wedge the wait
@@ -124,6 +125,9 @@ predicate, applying the same one-generation floor
   queueing cannot renew it. On the native `trainDir` trainer the deadline is
   forwarded to the engine only when the engine can enforce it (Issue #4119); see
   [the native trainer and the per-task deadline](#-the-native-trainer-and-the-per-task-deadline-issue-4119).
+  The predictive-coding trainer (`predictiveCoding.enabled`) checks the same
+  deadline after every sample and returns a `timedOut` result, discarding the
+  partial iteration (Issue #4146).
 - **Discovery replay** — `DiscoveryReplayQueue.scheduleReplay()` refuses to
   start a replay once the cap has passed, and
   `waitForCompletion(hardDeadlineTS)` drops any queued replay and signals the
@@ -181,10 +185,22 @@ terminating the workers, so those tasks are named there too.
 On a normal finish, `finishUp()` also checks `trainingComplete` and
 `discoveryComplete`, even when neither in-progress map contains work. A queued
 result keeps the loop open for another generation to process it. In `evolveDir`,
-`evolveEnv` and `evolveRL`, the over-run guard can stop that generation from
-starting, and the hard deadline can abandon it; those bounds take precedence
-over merging a late result. The teardown then names the unmerged result as
-discarded rather than extending the run to re-score it.
+`evolveEnv` and `evolveRL`, the over-run guard trips at the same instant the
+time budget ends the last generation, so it fires on every run that ends on its
+time budget. When it stops new generations while a mergeable result is still
+queued (a training result with a finite error, or any discovery result), the
+loop runs exactly one more `evolve()` to merge and commit it, so a training
+result gets its `Training <id> completed` line and reaches the population and
+creature store (Issue #4099). A failed training task, queued with a non-finite
+error that `processCompletedResults()` skips, does not claim the pass and is
+left for the teardown. `Neat.claimOverrunMergePass()` grants that pass at most
+once per run and logs
+`[Neat] Over-run stop: running one more generation to merge N settled result(s) (training: T, discovery: D) before finishing`.
+The pass is still bounded by the hard deadline like every generation: if the
+hard cap passes during it, the generation is abandoned and its merged tasks are
+logged as discarded. A result that settles after the merge pass, or on a
+hard-deadline or interrupted (SIGTERM) stop, is not merged; the teardown names
+it as discarded rather than extending the run to re-score it.
 
 A discovery or replay creature that `processCompletedResults()` already merged
 into a generation the hard deadline then abandons (Issue #4050) has left
@@ -496,7 +512,9 @@ log:
   so it reports `deadlineSent=no capability=none`).
 - `deadlineSent` is `yes` when the request carried the deadline
   (`deadlineEpochMs` or `--deadline-epoch-ms`), and `no` otherwise: a legacy
-  engine, no timeout, or the WASM loop.
+  engine, no timeout, or the WASM loop. It stays `no` on a predictive-coding
+  task even though that trainer enforces the deadline itself, because no native
+  request was sent.
 - `capability` is the `deadline` capability version the engine advertised (`1`
   for a deadline-capable engine), or `none` when it advertised none.
 
@@ -508,7 +526,10 @@ legacy-deadline warning take the same route. A `deadlineSent=no` line on a
 so only the stuck-task watchdog can stop it.
 
 A native (`ffi` or `cli`) task also writes two `[training-phase]` lines at info
-level, after the backend line. The WASM loop writes neither.
+level, after the backend line. A predictive-coding task (`backend=wasm`) writes
+one: a `phase=finalised timedOut=yes|no msFromDeadline=…` line when its result
+is packaged, and no `native-returned` line, because it makes no native call. The
+standard TypeScript loop (also `backend=wasm`) writes neither.
 
 ```text
 [training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no|unknown> msFromDeadline=<integer|none>
@@ -536,6 +557,8 @@ relay. Read them as follows:
   call had not returned, or it threw. The task's error, if any, says which.
 - A `native-returned` line with no `finalised` line means the task hung after
   the native call returned: in parsing, packaging or finalisation.
+- On a predictive-coding task, a `[training-backend]` line with no `finalised`
+  line means the predictive-coding trainer had not returned.
 
 ## 🔀 How the deadline propagates
 

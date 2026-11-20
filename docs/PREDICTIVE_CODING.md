@@ -98,6 +98,13 @@ The same loop is described step-by-step in
 [Section 2.5](#25--pc-learning-weight-updates), and benchmarked in
 [PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md).
 
+Each training sample ends with a check of the task deadline
+(`trainingTimeOutMinutes` / `hardDeadlineTS`, the same single deadline the other
+trainers use). Once it has passed, the trainer stops, discards the partial
+iteration and returns a `timedOut` result: best measure `full` after at least
+one complete iteration, else `unmeasured`, so the scheduler does not score a
+partial measure (Issue #4146). See [TIMEOUTS.md](./TIMEOUTS.md).
+
 ---
 
 ## 1. 🔬 Background & Theory

@@ -11,7 +11,13 @@
  * [training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no> capability=<version|none>
  * ```
  *
- * Two `[training-phase]` lines follow it per native (`ffi` / `cli`) task:
+ * Two `[training-phase]` lines follow it per native (`ffi` / `cli`) task. A
+ * predictive-coding (`wasm`) task writes one
+ * `[training-phase] … phase=finalised timedOut=yes|no msFromDeadline=…` line
+ * when its result is packaged (Issue #4146). Its `deadlineSent` keeps its
+ * meaning (a native request carried a deadline), so it stays `no` for `wasm`
+ * even though the predictive-coding trainer enforces the deadline itself.
+ * For a native task:
  *
  * - `native-returned` is written as soon as the blocking native call returns,
  *   before the response is parsed or packaged. `timedOut=unknown` means the
@@ -20,10 +26,12 @@
  *   fails with its error.
  * - `finalised` is written when packaging and compaction finish.
  *
- * Triage: a backend line with no `native-returned` line means the native call
- * had not returned, or it threw (the task's error says which). A
- * `native-returned` line with no `finalised` line means the task hung after the
- * native call returned: in parsing, packaging or finalisation.
+ * Triage for a native task: a backend line with no `native-returned` line means
+ * the native call had not returned, or it threw (the task's error says which).
+ * A `native-returned` line with no `finalised` line means the task hung after
+ * the native call returned: in parsing, packaging or finalisation. For a
+ * predictive-coding task, a backend line with no `finalised` line means the
+ * trainer had not returned.
  *
  * - `task` — the task's `setup.ID` (the 8-char creature id).
  * - `backend` — `ffi` (in-process `libneat_ai_backpropagation`), `cli`
@@ -122,6 +130,17 @@ export interface TrainDirPhaseInfo {
   timedOut: boolean | undefined;
   /** now - deadline in whole ms (negative = before the deadline); undefined when the task has no deadline */
   msFromDeadline: number | undefined;
+}
+
+/**
+ * Whole ms from the task deadline to `now` (negative = before it); `undefined`
+ * when the task has no deadline (`timeoutTS <= 0`).
+ */
+export function msFromDeadline(
+  timeoutTS: number,
+  now: number,
+): number | undefined {
+  return timeoutTS > 0 ? Math.round(now - timeoutTS) : undefined;
 }
 
 /** Build the one-line `[training-phase]` report for a task. */
