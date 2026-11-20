@@ -3,6 +3,7 @@
 `logApproach()` no longer aborts `evolveDir` when a predictive-coding training
 result becomes the new fittest. The fix is done; the issue's last
 Definition-of-done item needs a GRQ log line after the release, so this PR is
+
 Part of #4188.
 
 - `src/NEAT/LogApproach.ts`:
