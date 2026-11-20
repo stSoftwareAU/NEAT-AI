@@ -131,3 +131,18 @@ Deno.test("FineTunePopulation - a missing or NaN score still throws", () => {
     assertEquals(threw, true, `Expected a throw for score ${bad}`);
   }
 });
+
+Deno.test("FineTunePopulation - a predictive-coding-compact fittest does not abort make() (regression #4188)", () => {
+  // Fittest UUID differs from the previous fittest's, so make() reaches
+  // logApproach(fittest, tmpPreviousFittest) (FineTunePopulation.ts ~line 162).
+  const { ftp, fittest, genus } = scenario(0.75, [0.25]);
+  addTag(fittest, "approach", "predictive-coding-compact");
+  addTag(fittest, "old-neurons", "3");
+  addTag(fittest, "old-synapses", "5");
+
+  const previousFittest = score(makeCreature(0.42), 0.5);
+
+  const fineTuned = ftp.make(fittest, previousFittest, genus);
+
+  assertEquals(Array.isArray(fineTuned), true);
+});

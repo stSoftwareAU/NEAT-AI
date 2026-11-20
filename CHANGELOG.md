@@ -65,6 +65,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4188:** a predictive-coding training result (plain or compacted) that
+  becomes the new fittest no longer aborts `evolveDir`. `logApproach` now logs
+  both `predictive-coding` approaches, its switch is exhaustive at compile time,
+  and an unknown approach tag (or a compact creature missing its `old-neurons` /
+  `old-synapses` tags) is logged rather than thrown.
 - **Issue #4185:** a neuron changed away from `IF` no longer keeps the
   `condition` / `positive` / `negative` roles on its inward synapses. Only an
   `IF` target reads roles, so the untyped squash was left carrying roles it
