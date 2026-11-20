@@ -57,7 +57,7 @@
  * an evolved priority gene. The `budgetInput` arm takes the budget as a linear
  * input per synapse (priority and weight each move linearly with the budget),
  * which is closer to the paper but still not its CPPN over coordinates. The
- * paper's excerpts were read on 2026-11-15 and 2026-11-16.
+ * paper's excerpts were read on 2026-11-15, 2026-11-16 and 2026-11-20.
  *
  * @module budgetConditionedStudy
  */
@@ -795,9 +795,10 @@ export interface PinnedMethodElement {
  * budget as a linear input per synapse, which is closer to the paper's
  * generator but still not its CPPN.
  *
- * The paper was read on 2026-11-15 and 2026-11-16 through search-indexed
- * excerpts of its abstract page and its HTML full text. A direct fetch of
- * arxiv.org and its mirrors was refused by this host's proxy, so
+ * The paper was read on 2026-11-15, 2026-11-16 and 2026-11-20 through
+ * search-indexed excerpts of its abstract page and its HTML full text. Direct
+ * fetches of arxiv.org, its mirrors and the PMC copy were refused by this
+ * host's proxy, so
  * `fullTextRead` is `false` and the details the excerpts do not give are
  * listed in `unpinned`, not guessed.
  */
@@ -810,9 +811,9 @@ export const SOURCE_METHOD = Object.freeze({
     "Learning Time-Varying Connectomes for Stable Behavior Across Development",
   authors: ["Christof Fehrman", "Jacob J. Morra", "Eva A. Naumann"],
   categories: ["q-bio.NC", "cs.NE"],
-  readOn: "2026-11-15 and 2026-11-16",
+  readOn: "2026-11-15, 2026-11-16 and 2026-11-20",
   readVia:
-    "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895 (Sections 2.2, 3.3, 3.4 and 3.5, Tables 1 and 3); direct fetch of arxiv.org, its HTML and PDF, and the SciRate, alphaXiv, Hugging Face and Semantic Scholar mirrors refused by the host proxy",
+    "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895 (Sections 2.2, 3.3, 3.4, 3.5 and 3.6, Tables 1 and 3); direct fetch of arxiv.org, its HTML and PDF, the SciRate, alphaXiv, Hugging Face and Semantic Scholar mirrors, and the PMC (PMC13781166) and Europe PMC copies refused by the host proxy",
   fullTextRead: false,
   elements: Object.freeze(
     [
@@ -892,13 +893,34 @@ export const SOURCE_METHOD = Object.freeze({
           "No developmental substrate: the candidate topology and the TANH/IDENTITY squashes are fixed; only the number and choice of expressed synapses varies.",
         fidelity: "departs",
       },
+      {
+        paper:
+          "Fitness (Section 3.4): step rewards are averaged within each stimulus block, block scores are averaged to an episode fitness, episode scores are averaged at each evaluated age, and the age scores are averaged to the genome fitness. In training every condition uses 15 evaluation episodes per genome per generation, split equally across its training ages.",
+        study:
+          "Genome fitness is the mean calibration MSE over the arm's training budgets, each budget scored on the whole calibration split; there are no episodes or stimulus blocks, and cost is counted in charged calibration records rather than episodes.",
+        fidelity: "analogue",
+      },
+      {
+        paper:
+          "Rewards (Section 3.4): in the optomotor task the target heading is the world direction the stimulus moves in during the block; facing it while commanding forward motion earns positive reward, facing more than 90° away while moving forward earns negative reward, and a zero forward command earns zero whatever the heading. In phototaxis the emitter is placed relative to the agent by shared random draws and the reward depends on the luminance at the agent's centre. Motor limits are a maximum turn rate of 240° and a maximum forward speed of 30 environment units, both per simulation time unit.",
+        study:
+          "The reward is the negative squared error against a synthetic regression target; there is no heading, luminance or motor command.",
+        fidelity: "departs",
+      },
+      {
+        paper:
+          "Testing (Section 3.6): evolved controllers are evaluated without further evolution at 11 equally spaced developmental ages; at each age the controller weights are regenerated from the testing substrate's coordinates with the evolved CPPN parameters kept, and eye geometry, phototaxis sampling and the controller time constant follow their developmental schedules.",
+        study:
+          "Each searched genome is re-expressed, without further search, at 5 budgets (25%, 37.5%, 50%, 75% and 100%), not at an evenly spaced grid of 11.",
+        fidelity: "analogue",
+      },
     ] as readonly PinnedMethodElement[],
   ),
   unpinned: Object.freeze(
     [
       "the rest of Table 3: weight mutation rate and power, survival threshold, elitism, stagnation, and the activation set of hidden CPPN nodes",
-      "the fitness equations of Section 3.4 (the excerpts show what is plotted, heading error and distance to the emitter, but not how fitness is computed from them)",
-      "the values of the unseen ages (the excerpts say the baselines were tested at three unseen developmental times, but not which)",
+      "the exact equations of Section 3.4: the excerpts give the reward rules and how rewards are averaged, but not the reward magnitudes, the luminance function or the block length",
+      "which ages are the 'three unseen developmental times' the baselines fail at: the excerpts give the 11-age equally spaced test grid, but not which of its ages are highlighted as unseen",
       "anything else the excerpts do not reach: the full text was never read whole, so this list may be incomplete",
     ] as readonly string[],
   ),
