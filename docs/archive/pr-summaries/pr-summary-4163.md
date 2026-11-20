@@ -32,15 +32,15 @@ this, nothing the issue asks for is left undone. Closes #4163.
   stated as a rank-softmax at τ = 1/ln 2 ≈ 1.44 in the paper's notation. The
   page says the [0, 1] rank scaling is inferred from the paper's stated ratio
   exp(1/τ).
-- The study is still recorded as neither a replication of the paper nor
-  evidence for it.
+- The study is still recorded as neither a replication of the paper nor evidence
+  for it.
 
 ### Undiscoverable Facts
 
 - arxiv.org is still unreachable from this host. On 2026-11-20, `curl -m 15` to
-  `arxiv.org/abs`, `arxiv.org/pdf`, `export.arxiv.org` and
-  `semanticscholar.org` returned `000`. A web fetch of
-  `arxiv.org/html/2611.06522v1` returned `proxy refused the connection`.
+  `arxiv.org/abs`, `arxiv.org/pdf`, `export.arxiv.org` and `semanticscholar.org`
+  returned `000`. A web fetch of `arxiv.org/html/2611.06522v1` returned
+  `proxy refused the connection`.
 - `gh search code "Predicting Durable Offspring"` found
   `ZhangCurosr/zhangcursor-papers-arxiv-ai-001`. Its directory
   `2026-11-05/From-Admission-to-Retention-Predicting-Durable-Offspring-in_7ae711e2/`
@@ -77,6 +77,15 @@ asks for undone, so there are no `missing` entries.
 - `deno run --no-config --no-lock -A npm:cspell@8 lint --no-progress -c docs/cspell.json docs/evidence/admission-persistence-4163.md CHANGELOG.md`
   reported `Files checked: 2, Issues found: 0 in 0 files.`
 - `deno fmt --check` on the three edited files passed.
-- `./quality.sh` result: see the run noted below.
+- `./quality.sh < /dev/null` stopped at once with
+  `Native rust_scorer is required (quality.sh default) but was not found`. This
+  host has no `rust_scorer` binary and no `../NEAT-AI-scorer` checkout.
+- `./quality.sh --skip-tests < /dev/null` then exited 0. Deps, fmt, lint, bash
+  syntax and `deno check` passed, and the WASM pin was verified. The discovery
+  verification was skipped because `../NEAT-AI-Discovery` is absent.
+- The test stage did not run here. The diff touches no code or test, so CI's
+  test run is the check for it.
+
+<!-- vibe-quality-gate-skipped stage="tests" reason="rust_scorer binary absent on this host; diff is documentation only; ./quality.sh --skip-tests passed" -->
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
