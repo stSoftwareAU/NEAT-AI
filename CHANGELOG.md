@@ -34,12 +34,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   [`docs/evidence/budget-conditioned-4161.md`](docs/evidence/budget-conditioned-4161.md).
 - **Issue #4156:** opt-in `deno task differential-weight-study`, a research
   harness that measures differential-weight (DE) offspring and delayed
-  population contraction as a 2×2 at equal charged records, crossed with whether
-  refined descendants re-enter the population. The result on a synthetic
-  objective is negative: no arm meets the benefit criterion and none is harm.
-  The paper the issue cites was not read, so the method is this repository's
-  reading of the issue and is untested against the paper's; the issue stays
-  open. Nothing under `src/` imports the harness. See
+  population contraction as 2 DE settings × 3 contraction policies (none, the
+  existing adaptive rule, and the paper's delayed L-SHADE linear reduction),
+  crossed with whether refined descendants re-enter the population. It runs once
+  at equal charged records and once at an equal 600 ms per-run wall-clock on
+  fresh seeds. At equal records the result on a synthetic objective is negative:
+  no arm meets the benefit criterion and none is harm. At equal wall-clock it is
+  mixed: one contrast (`contraction@reenter`, +0.0003255) is harm by the
+  predeclared criteria, and the delayed LPSR with re-entry leans better but
+  fails the diversity floor. A deadline that expires during refinement scores no
+  further candidate, and a run with no scored candidate is recorded as censored
+  rather than as a completed sample. The paper's method was pinned only from
+  excerpts (the full text could not be fetched), so the issue stays open.
+  Nothing under `src/` imports the harness. See
   [`docs/evidence/differential-weight-4156.md`](docs/evidence/differential-weight-4156.md).
 - **Issue #4096:** the event-loop watchdog breach line now ends with
   `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>` (V8 heap used at the last
