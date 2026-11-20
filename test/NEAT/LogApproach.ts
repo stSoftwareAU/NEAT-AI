@@ -130,18 +130,17 @@ Deno.test(
         addTag(fittest, "old-synapses", "10");
       }
 
-      let errorThrown = false;
+      // An unexpected throw fails the test and names the approach in the
+      // surrounding loop's assertion message.
       try {
         logApproach(fittest, previous);
       } catch (e) {
-        errorThrown = true;
-        console.error(`Unexpected error for approach '${approach}':`, e);
+        const reason = e instanceof Error ? e.message : String(e);
+        assert(
+          false,
+          `logApproach should not throw for '${approach}' approach: ${reason}`,
+        );
       }
-
-      assert(
-        !errorThrown,
-        `logApproach should not throw an error for '${approach}' approach`,
-      );
     }
   },
 );
