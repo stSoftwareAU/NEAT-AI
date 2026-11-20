@@ -341,35 +341,50 @@ scored members.
 ## Preparation and search cost
 
 The validation arms are not the only records the study spent. The manifest
-(`preparation` in the JSON) records the rest. Where a run's cost was written
-down it is given exactly; where it was not, the most it could have charged is
-given (240,000 records per run is the cap). The CLI has run the five-seed
-calibration phase (1,200,000 records) since its first commit, so every full run
-through it paid that phase as well.
+(`preparation` in the JSON) records the rest, each run exactly. Every run made
+through the CLI paid its calibration phase as well, so that is counted with it.
 
-| Run                                                                                                                                                                                         | Seeds                                                | Records charged                                                                                                                           |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Calibration (reported)                                                                                                                                                                      | 94156–94160                                          | 1,200,000                                                                                                                                 |
-| Pilot that set `contractionHighDiversityThreshold` to 0                                                                                                                                     | **not recorded**                                     | **not recorded**; at most 3 × 8 × 240,000 = 5,760,000, plus up to 1,200,000 for a calibration phase if it ran through the CLI (not known) |
-| First full run, discarded: ordinary breeding left slots empty, so the top-up retry was added                                                                                                | **not recorded**; the CLI default then was 4156–4185 | **not recorded**; at most 30 × 8 × 240,000 = 57,600,000, plus 1,200,000 calibration = 58,800,000                                          |
-| Second full run on 4156–4185, discarded: time to target ignored shippable creatures that were not the population's best (review)                                                            | 4156–4185                                            | **recorded** (artefact at commit `eccc6792`): 57,594,400 validation + 1,200,000 calibration = 58,794,400                                  |
-| PR #4165's reported validation on 14156–14185 (8 arms), superseded                                                                                                                          | 14156–14185                                          | 57,596,400 validation + 1,200,000 calibration (the sum of `recordsCharged` over 240 runs)                                                 |
-| 12-arm re-run at `ccf3d612` on 14156–14185, superseded                                                                                                                                      | 14156–14185                                          | 86,337,200 + 1,200,000 = 87,537,200                                                                                                       |
-| 12-arm run at `23bd8e8f` on 24156–24185, superseded by the run that added the wall-clock phase                                                                                              | 24156–24185                                          | recorded (artefact at commit `32f346c5`): 86,345,600 + 1,200,000 = 87,545,600                                                             |
-| 12-arm run at `b224f0df` with the first wall-clock phase, superseded after review found a refinement batch ran past the deadline and a run with no scored creature was counted as completed | 24156–24185 and 34156–34185                          | recorded (artefact at commit `1439479d`): 86,345,600 + 1,200,000 + 81,493,600 (wall-clock phase) = 169,039,200                            |
-| Reported run at `d85139e6` + review fix: validation 24156–24185 (12 arms) and equal wall-clock 44156–44185                                                                                  | 24156–24185 and 44156–44185                          | validation 86,345,600 (budget 30 × 12 × 240,000 = 86,400,000) + 1,200,000 calibration + 84,250,800 (wall-clock phase)                     |
+The runs before the second full run were not written down when they were made.
+On 2026-11-20 they were recovered from the 2026-11-13 session transcript, which
+holds every study command that session ran and the output it printed. Each was
+then replayed at its own code version. The harness is deterministic per seed,
+and every replay matched every value the transcript printed apart from
+wall-clock times: 28 of 28 printed per-run lines for the first full run, and
+every printed line of the pilot, the smoke runs and the probe. The pilot ran
+before the contraction-threshold change was committed, so it was replayed at
+`34045199` with those two lines removed. The thresholds were then the production
+defaults, 0.8 and 0.3. Correctness tests are not counted: they run at small
+fixed settings in every quality gate.
 
-So the preparation cost is **not fully counted**: the later runs and the
-calibration are exact, but the pilot's and the first full run's costs are
-bounded, not measured. Counting the superseded runs that are recorded, the
-searches before the reported run charged 58,794,400 + 58,796,400 + 87,537,200 +
-87,545,600 + 169,039,200 = 461,712,800 records, plus the two bounded runs above
-(at most 58,800,000, and at most 5,760,000 + 1,200,000).
+| Run                                                                                                                                                                                         | Seeds                              | Records charged                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Calibration (reported)                                                                                                                                                                      | 94156–94160                        | 1,200,000                                                                                                             |
+| Smoke run before the pilot (`--seeds=2 --calibration-seeds=1 --budget=40000`), pre-threshold code                                                                                           | 4156–4157; calibration 94156       | replayed: 640,000 + 40,000 calibration = 680,000                                                                      |
+| Pilot that set `contractionHighDiversityThreshold` to 0 (`--seeds=3 --calibration-seeds=1`), run twice with the same arguments, pre-threshold code                                          | 4156–4158; calibration 94156       | replayed: 2 × (5,756,800 + 240,000) = 11,993,600                                                                      |
+| Smoke run after the threshold change, at `34045199`                                                                                                                                         | 4156–4158; calibration 94156       | replayed: 5,754,000 + 240,000 = 5,994,000                                                                             |
+| First full run at `34045199`, discarded: ordinary breeding left slots empty, so the top-up retry was added                                                                                  | 4156–4185; calibration 94156–94160 | replayed: 57,540,400 + 1,198,800 calibration = 58,739,200                                                             |
+| Probe of the top-up retry at `52a59186`: 2 arms on seed 5 at reduced settings                                                                                                               | 5                                  | replayed: 14,340 + 14,400 = 28,740                                                                                    |
+| Smoke run of the top-up retry at `52a59186`                                                                                                                                                 | 4156–4158; calibration 94156       | replayed: 5,760,000 + 240,000 = 6,000,000                                                                             |
+| Second full run on 4156–4185, discarded: time to target ignored shippable creatures that were not the population's best (review)                                                            | 4156–4185                          | **recorded** (artefact at commit `eccc6792`): 57,594,400 validation + 1,200,000 calibration = 58,794,400              |
+| PR #4165's reported validation on 14156–14185 (8 arms), superseded                                                                                                                          | 14156–14185                        | 57,596,400 validation + 1,200,000 calibration (the sum of `recordsCharged` over 240 runs)                             |
+| 12-arm re-run at `ccf3d612` on 14156–14185, superseded                                                                                                                                      | 14156–14185                        | 86,337,200 + 1,200,000 = 87,537,200                                                                                   |
+| 12-arm run at `23bd8e8f` on 24156–24185, superseded by the run that added the wall-clock phase                                                                                              | 24156–24185                        | recorded (artefact at commit `32f346c5`): 86,345,600 + 1,200,000 = 87,545,600                                         |
+| 12-arm run at `b224f0df` with the first wall-clock phase, superseded after review found a refinement batch ran past the deadline and a run with no scored creature was counted as completed | 24156–24185 and 34156–34185        | recorded (artefact at commit `1439479d`): 86,345,600 + 1,200,000 + 81,493,600 (wall-clock phase) = 169,039,200        |
+| Reported run at `d85139e6` + review fix: validation 24156–24185 (12 arms) and equal wall-clock 44156–44185                                                                                  | 24156–24185 and 44156–44185        | validation 86,345,600 (budget 30 × 12 × 240,000 = 86,400,000) + 1,200,000 calibration + 84,250,800 (wall-clock phase) |
 
-The pilot's and the first full run's seeds and records were not written down
-when they were made, and cannot be recovered. The honest reading is that the
-earlier full runs probably used the CLI default, which was the validation range
-4156–4185. The pilot and those runs shaped three decisions: the contraction
+So every run in the table is counted exactly. The runs before the reported run
+charged 680,000 + 11,993,600 + 5,994,000 + 58,739,200 + 28,740 + 6,000,000 =
+83,435,540 records in the recovered rows, and 58,794,400 + 58,796,400 +
+87,537,200 + 87,545,600 + 169,039,200 = 461,712,800 in the rows recorded at the
+time: 545,148,340 in all.
+
+One limit remains. This host holds no transcript of study commands from the
+later sessions, from 2026-11-16 on. Their full runs are counted from the
+artefacts committed at the time, but a smaller smoke run in those sessions would
+not show up in this audit.
+
+The pilot, the smoke runs and the first full run all used validation seeds
+inside 4156–4185, the CLI default. They shaped three decisions: the contraction
 thresholds, the top-up retry and the time-to-target reading. So the original
 validation seeds had been seen before the harness was finalised, and the
 reported validation was re-run on 14156–14185. That range was then seen too: it
@@ -483,7 +498,9 @@ met, and this work does **not** close the issue.
   fraction are this repository's reading of the issue.
 - The harness is not CMA-ES, PSO or L-SHADE, so DE injection is tested in
   NEAT-AI's GA-style breeding, not in the paper's optimisers.
-- Seeds and records of the pilot and the first full run were not recorded (see
+- Seeds and records of the pilot and the first full run were recovered from a
+  session transcript and replayed, not written down at the time. Smoke runs in
+  the later sessions cannot be audited the same way (see
   [Preparation and search cost](#preparation-and-search-cost)).
 - Wall-clock is held equal only in the second phase, at 600 ms per run on a
   shared container. That phase is not bit-reproducible, and 600 ms is far from
