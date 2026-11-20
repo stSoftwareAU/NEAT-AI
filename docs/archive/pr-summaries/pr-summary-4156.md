@@ -47,6 +47,16 @@ are still not pinned, so the criterion stays partial. Part of #4156.
 - `gh search code "2610.26202"` returned only `vip3001003/nofx-papers` (two
   abstract copies), `Lee2817794840/feishu-wenxian` (the reading note already
   cited) and this repository's own files.
+- Completion-gate retry, later on 2026-11-20: `curl` to arxiv.org/abs,
+  export.arxiv.org, web.archive.org and Semantic Scholar again printed
+  `curl: (56) CONNECT tunnel failed, response 403`; WebFetch to
+  `arxiv.org/html/2610.26202` and `arxiv.org/pdf/2610.26202` again returned
+  `proxy refused the connection`. Two WebSearch queries added nothing beyond the
+  facts already listed (no delay formula, DE variant, F/CR, injection fraction
+  or Solis–Wets parameters). The pilot's and first full run's preparation
+  records are lost, not withheld. Re-running them now would measure a new run,
+  not the cost that was actually spent. So both criteria stay `partial`, and no
+  code or artefact changed.
 
 ## Evidence
 
