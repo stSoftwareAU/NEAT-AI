@@ -159,6 +159,96 @@ distinct parents. All 99 mutations were evaluated, with 0 failures.
 - No default changed and nothing in `src/` calls the harness. No production
   adoption is justified from a synthetic corpus.
 
+## The paper's method, pinned
+
+### Sources
+
+- **Abstract:** arXiv's own cs.NE RSS item of 2026-11-03, as copied in the
+  public GitHub repository `ehijano/rss_fetch` at commit
+  `fbd3c873cc7d24e7c8d3dd2f1cd63dc3a3a71980`, file
+  `rss_data/cs.NE/2026-11-03_cs.NE.xml`.
+- **Method:** the authors' public repository
+  `Riccardo8888/connectome-reservoir-nulls` (MIT licence) at commit
+  `994ceb97e20c9807cb777b05759d00d837914db7` (27 October 2026), file
+  `paper/esn_connectome_devai.tex`, SHA-256
+  `c7235bcc88f86c484a7e6f4b5353eb7c7165433b6df8760d99137cc60f454d2c`. Number
+  macros are resolved from `paper/generated_numbers.tex` at the same commit.
+- **arXiv is still refused:** on 2026-11-20 the abstract page and the export API
+  both failed from this host
+  (`curl: (56) CONNECT tunnel failed, response
+  403`).
+- **Caveat:** that commit predates the arXiv v1 announcement. It is the
+  anonymised workshop source (NeurIPS 2026 DevAI workshop), and its abstract
+  wording differs from the arXiv abstract. It is therefore not verified to be
+  identical to v1.
+- **Agreement checks:** the arXiv abstract and the TeX abstract both state that
+  a single weight-rule draw carries about one z unit of noise. The TeX's adult
+  weight-placement share of 28% to 75% matches what a later paper, arXiv
+  2611.14508 ("When Does the Real Wiring Win?", its reference [18]), reports for
+  2611.01213.
+
+### Method
+
+- **Reservoir:** an echo-state network. The recurrent matrix is fixed and
+  rescaled to spectral radius 0.95; only a linear ridge readout is trained.
+- **Connectomes:** adult HCP (83 regions) and dHCP neonatal (90 regions).
+- **Score:** NARMA-10, scored by NRMSE. Each score is a mean over 5 reservoir
+  seeds × 3 input draws.
+- **Null family:** N = (R, ω), a rewiring R of the binary topology plus a weight
+  rule ω that places the original weight multiset on the rewired edges. μ and σ
+  are the mean and SD of the score over a null ensemble of 200 draws per family
+  per graph. In the 524-infant dHCP sweep the ensemble is 100 draws per family
+  per graph.
+- **Nulls:** degree-preserving (Maslov–Sneppen rewiring, weight multiset
+  shuffled); rank-matched (static sort by product of endpoint strengths); and
+  annealed (simulated annealing to match the strength sequence).
+- **Naive z:** z = (s(A) − μ) / σ.
+- **Decomposition** (Proposition 1):
+
+  ```text
+  z_naive  = z_wiring + δ_ω
+
+  z_wiring = (s̄_ω(A) − μ) / σ
+  δ_ω      = (s(A) − s̄_ω(A)) / σ
+  ```
+
+  Here s̄_ω(A) is the expectation over the weight rule of the score of A's own
+  wiring carrying the null's weight rule.
+
+- **Draws:** the expectation must be estimated over many draws. One draw carries
+  about one z unit of noise, enough to flip the sign of the wiring term for some
+  subjects. The paper uses K ≥ 25 draws everywhere (K = 50 in the battery) and
+  reports the Monte-Carlo standard error.
+- **Inference:** the naive comparison uses a two-sided (k+1)/(n+1) permutation
+  estimate. The wiring comparison uses a two-sample permutation test over 20,000
+  label permutations. Across subjects, the mean per-subject z, its SD and a
+  one-sample t-test. Benjamini–Hochberg runs over the battery's 36 tests.
+- **Headline:** across 200 adult HCP graphs, weight placement accounts for 28%
+  to 75% of the reported effect, depending on the null.
+
+### How this harness maps to it
+
+| Paper                                                            | This harness                                                                           |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Naive advantage of the real graph over its rewired nulls         | A new edge's gain over a matched weight-only nudge, read from one draw (`single-draw`) |
+| Averaging A's own wiring under the weight rule over K ≥ 25 draws | Median paired gain over eight fixed draws (`median-paired`)                            |
+| One draw ≈ one z unit of noise                                   | `single-draw` and `best-draw` each rest on single draws                                |
+| Permutation tests and t-tests                                    | Paired bootstrap (10,000 resamples) on holdout precision                               |
+| Fixed reservoir with trained readout                             | Evolved creatures; the new edge is not trained                                         |
+
+**Departures**
+
+- K = 8, not K ≥ 25, because the issue fixes eight draws. The Monte-Carlo error
+  of the eight-draw median is not reported.
+- The control is a matched Float32 weight-only nudge from the issue, not a null
+  ensemble. The summary is a median, not a mean.
+- Inference is a bootstrap CI on a precision difference, not a permutation test.
+- The setting (evolved creatures on a synthetic regression) differs from
+  connectome reservoirs.
+- The higher holdout precision of `median-paired` (0.964) than `single-draw`
+  (0.783) points the same way as the paper's warning about single draws. The
+  setting differs, so this is neither a replication nor evidence for the paper.
+
 ## Limits
 
 - A synthetic 4-input regression, taken from `buildStudyCorpus` of the #4160
@@ -166,9 +256,9 @@ distinct parents. All 99 mutations were evaluated, with 0 failures.
 - Parents come from a short 15-generation evolution, not production creatures.
 - One structural mutation type: an `AddConnection`-style new forward synapse.
   `AddNeuron` was not tested.
-- The paper, arXiv 2611.01213, could not be fetched in this run (the sandbox
-  proxy refused the connection), so its method was not pinned. This is the
-  repository's reading of the issue.
+- arXiv itself is still unreachable from this host, so the method is pinned from
+  the authors' own LaTeX source at a commit that predates v1 (see the section
+  above). The harness adapts the method rather than reproducing it.
 - "Scorer #588" perturbation machinery is not in this repository, so the
   perturbations are built here.
 - No runs were made on private corpora; any such runs stay private.
@@ -177,11 +267,14 @@ distinct parents. All 99 mutations were evaluated, with 0 failures.
 
 ```bash
 deno task topology-weight-luck-study \
-  --json=docs/evidence/topology-weight-luck-4162.json --code-version=4ccb7100
+  --json=docs/evidence/topology-weight-luck-4162.json --code-version=1125fce4
 ```
 
-The run used neatAiVersion 7.1.20, Deno 2.9.8 and code version 4ccb7100 (the
-base commit).
+The committed artefact was regenerated at code version 1125fce4 (neatAiVersion
+7.1.34, Deno 2.9.8) after the paper record was added to the manifest. Every
+result section (mutations, distributions, rules, primary, secondary, cost,
+coverage) is identical to the original run at 4ccb7100 (neatAiVersion 7.1.20);
+only `codeVersion`, `neatAiVersion` and `paper` in the manifest changed.
 
 ---
 

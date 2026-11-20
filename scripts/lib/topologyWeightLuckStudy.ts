@@ -26,8 +26,11 @@
  *
  * Cost unit: records scored. The holdout never influences selection.
  *
- * The paper note: arXiv 2611.01213 — method not pinned; this is the
- * repository's reading of the issue.
+ * The paper note: arXiv 2611.01213v1. Its method is pinned on
+ * docs/evidence/topology-weight-luck-4162.md from the authors' LaTeX source.
+ * This harness adapts its principle (average a new edge's effect over weight
+ * draws, because one draw is noise) with the issue's eight draws. It is not a
+ * reproduction.
  *
  * @module topologyWeightLuckStudy
  */
@@ -80,6 +83,19 @@ export const BOOTSTRAP_RESAMPLES = 10_000;
 export const BOOTSTRAP_SEED = 4162;
 /** Draws (of {@link DRAWS}) in which the new edge must win to count as consistent. */
 export const CONSISTENCY_THRESHOLD = 6;
+
+/** The paper this harness adapts, and where its method is pinned. */
+const PAPER = {
+  arxiv: "2611.01213v1",
+  title:
+    "Is Newborn Wiring Special? Separating Wiring from Weight Placement in Connectome Reservoirs",
+  abstractSource:
+    "arXiv cs.NE RSS item of 2026-11-03, copied in github.com/ehijano/rss_fetch@fbd3c873cc7d24e7c8d3dd2f1cd63dc3a3a71980 (rss_data/cs.NE/2026-11-03_cs.NE.xml)",
+  methodSource:
+    "github.com/Riccardo8888/connectome-reservoir-nulls@994ceb97e20c9807cb777b05759d00d837914db7, paper/esn_connectome_devai.tex (sha256 c7235bcc88f86c484a7e6f4b5353eb7c7165433b6df8760d99137cc60f454d2c)",
+  relation:
+    "adapts the paper's wiring / weight-placement decomposition (average over weight draws) with eight draws instead of the paper's K >= 25; not a reproduction",
+} as const;
 
 /** How one study is set up. */
 export interface StudySettings {
@@ -802,8 +818,7 @@ export function runStudy(options: StudyOptions = {}) {
         costEvaluations: r.costEvaluations,
       })),
       criteria: CRITERIA,
-      paper:
-        "arXiv 2611.01213 — method not pinned; this is the repository's reading of the issue",
+      paper: PAPER,
       scorer588:
         "Scorer #588 perturbation machinery is not in this repository; perturbations are built here from Synapse.randomWeight and Math.fround",
     },
