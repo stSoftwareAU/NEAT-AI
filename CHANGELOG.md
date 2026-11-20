@@ -42,6 +42,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4146:** predictive-coding training tasks now honour the per-task
+  deadline. The field log showed the tasks on `backend=wasm` (the
+  predictive-coding trainer), which never read the deadline, so they ran minutes
+  past it and were cancelled and their workers quarantined. The trainer now
+  checks the deadline after every sample, discards the partial iteration, and
+  returns `timedOut: true` (best measure `full` after at least one complete
+  iteration, else `unmeasured`), and writes a `[training-phase] phase=finalised`
+  line to the parent log.
 - **Issue #4126:** scheduled native training no longer pins a worker thread
   after quarantine. Workers await `trainDirAsync`, using nonblocking FFI or an
   asynchronous CLI child. C-heap buffers and an OS loader reference keep late

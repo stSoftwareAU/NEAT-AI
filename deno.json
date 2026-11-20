@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "7.1.22",
+  "version": "7.1.23",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
@@ -132,6 +132,7 @@
       "bench/IncrementalScoreUpdate.ts",
       "bench/MainThreadScoreWork.ts",
       "bench/MaxWeightBiasRecalculation.ts",
+      "bench/PredictiveCodingDeadlineLarge.ts",
       "bench/RandomImmigrantsStagnationEscape.ts",
       "bench/RevisitDiagnostic.ts",
       "bench/ScoreCalculationCache.ts",
