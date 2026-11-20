@@ -161,13 +161,16 @@ rather than the committed manifest. Its record-budget phase matched the
 committed manifest: all 360 per-run lines it printed (held-out MSE to 4
 significant figures, records charged and generations), the five calibration
 train MSEs and the 0.01406 threshold, and all 11 contrast lines (mean
-difference, CI95 and wins). So the record-budget results do not depend on the
-uncommitted change. The equal-wall-clock phase did not finish: a 1,500 s timeout
-stopped it on a loaded host (25 minutes of real time for 6 minutes of user CPU),
-so no JSON was written, and that phase's results are still tied to `d85139e6`
-plus the review fix. The check charged 86,345,600 + 1,200,000 records and an
-unrecorded part of a wall-clock phase on 44156–44185. It came after the reported
-run and changed nothing, so it is not in the preparation table.
+difference, CI95 and wins). So, to the precision of those printed lines, the
+record-budget results do not depend on the uncommitted change; the full JSON
+fields were not compared, because no JSON was written. The equal-wall-clock
+phase did not finish: a 1,500 s timeout stopped it on a loaded host (25 minutes
+of real time for 6 minutes of user central processing unit (CPU) time), so no
+JSON was written, and that phase's results are still tied to `d85139e6` plus the
+review fix. The check charged 86,345,600 validation records on 24156–24185,
+1,200,000 calibration records on 94156–94160, and an unrecorded part of a
+wall-clock phase on 44156–44185. It came after the reported run and changed
+nothing, so it is not in the preparation table.
 
 ## Results
 
@@ -448,16 +451,16 @@ no full-text copy. The author's GitHub account (`lucianoambrosini`) was also
 checked: no file path in its `Ambrosinus-Toolkit`, `AmbrosinusDEV`,
 `Computational-Design-Manifesto` or profile repositories names MERLIN, RAPTOR,
 L-SHADE or Solis–Wets, and a code search of the account for RAPTOR, Solis and
-the arXiv id returned nothing. A fifth attempt on 2026-11-20 at about 07:20 UTC
-was refused the same way: `curl` to arxiv.org (abstract and PDF),
-export.arxiv.org and Semantic Scholar returned no HTTP status, and WebFetch to
-`arxiv.org/html/2610.26202v1` returned `proxy refused the connection`. Two more
-web searches, for the delayed population-size reduction formula and for MERLIN's
-DE and Solis–Wets settings, returned no new fact about this paper. One result
-said another paper by the same author (arXiv 2610.22397) uses DE/rand/1/bin with
-self-adapted F and CR; that is a different paper and pins nothing here. The
-committed manifest, generated before these attempts, records
-`paper.methodRead: "partial"`.
+the arXiv id returned nothing. A fifth attempt on 2026-11-20 at about 07:20
+Coordinated Universal Time (UTC) was refused the same way: `curl` to arxiv.org
+(abstract and PDF), export.arxiv.org and Semantic Scholar returned no HTTP
+status, and WebFetch to `arxiv.org/html/2610.26202v1` returned
+`proxy refused the connection`. Two more web searches, for the delayed
+population-size reduction formula and for MERLIN's DE and Solis–Wets settings,
+returned no new fact about this paper. One result said another paper by the same
+author (arXiv 2610.22397) uses DE/rand/1/bin with self-adapted F and CR; that is
+a different paper and pins nothing here. The committed manifest, generated
+before these attempts, records `paper.methodRead: "partial"`.
 
 **Pinned.**
 
