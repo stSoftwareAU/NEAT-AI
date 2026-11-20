@@ -328,6 +328,15 @@ scored members.
   sample size.
 - No contrast meets the benefit criterion, and no contrast meets the harm
   criterion, since every CI spans 0.
+- **What code stays.** The negative result adds nothing to ordinary evolution,
+  so no product code ships: nothing under `src/` or `mod.ts` imports the
+  harness, and no default changes. The harness
+  (`scripts/differential_weight_study.ts`,
+  `scripts/lib/differentialWeightStudy.ts`,
+  `scripts/lib/differentialWeightContrasts.ts`), its `deno.json` task and its
+  tests (`test/scripts/DifferentialWeightStudy.ts`) are kept because they are
+  the command in "Reproduce" below; without them the committed manifest could
+  not be regenerated or checked.
 
 ## Preparation and search cost
 
