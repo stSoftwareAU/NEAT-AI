@@ -146,16 +146,22 @@ Tuning guides and benchmark research.
   changed.
 - **[evidence/differential-weight-4156.md](evidence/differential-weight-4156.md)**
   — the opt-in study of differential-weight offspring and delayed population
-  contraction (Issue #4156): a 2×2 at equal records over 30 seeds. The result is
-  negative on a synthetic objective, and nothing in `src/` changes. The paper's
-  method was not read, so it is untested against it and the issue stays open.
+  contraction (Issue #4156): 2 DE settings × 3 contraction policies (none, the
+  existing adaptive rule, and the paper's delayed L-SHADE linear reduction) at
+  equal records over 30 seeds. The result is negative on a synthetic objective,
+  and nothing in `src/` changes. The paper's method was pinned only from
+  excerpts (the full text could not be fetched), so the issue stays open.
 - **[evidence/census-restart-4157.md](evidence/census-restart-4157.md)** — the
   offspring-census restart study (Issue #4157): census-triggered against
   plateau-triggered restarts on a synthetic objective. Negative result; run it
   with `deno task census-restart-study`.
+- **[evidence/topology-weight-luck-4162.md](evidence/topology-weight-luck-4162.md)**
+  — topology gains versus new-edge weight-placement luck (Issue #4162): the
+  preregistered primary test (median-paired against best-draw) is no-benefit.
 - **[evidence/budget-conditioned-4161.md](evidence/budget-conditioned-4161.md)**
-  — one genome expressed at several connection budgets (Issue #4161): a negative
-  result; it was harmful against independent per-budget searches on unseen
+  — one genome expressed at several connection budgets (Issue #4161): both
+  encodings, a gene-ordered one and one that takes the budget as an input, were
+  negative; both were harmful against independent per-budget searches on unseen
   budgets.
 - **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
   — initial connectivity and input fan-out as priors (Issue #4160): a negative

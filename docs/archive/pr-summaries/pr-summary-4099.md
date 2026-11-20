@@ -1,94 +1,140 @@
 ## Summary
 
-Training completion is logged when its generation commits. A result merged into
-an abandoned or failed generation receives one discard line. Trace-store errors
-are reported separately, preserving the successful training result and its
-completion line. Worker-boundary regressions now exercise actual scheduling,
-late settlement, commit, teardown and persistence through `evolveDir`.
+A run that ends on its time budget no longer throws away a training result that
+settled after the last generation. Up to now, the over-run guard always won on
+such runs. It trips at the same instant the time budget ends the last
+generation, so the "wait one more pass" fix from #4104/#4153 could never run on
+a time-ended run, and every GRQ sampler loop is one. Now the over-run stop runs
+**one** more `evolve()` to merge and commit a queued result, still bounded by
+the hard deadline. This applies in `evolveDir`, `evolveEnv` and `evolveRL`.
 
-Qualifying production sampler evidence is still missing. Part of #4099.
+The field-evidence criterion needs a release carrying this change plus a new GRQ
+sampler log, so it is still open. Part of #4099.
 
 ## Spec
 
 ### Intent and Rationale
 
-Preserve the queued-result finish-up fix delivered by merged PR #4104, complete
-the commit-time terminal logging change, and resolve the pre-PR verifier's
-trace-persistence defect and regression-test findings. The field criterion is
-retained verbatim; available logs do not justify marking it met.
+- `timedOut` (`src/creature/EvolveGenerationTail.ts:175`,
+  `now > start +
+  timeout`) and the over-run guard (`hasTrainingOverrun`,
+  `src/NEAT/HardDeadline.ts:129-145`, `now - start > timeout × 1`) trip at the
+  same moment. So when a time budget ends the last generation, the next loop
+  pass always takes the over-run branch. That branch called `finishUp()`, which
+  returns `true` on over-run, so the teardown discarded the result.
+- Field logs show it every time: no audited sampler snapshot has yet shown a
+  last-generation completion (see Evidence).
+- Of the two routes the issue offers, this reuses the existing one: one more
+  processing pass through the real `evolve()`. That keeps its scoring,
+  population cap, commit-time `completed` line and hard-deadline abandon path.
+  Draining at teardown instead would have needed a second, unscored merge path.
 
 ### Essential Design Decisions
 
-- `processCompletedResults()` records task IDs and durations in
-  `mergedTrainIDs`. `Neat.commitMergedTraining()` emits completion lines at the
-  generation commit; abandonment and teardown emit discards and clear pending
-  outcomes.
-- A failure to persist a diagnostic training trace is logged independently of
-  the successful worker response. It cannot enqueue a second failed-task result.
-- Over-run and hard-deadline guards retain priority over another merge and
-  population-scoring pass in `evolveDir`, `evolveEnv` and `evolveRL`.
-- The worker regression resolves a controllable training response after the last
-  requested generation returns and before `finishUp`. Scheduling, response
-  handling, another generation commit and creature-store writes run normally.
+- `Neat.claimOverrunMergePass()` grants the pass **at most once per run**
+  (`overrunMergePassUsed`). It claims only when a mergeable result is queued: a
+  training result with a finite `train.error`, or any discovery result. A failed
+  training task, queued with `+Infinity` (`src/NEAT/NeatScheduling.ts:140-146`),
+  does not claim it.
+- This replaces #4153's rule that the over-run guard always beats a merge pass.
+  The hard deadline still wins:
+  - The cap check at the top of each loop runs first.
+  - The merge generation runs under `awaitWithinHardDeadline` like any other.
+  - An interrupted (SIGTERM) stop still breaks before the claim.
+- `finishUp()` is unchanged. The claim is made in the over-run branch before
+  `finishUp` is consulted. A result that settles after the merge pass is still
+  discarded at teardown, named by its task ID.
+- The merge generation schedules no new work, because `requestOverrunStop` sets
+  `doNotStartMore`, which `NeatScheduling.ts:287` honours.
 
 ### Undiscoverable Facts
 
-- The original queued-result fix is included from v7.0.65 onward; this branch's
-  additional commit-time logging and trace-persistence changes are unshipped.
-- Independent Spec reviewer `/root/spec_reviewer` reviewed the diff and issue
-  body: criteria 1–3 met, field evidence missing. Independent Standards reviewer
-  `/root/field` reviewed the final diff against `AGENTS.md` and
-  `docs/ENGINEERING_PRINCIPLES.md`: clean. Their verdicts are recorded below.
-- The carry-over notice names only 40 of its 212 source locations. All 40 are
-  covered below; the omitted 172 locations were not available in retained report
-  artifacts and cannot be individually verified from that notice.
+- `GRQ-25-rocket.log` (the downstream production log repo `Develop` @ `a9aa34f`,
+  2026-11-15, neat-ai 7.1.19, `option='sampler'`) shows the defect on a release
+  that already has #4104. Lines 461-465 log
+  `[Neat] Waiting for 3 settled result(s) (training: 3,
+  discovery: 0) to be merged before finishing`,
+  then `[Neat] Training over-run:
+  …`, then three
+  `Training <id> discarded at teardown` lines.
+- GRQ's `[training-outcomes]` parser still reports two of those discarded tasks
+  as `in_flight … reason=log-ended`, because it does not recognise the
+  `discarded at teardown` line. That parser lives in the GRQ repository.
+- The Spec and Standards reviewer agents (`spec-reviewer`, `standards-reviewer`)
+  hit `You've reached your Fable limit … (HTTP 429)`. The same briefs then ran
+  as general-purpose sub-agents, and their verdicts are recorded below.
 
 ## Evidence
 
 Backend-only change; no visual surface changed.
 
-- The worker trace-write regression first failed on this run's starting head:
-  one successful response produced both `Training failed for creature <id>` and
-  `Training <id> completed`. It passes after isolating trace persistence errors.
-- The identical late-worker-promise regression fails against `v7.0.62`, commit
-  `45e62c81d429601a9b35f747ea54f9d1775c2ed1`: actual completion count 0,
-  expected 1. It passes at head and verifies the trained creature in both the
-  population and creature store. The Spec reviewer checked the red log and tag.
-- The public parked-breeding abandonment regression fails against base commit
-  `e275a8278147d2f2abaa59eb8a057ec0e857959f` because it receives a completion
-  line before discard. It passes at head, preserving the committed population
-  and a non-empty creature store, including after the breeding promise resumes.
+```mermaid
+flowchart TD
+    G[last generation ends: time budget spent] --> F{finishUp}
+    F -- settled result queued --> T[loop top: over-run guard trips]
+    T --> C{claimOverrunMergePass}
+    C -- "true (once, mergeable result)" --> E["evolve(): merge + commit<br/>bounded by hard deadline"]
+    E --> L["Training &lt;id&gt; completed"]
+    L --> T
+    C -- false --> F2{finishUp} -- true --> D[teardown: discard leftovers by id]
+```
 
-### Field evidence checked on 2026-11-13
+- **Red against the base code:** I ran the new evolveDir regression with `src/`
+  unchanged from `Develop` @ `2367ed2e`, and it failed: completion count 0,
+  expected 1. The captured log read
+  `[Neat] Waiting for 1 settled result(s)
+  …`, then
+  `[Neat] Training over-run: …`, then
+  `Training 022d17fc discarded at
+  teardown: it settled after the last generation's results were processed`.
+  It passes at head.
+- **Wiring checks:** I replaced each loop's `if (!neat.claimOverrunMergePass())`
+  with `if (true)` in all three loops (`evolveDir`, `evolveEnv`, `evolveRL`) and
+  ran the evolveDir, evolveEnv and evolveRL files. Four tests failed: the
+  evolveDir training and discovery over-run tests
+  (`EvolveDirLateTrainingResult.ts:464` and `:540`), the evolveEnv test
+  (`EvolveEnvHardDeadline_test.ts:360`) and the evolveRL test
+  (`EvolveRLHardDeadline_test.ts:376`). The failed-training evolveDir test
+  correctly still passes, because a failed result must not claim the pass.
+  `src/creature/CreatureTraining.ts` was restored afterwards
+  (`git diff HEAD
+  --stat -- src` empty).
+- **Full gate:**
+  `./quality.sh --rust-scorer-bin=<locally built NEAT-AI-scorer
+  rust_scorer>`
+  passed at `bc2133a3`:
+  `ok | 10482 passed (5 steps) | 0 failed |
+  50 ignored (10m13s)`. Without that
+  flag the gate stops at
+  `❌ Native
+  rust_scorer is required (quality.sh default) but was not found.`
 
-A read-only audit downloaded 76 historical log files, including 49 containing a
-NEAT-AI version. All ten observed settled-result finish windows across nine
-snapshots led to over-run termination and explicit discard, without a qualifying
-late completion. The original fix has shipped; its requested production outcome
-has not been demonstrated by these snapshots.
+### Field evidence checked on 2026-11-16
 
-| Log and immutable revision                                                                           | Release | Observed outcome                                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GRQ-3-sloth.log` at `c2c49587c8850738d1b293940fb344bf622eca21` (2026-11-09T05:21:55Z)               | 7.1.12  | Lines 825–827: settled wait, over-run stop, discard of `5c1db96e`; parsed as rejected, without completion.                                                  |
-| `GRQ-3-sloth.log` at `fda98f174a6ed9261bee357c8bbbecd1ccf718d1` (2026-11-10T22:30:58Z)               | 7.1.15  | Lines 534–537: two settled results, over-run stop, discards of `89130576` and `20c163b1`; lines 666–667 still parse both as `in_flight … reason=log-ended`. |
-| Latest green sampler diagnostic at `dba84d71392611bd6c1123f96496b1783b129b47` (2026-11-12T10:38:42Z) | —       | Ten-line capability excerpt; no training evidence.                                                                                                          |
-| Audited log-repository head `3e51bf407a4622bef832559d0a9608edefb92d16` (2026-11-13T03:28:14Z)        | —       | Only scorer and portfolio logs; no sampler run.                                                                                                             |
+The three `Develop` commits in the downstream production log repo since the last
+audit (2026-11-13T03:28Z) that carry an `option='sampler'` log:
 
-The 7.1.15 completion lines for `ef0834b8` and `804474fb` belong to tasks
-scheduled before generation 1, so they do not satisfy the last-generation field
-criterion. The GitHub plugin returned 404 for the private log source; immutable
-snapshots were read with `gh api`.
+| Log @ commit                    | Release | Observed outcome                                                                                                                                                        |
+| ------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GRQ-25-rocket.log` @ `7482799` | 7.1.17  | Loop 1: 27 generations, then `Set training/discovery clean up count to 2` and the over-run stop.                                                                        |
+| `GRQ-25-sloth.log` @ `c2f8734`  | 7.1.19  | Loop 1: tasks still in flight at the over-run stop; `[training-outcomes]` shows both `abandoned … reason=worker-cancelled`.                                             |
+| `GRQ-25-rocket.log` @ `a9aa34f` | 7.1.19  | Loop 1: three settled results waiting to merge, then the over-run stop, then three `discarded at teardown` lines (lines 461-465). This is the exact case this PR fixes. |
+
+None shows a last-generation `Training <id> completed`. A release carrying this
+change is needed before one can.
 
 ## Reproduction
 
-- **symptom** — successful training could be reported failed when trace
-  persistence threw, then also completed; merged results could be reported both
-  completed and discarded when their generation was abandoned.
-- **status** — `verified`: the trace regression failed before its fix; the
-  public abandonment regression failed against the base; the late-worker
-  regression failed against v7.0.62. All pass at head.
-- **regression tests** — `test/creature/EvolveDirLateTrainingResult.ts` and
-  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts`.
+- **symptom** — on a run that ends on its time budget, a training result that
+  settled after the last generation's `processCompletedResults()` is never
+  merged and never gets a `completed` line. It is logged `discarded at teardown`
+  (GRQ-25-rocket 7.1.19), or on v7.0.62 not at all.
+- **status** — `verified` — the evolveDir regression was observed failing
+  against the unfixed base production code (completion count 0,
+  `discarded at
+  teardown` logged) and passing after the fix
+- **regression test** —
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`
 
 ## Acceptance Criteria
 
@@ -100,96 +146,172 @@ snapshots were read with `gh api`.
   `trainingComplete` into the population and re-scores before
   `restoreEvolveChampion`/`writeCreatures`. Whichever route: a settled result is
   either merged or explicitly logged as discarded with its id. — evidence:
-  `test/NEAT/NeatFinishUp.ts` queued-training, queued-discovery and over-run
-  cases; `test/creature/BoundedEvolveTeardown.ts` persistence/failure cases;
-  `test/creature/EvolveDirLateTrainingResult.ts` worker settlement and persisted
-  population — reviewer: met
+  `src/NEAT/Neat.ts` (`claimOverrunMergePass`, `finishUp`),
+  `src/creature/CreatureTraining.ts` (three over-run branches);
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`
+  and
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a discovery result settled when the time budget runs out is merged by one over-run pass (Issue #4099)`
+  — reviewer: met
 - **met** — Every scheduled training task ends with exactly one terminal line
   (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
-  evidence:
-  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: trace persistence failure preserves one completed training outcome (Issue #4099)`;
-  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts::evolveDir teardown: a worker result merged before breeding wedges is discarded once and preserves the committed population (Issue #4107)`;
-  `test/creature/EvolveFailureNamesInFlightTasks_test.ts` — reviewer: met
+  evidence: the new evolveDir, evolveEnv and evolveRL over-run tests each assert
+  exactly one `Training <id> completed` and no `discarded` line;
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a failed training task at the time budget end is reported as failed and starts no merge generation (Issue #4099)`
+  — reviewer: met
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
   `finishUp`. Then assert that (a) the trained creature reaches the returned
   population or the creature store, or a `discarded` line names the task, and
   (b) `Training <id> completed` is logged. On `v7.0.62` this test fails. —
   evidence:
-  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a worker training promise settled after the last generation is merged and persisted (Issue #4099)`;
-  identical test red-checked against tag commit
-  `45e62c81d429601a9b35f747ea54f9d1775c2ed1` — reviewer: met
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`
+  (red against base `2367ed2e`), plus the existing
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a worker training promise settled after the last generation is merged and persisted (Issue #4099)`
+  (red against v7.0.62, recorded by #4153) — reviewer: met — reason: the
+  reviewer noted it could not run the test against v7.0.62. The new test was run
+  red against this branch's base, and the v7.0.62 red run is the earlier test's,
+  recorded by #4153.
 - **missing** — Field evidence: a GRQ sampler log on a neat-ai release carrying
   the fix where a task scheduled in the last generation shows
   `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in
-  `[training-outcomes]`. — reviewer: missing — reason: no audited snapshot
-  demonstrates the requested last-generation completion; the observed late
-  results were discarded at the over-run bound.
+  `[training-outcomes]`. — reviewer: missing — reason: needs a neat-ai release
+  carrying this PR and a new GRQ sampler log. Every audited snapshot predates
+  this change, and none shows a last-generation completion.
+- **unrequested** — `test/NEAT/OverrunEnforcement.test.ts` first test now sets
+  `trainPerGen: 0` — reviewer: unrequested — reason: needed so that its existing
+  "no new generation may start after the over-run threshold" assertion still
+  pins the nothing-to-merge case. With training on, the new merge pass
+  legitimately runs one more generation. The training-on case is now asserted by
+  the new over-run tests (`result.generation === 2`).
 
 ## Standards Review
 
 <!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
 
-- **clean** — Independent reviewer checked `AGENTS.md` and
-  `docs/ENGINEERING_PRINCIPLES.md` (this repository has no
-  `CODING-STANDARDS.md`). Worker regressions assert terminal logs, population
-  and persisted creatures; the prohibited merged-map assertions and manual
-  commit simulation are removed. Coverage tests assert behaviour and restore
-  seeded random state. Logging uses `getLogger()`; Australian English; no
-  identity, semantic-version, dependency or wire-format changes; no timing APIs
-  or environment mutation added to tests.
-- **clean** — Reviewer validation: 12 focused tests passed; lint and format
-  checks passed all 14 changed/new TypeScript files. Two existing-test import
-  substitutions resolve to the same modules and retain all assertions.
+- **violation** — the merge pass added to `evolveEnv` and `evolveRL` had no
+  test, so deleting either branch left every test green (principle 1, enforced
+  by review) — evidence: `src/creature/CreatureTraining.ts:1229` — reason: fixed
+  in this diff (`test/creature/EvolveEnvHardDeadline_test.ts` and
+  `test/creature/EvolveRLHardDeadline_test.ts` now each have an over-run
+  merge-pass test. Each was observed failing with its loop's branch replaced by
+  `if (true)`).
+- **clean** — Reviewer checked `AGENTS.md` and `docs/ENGINEERING_PRINCIPLES.md`
+  (this repository has no `CODING-STANDARDS.md`):
+  - logging through `getLogger()` only, no `@std/log`;
+  - Australian English;
+  - tests assert behaviour, not implementation (principle 3);
+  - no `Deno.env.set`;
+  - no fallback path (principle 7);
+  - neuron UUID, creature UUID and semantic-version invariants untouched;
+  - the failed-training filter matches `ProcessCompletedResults.ts` and the
+    teardown skip;
+  - the hard deadline still bounds the merge pass;
+  - CHANGELOG and `docs/TIMEOUTS.md` updated (principle 5);
+  - small enough to revert on its own (principle 9).
 
-## Coverage carry-over
-
-Four deterministic behaviour tests restore the named cold-start quota,
-activation-mismatch, fine-tuning and maternal-memetic paths. Existing routing
-and repair tests cover the remaining named lines. Their alias imports now use
-relative paths so the carry-over import scanner discovers those tests too.
-
-| Source locations named in the notice                     | Behaviour tests reaching them at head                                                                    |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/NEAT/BreedingQuotas.ts:132–141,151`                 | `test/breed/BreedingQuotasColdStart_test.ts`                                                             |
-| `src/architecture/BehaviourGuard.ts:435,436,440–443,446` | `test/compact/IfRoutingScoreInvariant.ts`                                                                |
-| `src/architecture/Offspring.ts:625,626,674,675`          | `test/breed/OffspringMemeticInheritance_test.ts`                                                         |
-| `src/architecture/RepairInvalidIfNeurons.ts:66,68–76`    | `test/architecture/CreatureFactorySeedIfRoles.ts`, `test/architecture/StaleUuidAfterStructuralChange.ts` |
-| `src/blackbox/Discover.ts:37,38`                         | `test/blackbox/DiscoverSquashMismatch_test.ts`                                                           |
-| `src/blackbox/FineTune.ts:478–482,484`                   | `test/blackbox/FineTuneChangedSquash_test.ts`                                                            |
-
-The seven-file coverage run passed 36 tests. Its LCOV report records non-zero
-hits for every one of these 40 locations. No production lines were deleted and
-no untestable exemptions are claimed. The omitted 172 locations remain
-unaudited; this table does not claim to close the entire 212-line report.
+  The reviewer marked one thing optional: `Date.now()` in the new evolveDir test
+  is used only to anchor the injected clock, as
+  `test/NEAT/OverrunEnforcement.test.ts` already does, and is never used to
+  measure anything.
 
 ## Test Plan
 
-- `deno test -A` over the 11 focused issue/regression/invariant files, with
-  stdin from `/dev/null`: 91 passed, 0 failed. Includes abandonment, finish-up,
-  merged results, discovery/replay, bounded teardown, failure cleanup, late
-  worker settlement, neuron UUID stability and semantic-version stability.
-- The seven-file carry-over coverage command, with stdin from `/dev/null`: 36
-  passed, 0 failed. Includes the four new tests and the three existing routing,
-  repair and structural-identity test files named above.
-- Independent Spec review: 52 adjacent tests and eight final abandonment/late
-  worker tests passed. Independent Standards review: 12 focused tests passed.
-- Removed the direct merge/commit simulation in `test/NEAT/NeatFinishUp.ts`; its
-  completion and trained-population assertions are now proved through the actual
-  public worker/commit/persistence regression. The pending-breeding abandonment
-  case likewise uses the public evolution and worker boundaries.
-- `DENO_JOBS=1 ./quality.sh < /dev/null` could not start the full gate in this
-  resumed environment: native `rust_scorer` is absent. It failed the explicit
-  preflight; no fallback or full-suite success is claimed for this revision.
-- `./quality.sh --skip-tests < /dev/null` exited 0: dependencies unchanged,
-  formatting, lint, shell checks, all type checks and pinned WASM verification
-  passed. Discovery verification skipped because its library was absent.
-- `deno test -A test/docs/ArchiveDocsNoPrivateRepoSlugs.ts < /dev/null` passed
-  (one test); `deno fmt` formatted this summary.
+Tests added. All assert through the public `evolveDir`, `evolveEnv` or
+`evolveRL` entry point, with the result settled at the worker boundary (a
+stubbed `WorkerHandler` training promise, or the `recordTrainingComplete` /
+`recordDiscoveryComplete` recording seam the response handler uses). None
+asserts an internal flag or the number of `evolve()` calls:
 
-## Merge verification
+- `test/creature/EvolveDirLateTrainingResult.ts`, four over-run cases that share
+  one fixture:
+  - `evolveDir: a training result settled when the time budget runs out is merged by one over-run pass, not discarded (Issue #4099)`.
+    It drives the real scheduler, worker-response handler, `evolve()`, commit
+    and creature store, and asserts `terminationReason === "overrun"`,
+    `generation === 2`, exactly one `completed` line, no `discarded` line, and
+    the trained creature in both the population and the store;
+  - `evolveDir: a failed training task at the time budget end is reported as failed and starts no merge generation (Issue #4099)`:
+    the worker rejects, `generation === 1`, the task is named once as failed,
+    and no creature is contributed;
+  - `evolveDir: a discovery result settled when the time budget runs out is merged by one over-run pass (Issue #4099)`:
+    the worker answers with an `improvedCreature`; asserts `generation === 2`,
+    exactly one `discovery_complete` event with outcome `improved`, no
+    `discarded` line, and the discovered creature (matched by its content uuid)
+    in both the returned population and the store;
+  - `evolveDir: the over-run merge pass is granted once; a result settling after it is discarded at teardown (Issue #4099)`:
+    one result is merged by the over-run pass, then a second worker result
+    settles after that pass, sequenced from the fixture's own state. Asserts
+    `terminationReason === "overrun"`, `generation === 2`, exactly one
+    `completed` line for the first result, exactly one
+    `Training second99 discarded at teardown` line and no `completed` line for
+    the second. With the once-only guard in `claimOverrunMergePass()` removed
+    this test fails (`generation` becomes 3); the guard was restored afterwards.
+- `test/creature/EvolveEnvHardDeadline_test.ts::evolveEnv: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
+- `test/creature/EvolveRLHardDeadline_test.ts::evolveRL: an over-run with a settled training result queued runs one merge generation that commits it (Issue #4099)`.
+  Both settle the result once, after the first generation, and assert the
+  returned generation count and termination reason, one `completed` line, the
+  merge-pass log line and no `discarded` line.
 
-CI and review remain pending. Production sampler evidence and the omitted 172
-carry-over locations remain unverified. The worker will rerun the quality gate
-and verifier before raising the pull request. Optional native discovery, GPU and
-native-training lanes were not run here.
+Existing tests edited (no assertion removed):
+
+- `test/NEAT/OverrunEnforcement.test.ts`: the first test gains `trainPerGen: 0`
+  and a positive control
+  (`!joined.includes("running one more generation to merge")`). Its existing
+  assertions are unchanged.
+- `test/NEAT/NeatFinishUp.ts`: the stale comment in
+  `finishUp: an over-run stop does not wait on results it will never merge (Issue #4099)`
+  is reworded. Its assertions are unchanged; `finishUp()` itself is unchanged.
+  This PR added no test that calls `claimOverrunMergePass()` directly: the
+  empty, failed-only, discovery-only and bounded cases are covered through
+  `evolveDir` as listed above.
+
+- `test/validate/CreatureValidatePack.ts`: the `makeCreature` helper and the
+  wide creature pin `LOGISTIC` for the hidden and output squashes. Left random,
+  an `IF` output pick made construction add role synapses (5 connections, not
+  3), which failed
+  `packed: a healthy creature is answered from the buffer
+  alone` in CI. No
+  assertion changed; unrelated to the over-run change.
+
+Callers and siblings checked:
+
+- All three loops' over-run branches carry the claim: `evolveDir`, `evolveEnv`
+  and `evolveRL`.
+- The `completed` branch's own `finishUp` path is unchanged. It reaches the
+  claim on the next loop pass.
+
+Guards the new path keeps:
+
+- the hard-deadline check at the loop top (it runs before the claim);
+- `interrupted` (it breaks before the claim);
+- the `awaitWithinHardDeadline` generation bound;
+- `doNotStartMore` (no new scheduling).
+
+Run results on the final head:
+
+- `deno test -A` over the five test files above plus
+  `test/creature/EvolveDirStuckChildDeadline.ts`,
+  `test/creature/BoundedEvolveTeardown.ts`,
+  `test/creature/EvolveFailureNamesInFlightTasks_test.ts` and
+  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts`: passed
+  (`ok | 80 passed | 0 failed`). `deno fmt --check` and `deno lint` are clean.
+- `./quality.sh` passed at `bc2133a3` (10,482 passed). Later commits changed
+  only tests, so that full gate has not been re-run on the final head; the files
+  they touch were run as above.
+- Review fixes: the tests no longer assert the internal `overrunMergePassUsed`
+  flag, the number of calls to the patched `neat.evolve`, or the clock keyed to
+  an `evolve()` call number. The helper-level `claimOverrunMergePass` cases in
+  `NeatFinishUp.ts` were replaced by the public `evolveDir` cases above. The
+  tests still fail with the claim replaced by `if (true)` (see Wiring checks),
+  so the wiring is pinned by behaviour.
+
+Docs updated:
+
+- `docs/TIMEOUTS.md`: the "Over-run" bullet and the `finishUp()` paragraph under
+  the teardown section, both read in full.
+- `CHANGELOG.md`: a new entry under `[Unreleased]`, in the `Fixed` section.
+
+I grepped `docs/` (excluding `docs/archive/`) for `over-run|overrun` and read
+every hit; I also grepped `src/` for `never calls evolve|over-run path`. No
+other hit was made false by this change.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

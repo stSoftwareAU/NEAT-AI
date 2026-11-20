@@ -14,6 +14,10 @@
  *     3. Apply averaged weight updates (Hebbian learning)
  *     4. Compute validation error
  *     5. Check early stopping (targetError)
+ *
+ * Issue #4146: after every sample the loop checks the task deadline
+ * (`timeoutTS`). An iteration the deadline stops is partial and is discarded:
+ * no best-error update, no Hebbian update.
  */
 
 import { assert } from "@std/assert";
@@ -46,6 +50,16 @@ export interface PCTrainingResult {
   averageInferenceSteps: number;
   /** Whether any weights were changed during training. */
   changed: boolean;
+  /**
+   * True when the per-task deadline stopped training mid-iteration; the
+   * partial iteration is discarded (Issue #4146).
+   */
+  timedOut: boolean;
+  /**
+   * Full iterations that finished, including one that stopped early on
+   * `targetError`. `iterations` stays the requested count.
+   */
+  completedIterations: number;
 }
 
 /**
@@ -59,7 +73,9 @@ export interface PCTrainingResult {
  * @param binaryFiles Array of binary data file paths.
  * @param pcConfig Predictive Coding configuration.
  * @param cost Cost function for error computation.
- * @param options Training loop options.
+ * @param options Training loop options. `timeoutTS` is the absolute task
+ *   deadline in epoch ms (0 or undefined = no deadline), checked after every
+ *   sample (Issue #4146). `now` is the clock seam for it (default `Date.now`).
  * @returns Training result with error and iteration count.
  */
 export function trainWithPredictiveCoding(
@@ -71,9 +87,13 @@ export function trainWithPredictiveCoding(
     iterations: number;
     targetError: number;
     log?: number;
+    timeoutTS?: number;
+    now?: () => number;
   },
 ): PCTrainingResult {
   const { iterations, targetError } = options;
+  const timeoutTS = options.timeoutTS ?? 0;
+  const now = options.now ?? Date.now;
 
   // Issue #1915: Apply adaptive learning rate scaling for complex creatures.
   const effective = computeEffectiveConfig(creature, pcConfig);
@@ -97,6 +117,8 @@ export function trainWithPredictiveCoding(
   let averageEnergy = 0;
   let averageInferenceSteps = 0;
   let changed = false;
+  let timedOut = false;
+  let completedIterations = 0;
 
   for (let iteration = 0; iteration < iterations; iteration++) {
     // Accumulated gradients across all samples in this iteration.
@@ -158,11 +180,21 @@ export function trainWithPredictiveCoding(
             const prev = accBiasDeltas.get(bg.neuronIndex) ?? 0;
             accBiasDeltas.set(bg.neuronIndex, prev + bg.delta);
           }
+
+          // Issue #4146: the per-task deadline, checked after every sample.
+          if (timeoutTS > 0 && now() > timeoutTS) {
+            timedOut = true;
+            break;
+          }
         }
       } finally {
         file.close();
       }
+      if (timedOut) break;
     }
+
+    // A timed-out iteration is partial: discard it entirely.
+    if (timedOut) break;
 
     if (sampleCount === 0) {
       throw new ValidationError(
@@ -225,6 +257,8 @@ export function trainWithPredictiveCoding(
       );
     }
 
+    completedIterations++;
+
     // Early stopping.
     if (bestError <= targetError) {
       break;
@@ -241,5 +275,7 @@ export function trainWithPredictiveCoding(
     averageEnergy,
     averageInferenceSteps,
     changed,
+    timedOut,
+    completedIterations,
   };
 }

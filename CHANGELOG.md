@@ -34,14 +34,28 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   few to conclude from; 14 approximately matched seeds and all 20 seeds agree;
   six seeds are listed as uncompletable. Nothing under `src/` changed. See
   [`docs/evidence/protected-refinement-4158.md`](docs/evidence/protected-refinement-4158.md).
+- **Issue #4161:** the budget-conditioned study gains a `budgetInput` arm in
+  which the budget is an input to expression (per-synapse priority and weight
+  linear in the budget), the paper's key ingredient in its simplest form. With
+  its own predeclared rule it is also negative: harmful against independent
+  per-budget searches on unseen budgets, and harmful at full size. No `src/`
+  change; see
+  [`docs/evidence/budget-conditioned-4161.md`](docs/evidence/budget-conditioned-4161.md).
 - **Issue #4156:** opt-in `deno task differential-weight-study`, a research
   harness that measures differential-weight (DE) offspring and delayed
-  population contraction as a 2×2 at equal charged records, crossed with whether
-  refined descendants re-enter the population. The result on a synthetic
-  objective is negative: no arm meets the benefit criterion and none is harm.
-  The paper the issue cites was not read, so the method is this repository's
-  reading of the issue and is untested against the paper's; the issue stays
-  open. Nothing under `src/` imports the harness. See
+  population contraction as 2 DE settings × 3 contraction policies (none, the
+  existing adaptive rule, and the paper's delayed L-SHADE linear reduction),
+  crossed with whether refined descendants re-enter the population. It runs once
+  at equal charged records and once at an equal 600 ms per-run wall-clock on
+  fresh seeds. At equal records the result on a synthetic objective is negative:
+  no arm meets the benefit criterion and none is harm. At equal wall-clock it is
+  mixed: one contrast (`contraction@reenter`, +0.0003255) is harm by the
+  predeclared criteria, and the delayed LPSR with re-entry leans better but
+  fails the diversity floor. A deadline that expires during refinement scores no
+  further candidate, and a run with no scored candidate is recorded as censored
+  rather than as a completed sample. The paper's method was pinned only from
+  excerpts (the full text could not be fetched), so the issue stays open.
+  Nothing under `src/` imports the harness. See
   [`docs/evidence/differential-weight-4156.md`](docs/evidence/differential-weight-4156.md).
 - **Issue #4096:** the event-loop watchdog breach line now ends with
   `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>` (V8 heap used at the last
@@ -51,6 +65,24 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4099:** a training or discovery result that settles after the last
+  generation is no longer discarded on every run that ends on its time budget.
+  The over-run guard trips as the budget ends the last generation, so it used to
+  take precedence and discard queued results at teardown. `evolveDir`,
+  `evolveEnv` and `evolveRL` now run exactly one more `evolve()` to merge and
+  commit them (`Neat.claimOverrunMergePass()`, once per run, only for a training
+  result with a finite error or a discovery result). The pass is still bounded
+  by the hard deadline, and results settling after it, or on a hard-deadline or
+  interrupted stop, are still logged discarded with their task ID.
+
+- **Issue #4146:** predictive-coding training tasks now honour the per-task
+  deadline. The field log showed the tasks on `backend=wasm` (the
+  predictive-coding trainer), which never read the deadline, so they ran minutes
+  past it and were cancelled and their workers quarantined. The trainer now
+  checks the deadline after every sample, discards the partial iteration, and
+  returns `timedOut: true` (best measure `full` after at least one complete
+  iteration, else `unmeasured`), and writes a `[training-phase] phase=finalised`
+  line to the parent log.
 - **Issue #4126:** scheduled native training no longer pins a worker thread
   after quarantine. Workers await `trainDirAsync`, using nonblocking FFI or an
   asynchronous CLI child. C-heap buffers and an OS loader reference keep late
@@ -376,6 +408,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   fires earlier without beating stagnation. Nothing under `src/` changes. See
   [`docs/evidence/census-restart-4157.md`](./docs/evidence/census-restart-4157.md).
 
+- **Issue #4162:** opt-in `deno task topology-weight-luck-study` compares each
+  new forward edge under eight fixed weight draws with eight matched Float32
+  weight-only nudges. Result: the primary median-paired versus best-draw test is
+  no-benefit (holdout precision +0.175, 95% CI [-0.0088, 0.381]). Nothing in
+  `src/` calls it; see
+  [the evidence page](docs/evidence/topology-weight-luck-4162.md).
 - **Issue #4161:** opt-in `deno task budget-conditioned-study` compares one
   genome selected at several connection budgets and expressed by an evolved
   priority gene against independent per-budget searches and a magnitude-pruned

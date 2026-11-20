@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "7.1.23",
+  "version": "7.1.27",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
@@ -97,6 +97,7 @@
     "connectivity-prior-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/connectivity_prior_study.ts",
     "surrogate-uncertainty-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_uncertainty_ab.ts",
     "lineage-targeting-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/lineage_targeting_study.ts",
+    "topology-weight-luck-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/topology_weight_luck_study.ts",
     "budget-conditioned-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/budget_conditioned_study.ts"
   },
   "test": {
@@ -132,6 +133,7 @@
       "bench/IncrementalScoreUpdate.ts",
       "bench/MainThreadScoreWork.ts",
       "bench/MaxWeightBiasRecalculation.ts",
+      "bench/PredictiveCodingDeadlineLarge.ts",
       "bench/RandomImmigrantsStagnationEscape.ts",
       "bench/RevisitDiagnostic.ts",
       "bench/ScoreCalculationCache.ts",

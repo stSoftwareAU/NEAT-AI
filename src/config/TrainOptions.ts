@@ -107,6 +107,9 @@ export interface TrainArguments extends BackPropagationArguments {
    * `trainingTimeOutMinutes` (whichever are set), computed once when training
    * is set up. It reaches a deadline-capable native trainer only via that
    * deadline.
+   *
+   * Issue #4146: the predictive-coding trainer also stops at that same
+   * effective deadline, checked after every sample.
    */
   trainingTimeOutMinutes: number;
 
@@ -140,6 +143,9 @@ export interface TrainArguments extends BackPropagationArguments {
    * #214, crate 0.1.50 or later). A backend without it runs with no deadline
    * field or flag, NEAT-AI logs a warning once per backend, and the stuck-task
    * watchdog is the only stop.
+   *
+   * Issue #4146: the predictive-coding trainer also stops at that same
+   * effective deadline, checked after every sample.
    */
   hardDeadlineTS?: number;
 

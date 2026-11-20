@@ -10,6 +10,10 @@
  * (latency is measured when absent). Exits 1 when any run failed, so a partial
  * study is never read as a complete one.
  *
+ * Four arms run: `conditioned` (no budget input), `independent`, `pruned` and
+ * `budgetInput` (the budget is a linear input per synapse). The conditioned
+ * outcome is printed first, then the `budgetInput` block.
+ *
  * A measurement harness: nothing under `src/` imports it.
  */
 
@@ -71,6 +75,16 @@ for (const p of study.perBudget) {
 }
 console.info(`\nOutcome: ${study.outcome.outcome}`);
 for (const reason of study.outcome.reasons) console.info(`  - ${reason}`);
+const bi = study.budgetInput;
+console.info(
+  "\nbudgetInput arm (unseen budgets, validation MSE, budgetInput - control):",
+);
+line("budgetInput vs independent", bi.primary.vsIndependent);
+line("budgetInput vs pruned", bi.primary.vsPruned);
+line("budgetInput full size vs pruned", bi.fullSize);
+line("budgetInput vs conditioned (exploratory)", bi.vsConditioned);
+console.info(`budgetInput outcome: ${bi.outcome.outcome}`);
+for (const reason of bi.outcome.reasons) console.info(`  - ${reason}`);
 const cov = study.coverage;
 console.info(
   `\nCoverage: ${cov.completedRuns}/${cov.expectedRuns} runs, ${cov.failures.length} failures`,
