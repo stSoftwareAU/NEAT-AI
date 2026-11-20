@@ -11,12 +11,14 @@
  * showing the score delta against the previous fittest. It is idempotent — an
  * `approach-logged` tag stops the same improvement being announced twice as the
  * creature travels further through the evolution loop.
+ *
+ * `logApproach` never throws for an approach tag: an unrecognised runtime tag is
+ * logged as a warning (Issue #4188).
  */
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
 import { blue, bold, cyan } from "@std/fmt/colors";
 import { assert } from "@std/assert";
-import { ValidationError } from "@errors/ValidationError.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 // Define a union type for the possible approaches
@@ -107,6 +109,18 @@ export function logApproach(fittest: Creature, previous: Creature) {
           );
           break;
         }
+        case "predictive-coding": {
+          const trainID = getTag(fittest, "trainID");
+          getLogger().info(
+            bold(cyan("Predictive coding")),
+            blue(`${trainID}`),
+            "increased fitness by",
+            fScore - pScore,
+            "to",
+            fScore,
+          );
+          break;
+        }
         case "discovery":
         case "discovered":
         case "discovery-replay": {
@@ -125,12 +139,17 @@ export function logApproach(fittest: Creature, previous: Creature) {
           );
           break;
         }
-        case "compact": {
-          const oldNeuronsTxt = getTag(fittest, "old-neurons");
-          assert(oldNeuronsTxt, "Old neurons must be defined");
-          const oldNeurons = Number.parseInt(oldNeuronsTxt);
+        case "compact":
+        case "predictive-coding-compact": {
+          // The aggressive compact variant is tagged `compact` without
+          // `old-neurons`, so missing counts are logged as unknown, not asserted.
+          const oldNeurons = getTag(fittest, "old-neurons") ?? "unknown";
+          const oldSynapses = getTag(fittest, "old-synapses") ?? "unknown";
+          const label = approach === "compact"
+            ? "Compacting increased fitness by"
+            : "Predictive-coding compacting increased fitness by";
           getLogger().info(
-            "Compacting increased fitness by",
+            label,
             fScore - pScore,
             "to",
             fScore,
@@ -139,14 +158,20 @@ export function logApproach(fittest: Creature, previous: Creature) {
             } was:`,
             oldNeurons,
             `synapses: ${fittest.synapses.length} was:`,
-            getTag(fittest, "old-synapses"),
+            oldSynapses,
           );
           break;
         }
         default: {
-          throw new ValidationError(
-            `Unknown approach '${approach}'`,
-            "OTHER",
+          // Compile-time exhaustiveness: a new Approach member without a case
+          // fails `deno check`.
+          const unreachable: never = approach;
+          getLogger().warn(
+            `Unknown approach '${unreachable}'`,
+            "increased fitness by",
+            fScore - pScore,
+            "to",
+            fScore,
           );
         }
       }
