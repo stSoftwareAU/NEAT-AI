@@ -862,6 +862,13 @@ before it returns — `normaliseInwardRoles` in
 sums the rows that now share a triple and restores the canonical order (Issue
 #3880). Do not leave either for a later `creatureValidate`.
 
+Changing a neuron away from `IF` clears its inward roles, because only an `IF`
+target reads them (Issue #4185). `Neuron.setSquash` does it for a live creature,
+through `stripRolesAndCoalesceSources`. For an export, `clearStaleSynapseRoles`
+(exported from the root barrel) does it, and judges the **effective** squash, so
+an output neuron held by the `Activations` output pin is judged by the pin.
+Intelligent Design calls it after each squash it writes into an export.
+
 The rules themselves are NEAT-AI-core's (`validate_no_duplicate_synapses`,
 `creature_validate` rules 25/26); the conformance cases that pin them are
 `if-shared-source-feeds-both-branches`, `synapses-not-sorted-by-type` and

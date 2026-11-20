@@ -706,6 +706,16 @@ export {
 } from "@architecture/NormaliseCreatureExport.ts";
 
 /**
+ * Clear stale synapse roles after a squash change on an export (Issue #4185).
+ *
+ * For downstream callers that substitute squashes on exports: a neuron that is
+ * no longer `IF` loses the `condition` / `positive` / `negative` roles on its
+ * inward synapses, and rows that then share a source are summed. The effective
+ * squash, including an output-squash pin, decides whether anything is cleared.
+ */
+export { clearStaleSynapseRoles } from "@architecture/StaleSynapseRoles.ts";
+
+/**
  * Upgrade to version 2.0.0
  *
  * Migrates a creature export whose `semanticVersion` starts with `1.` to

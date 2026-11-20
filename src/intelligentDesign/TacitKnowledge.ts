@@ -16,6 +16,7 @@ import { Creature } from "@creature";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { squashSubstitutionBlockedReason } from "@intelligentDesign/SquashSubstitutionEligibility.ts";
+import { clearStaleSynapseRoles } from "@architecture/StaleSynapseRoles.ts";
 
 /**
  * Tacit knowledge is a mapping from neuron UUID to squash function name.
@@ -113,6 +114,8 @@ export function makeModifiedCreature(
   }
 
   neuronData.squash = nextSquash;
+  // Issue #4185: leaving IF must clear the roles on the inward synapses.
+  clearStaleSynapseRoles(tmpJson, neuronUuid);
   addTag(
     neuronData,
     "intelligentDesign",
@@ -270,6 +273,8 @@ export async function applyNeuronChanges(
 
     const previousSquash = neuron.squash;
     neuron.squash = squash;
+    // Issue #4185: leaving IF must clear the roles on the inward synapses.
+    clearStaleSynapseRoles(finalJson, uuid);
     addTag(
       neuron,
       "intelligentDesign",
