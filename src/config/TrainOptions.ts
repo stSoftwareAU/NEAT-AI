@@ -91,6 +91,9 @@ export interface TrainArguments extends BackPropagationArguments {
    *
    * TypeScript path: per-file random sample via `selectFileSampleIndexes`
    * unless `disableRandomSamples` is set.
+   * The predictive-coding trainer applies the same per-file selection, chosen
+   * once per run so every iteration is measured on the same records (Issue
+   * #4180).
    *
    * Rust path: forwarded as `maxRecords` / `--max-records` when this is
    * `< 1`. Default is a seeded random draw across files; set

@@ -6,7 +6,7 @@
  * training when predictiveCoding.enabled is true.
  */
 
-import { assert, assertGreater, assertLess } from "@std/assert";
+import { assert, assertGreater, assertLess, assertThrows } from "@std/assert";
 import { Creature } from "@creature";
 import {
   type DataRecordInterface,
@@ -16,6 +16,7 @@ import { trainDir } from "@architecture/Training.ts";
 import { Costs } from "@costs";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 import { trainWithPredictiveCoding } from "@predictiveCoding/PredictiveCodingTrainer.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 
 Deno.test("PC trainer returns finite error for simple dataset", () => {
@@ -316,5 +317,38 @@ Deno.test("PC trainer averageInferenceSteps is within bounds", () => {
     );
   } finally {
     Deno.removeSync(dataSetDir, { recursive: true });
+  }
+});
+
+Deno.test("PC trainer refuses a trainingSampleRate outside (0, 1]", () => {
+  const dataSet: DataRecordInterface[] = [
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+  ];
+  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+  const dir = makeDataDir(dataSet, dataSet.length, {
+    input: creature.input,
+    output: creature.output,
+  });
+  const train = (trainingSampleRate: number) =>
+    trainWithPredictiveCoding(
+      creature,
+      [dir + "/0.bin"],
+      { ...DEFAULT_PREDICTIVE_CODING_CONFIG, enabled: true },
+      Costs.find("MSE"),
+      { iterations: 1, targetError: 0, trainingSampleRate },
+    );
+  try {
+    for (const rate of [0, 1.5, Number.NaN]) {
+      assertThrows(
+        () => train(rate),
+        ValidationError,
+        "trainingSampleRate",
+      );
+    }
+    // Control: the boundary value is accepted.
+    assert(Number.isFinite(train(1).error));
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
   }
 });
