@@ -8,9 +8,11 @@
  * - **Does a differential-weight (DE/rand/1/bin) offspring help?** A share of
  *   each generation's offspring is built weight-only from three donors in the
  *   target's species instead of by crossover and mutation.
- * - **Does delaying population contraction help?** The existing adaptive shrink
- *   rule ({@link computeAdaptivePopulationSize}) is held back until a fixed
- *   share of the record budget has been spent.
+ * - **Does delaying population contraction help?** Two contraction policies are
+ *   held back until a fixed share of the record budget has been spent: the
+ *   existing adaptive shrink rule ({@link computeAdaptivePopulationSize}) and
+ *   L-SHADE's linear population-size reduction ({@link delayedLinearSize}),
+ *   which is the mechanism the cited paper proposes.
  * - **Does it matter whether locally refined descendants re-enter the
  *   population?** Production trains a creature and the trained descendant
  *   re-enters; the `@isolated` arms keep it out of breeding but let it compete
@@ -73,21 +75,27 @@ import { median } from "./rankFidelity.ts";
 /**
  * First validation seed. The validation seeds are `base .. base + count - 1`.
  *
- * The range 4156-4185 was the CLI default while the harness was being built,
- * so the pilot and the discarded full runs may have drawn on it. The reported
- * validation therefore uses a fresh range no earlier run used.
+ * Two ranges are already used and so are no longer untouched: 4156-4185 was
+ * the earlier full runs' CLI default, and 14156-14185 was PR #4165's reported
+ * validation, whose 8-arm results were seen before the delayed-LPSR arms were
+ * added. The reported validation therefore uses the fresh range 24156-24185.
  */
-export const VALIDATION_BASE_SEED = 14156;
+export const VALIDATION_BASE_SEED = 24156;
 /** How many validation seeds the study runs. */
 export const VALIDATION_SEED_COUNT = 30;
 /**
- * Seed ranges (inclusive) that earlier runs are known to have used while the
- * harness was being built, and so are no longer untouched. The pilot's seeds
- * were never recorded, so it cannot be listed here; its bound is in the
+ * Seed ranges (inclusive) that earlier runs are known to have used, and so are
+ * no longer untouched: 4156-4185 (the earlier full runs' CLI default) and
+ * 14156-14185 (PR #4165's reported validation, seen before the delayed-LPSR
+ * arms were added) and 34156-34185 (the first equal-wall-clock phase, seen
+ * before review found that a refinement batch ran past the deadline). The
+ * pilot's seeds were never recorded, so it cannot be listed here; its bound is in the
  * manifest's `preparation.runs`.
  */
 export const USED_SEED_RANGES: readonly (readonly [number, number])[] = [
   [4156, 4185],
+  [14156, 14185],
+  [34156, 34185],
 ];
 /** The seeds in `seeds` that fall inside a range an earlier run used. */
 export function usedSeedOverlap(seeds: readonly number[]): number[] {
@@ -95,6 +103,39 @@ export function usedSeedOverlap(seeds: readonly number[]): number[] {
     USED_SEED_RANGES.some(([first, last]) => seed >= first && seed <= last)
   );
 }
+/**
+ * First seed of the equal-wall-clock phase: `base .. base + count - 1`, with
+ * `VALIDATION_SEED_COUNT` seeds. A fresh range, disjoint from the record-budget
+ * validation, the calibration and every used range, so the phase that caps
+ * wall-clock is also measured on seeds no design decision saw.
+ */
+export const WALL_CLOCK_BASE_SEED = 44156;
+/**
+ * The wall-clock every run gets in the equal-wall-clock phase, in milliseconds.
+ * Fixed before that phase ran: 600 ms is the order of one record-budget run
+ * here (the 24156 run's median was about 0.6 s), so each arm gets roughly a
+ * record-budget run's time, the same for every arm.
+ */
+export const WALL_CLOCK_BUDGET_MS = 600;
+/**
+ * Record budget during the equal-wall-clock phase: ten times the record-budget
+ * phase's, so the wall-clock cap, not the records, is what stops a run.
+ */
+export const WALL_CLOCK_RECORD_BUDGET = 2_400_000;
+
+/**
+ * An equal wall-clock budget for one run: the run stops once `ms` have elapsed
+ * on `now`, and contraction schedules read their progress from the elapsed
+ * share of `ms` (or the records share, whichever is further on). `now` is
+ * injected so a test can drive the clock deterministically.
+ */
+export interface WallClockBudget {
+  /** Milliseconds each run may take. Must be positive and finite. */
+  readonly ms: number;
+  /** Monotonic clock in milliseconds, such as `performance.now`. */
+  readonly now: () => number;
+}
+
 /** First calibration seed — a range disjoint from the validation seeds. */
 export const CALIBRATION_BASE_SEED = 94156;
 /** How many calibration seeds set the time-to-target threshold. */
@@ -129,6 +170,12 @@ export interface StudySettings {
   /** Share of `recordBudget` that must be spent before contraction may begin. */
   readonly contractionDelayFraction: number;
   /**
+   * L-SHADE's `N_min`: the population size the linear reduction reaches at
+   * budget exhaustion (4 in Tanabe & Fukunaga 2014). Must be an integer above
+   * `elitism` and no more than `populationSize`.
+   */
+  readonly lpsrMinPopulationSize: number;
+  /**
    * Species diversity (species count over population size) above which the
    * existing adaptive rule shrinks the population on a plateau. The production
    * default is 0.8, but a 3-seed pilot showed 1.3-2.3 species per 24
@@ -161,6 +208,7 @@ export const DEFAULT_STUDY_SETTINGS: StudySettings = Object.freeze({
   deF: 0.5,
   deCR: 0.9,
   contractionDelayFraction: 0.5,
+  lpsrMinPopulationSize: 4,
   contractionHighDiversityThreshold: 0,
   plateauWindow: 5,
   plateauMinImprovement: 0.01,
@@ -193,6 +241,15 @@ export function validateSettings(s: StudySettings): void {
   if (s.elitism >= s.populationSize) {
     throw new Error(
       `elitism (${s.elitism}) must be below populationSize (${s.populationSize})`,
+    );
+  }
+  if (
+    !Number.isInteger(s.lpsrMinPopulationSize) ||
+    s.lpsrMinPopulationSize <= s.elitism ||
+    s.lpsrMinPopulationSize > s.populationSize
+  ) {
+    throw new Error(
+      `lpsrMinPopulationSize must be an integer above elitism (${s.elitism}) and at most populationSize (${s.populationSize}), got ${s.lpsrMinPopulationSize}`,
     );
   }
   if (!(s.deFraction >= 0 && s.deFraction <= 1)) {
@@ -413,6 +470,9 @@ export interface Refinement {
  * the best only if it beats the parent's own score. The parent is not modified.
  *
  * @param score - Returns a higher-is-better score for a candidate.
+ * @param shouldStop - Asked before each candidate is built or scored; when it
+ *   answers `true` the batch ends there. Candidates already scored are kept, so
+ *   an equal wall-clock budget never pays for an evaluation it has no time for.
  */
 export function refineWeights(
   parent: Creature,
@@ -420,24 +480,28 @@ export function refineWeights(
   sigma: number,
   rng: RandomNumberGenerator,
   score: (candidate: Creature) => number,
+  shouldStop: () => boolean = () => false,
 ): Refinement {
   const parentScore = parent.score ?? -Infinity;
   let best: Creature | undefined;
   let bestScore = parentScore;
+  let scored = 0;
   for (let i = 0; i < candidates; i++) {
+    if (shouldStop()) break;
     const exported = parent.exportJSON();
     for (const gene of listGenes(exported)) {
       gene.set(gene.get() + sigma * gaussian(rng));
     }
     const candidate = creatureFromExport(exported);
     const value = score(candidate);
+    scored++;
     candidate.score = value;
     if (value > bestScore) {
       best = candidate;
       bestScore = value;
     }
   }
-  return { best, candidatesScored: candidates };
+  return { best, candidatesScored: scored };
 }
 
 // ---------------------------------------------------------------------------
@@ -498,6 +562,45 @@ export function contractedSize(args: ContractionInput): number {
   return Math.min(args.currentSize, proposed);
 }
 
+/** Inputs to {@link delayedLinearSize}. */
+export interface DelayedLinearInput {
+  readonly basePopulationSize: number;
+  /** L-SHADE's `N_min`. */
+  readonly minPopulationSize: number;
+  readonly recordsCharged: number;
+  readonly recordBudget: number;
+  /** Share of the budget held at the base size (`contractionDelayFraction`). */
+  readonly delayFraction: number;
+}
+
+/**
+ * L-SHADE's linear population-size reduction (Tanabe & Fukunaga 2014), held at
+ * the initial size until the delay and then reduced linearly to the minimum at
+ * budget exhaustion. The paper's delay cap value was not available, so the
+ * delay is this study's `contractionDelayFraction` (50%).
+ *
+ * Before the delay, or when `delayFraction >= 1`, the base size is returned.
+ * After it, `progress` runs from 0 to 1 over the rest of the budget and the
+ * size is `round((base - min) * (1 - progress)) + min`.
+ */
+export function delayedLinearSize(args: DelayedLinearInput): number {
+  const { basePopulationSize, minPopulationSize, recordBudget } = args;
+  const delayRecords = args.delayFraction * recordBudget;
+  if (args.delayFraction >= 1 || args.recordsCharged < delayRecords) {
+    return basePopulationSize;
+  }
+  const progress = Math.min(
+    1,
+    Math.max(
+      0,
+      (args.recordsCharged - delayRecords) /
+        ((1 - args.delayFraction) * recordBudget),
+    ),
+  );
+  return Math.round((basePopulationSize - minPopulationSize) * (1 - progress)) +
+    minPopulationSize;
+}
+
 // ---------------------------------------------------------------------------
 // Behavioural diversity
 // ---------------------------------------------------------------------------
@@ -544,8 +647,14 @@ export interface StudyArm {
   readonly name: string;
   /** Part of each generation's offspring is DE offspring. */
   readonly de: boolean;
-  /** Population contraction is allowed, after the delay. */
-  readonly delayedContraction: boolean;
+  /**
+   * Population contraction policy, always after the delay:
+   * - `"none"`: the population stays at its base size.
+   * - `"adaptive"`: the existing adaptive shrink rule ({@link contractedSize}).
+   * - `"linear"`: delayed L-SHADE linear population-size reduction
+   *   ({@link delayedLinearSize}), the paper's mechanism.
+   */
+  readonly contraction: "none" | "adaptive" | "linear";
   /** Refined descendants join the next population. */
   readonly refinementReenters: boolean;
 }
@@ -555,18 +664,20 @@ function makeArms(): readonly StudyArm[] {
   for (const reenter of [true, false]) {
     const suffix = reenter ? "reenter" : "isolated";
     for (
-      const [name, de, delayedContraction] of [
-        ["control", false, false],
-        ["de", true, false],
-        ["contraction", false, true],
-        ["de+contraction", true, true],
+      const [name, de, contraction] of [
+        ["control", false, "none"],
+        ["de", true, "none"],
+        ["contraction", false, "adaptive"],
+        ["de+contraction", true, "adaptive"],
+        ["lpsr", false, "linear"],
+        ["de+lpsr", true, "linear"],
       ] as const
     ) {
       arms.push(
         Object.freeze({
           name: `${name}@${suffix}`,
           de,
-          delayedContraction,
+          contraction,
           refinementReenters: reenter,
         }),
       );
@@ -576,8 +687,8 @@ function makeArms(): readonly StudyArm[] {
 }
 
 /**
- * The 2x2 of DE and delayed contraction, crossed with whether refined
- * descendants re-enter. `control@reenter` is current behaviour.
+ * The 2 DE settings x 3 contraction policies (none, adaptive, linear), crossed
+ * with whether refined descendants re-enter. `control@reenter` is current behaviour.
  */
 export const STUDY_ARMS: readonly StudyArm[] = makeArms();
 
@@ -624,6 +735,12 @@ export interface ArmResult {
   readonly firstContractionRecords: number | null;
   readonly finalPopulationSize: number;
   /**
+   * What ended the run: the record budget, or the wall-clock budget when one
+   * was given. A run under an equal wall-clock budget that reports `records`
+   * charged the whole (raised) record budget first.
+   */
+  readonly stoppedBy: "records" | "wall-clock";
+  /**
    * Offspring slots requested over the run (target size less elites and any
    * re-entered refinement, summed over generations that bred).
    */
@@ -658,6 +775,8 @@ function mean(values: readonly number[]): number {
  * Run one arm at one seed.
  *
  * @param target - Training MSE the time-to-target is read against, if any.
+ * @param wallClock - An equal wall-clock budget; omitted, only records bind
+ *   and the clock is never read.
  */
 // deno-lint-ignore require-await
 export async function runArm(
@@ -666,8 +785,17 @@ export async function runArm(
   seed: number,
   splits: StudySplits,
   target?: number,
+  wallClock?: WallClockBudget,
 ): Promise<ArmResult> {
   validateSettings(settings);
+  if (
+    wallClock !== undefined &&
+    !(wallClock.ms > 0 && Number.isFinite(wallClock.ms))
+  ) {
+    throw new Error(
+      `wallClock.ms must be a positive finite number, got ${wallClock.ms}`,
+    );
+  }
   // `createNeatConfig` replaces the global generator, so the caller's is
   // captured first and the seed applied after the config exists.
   const previousRng = getRandomNumberGenerator();
@@ -681,7 +809,16 @@ export async function runArm(
     const rng = createSeededRng(seed + 1_000_003);
     // Synchronous today; the run is `async` so a caller treats it like the
     // other harnesses and nothing changes if a stage becomes asynchronous.
-    return runSeededArm(arm, settings, seed, splits, target, config, rng);
+    return runSeededArm(
+      arm,
+      settings,
+      seed,
+      splits,
+      target,
+      config,
+      rng,
+      wallClock,
+    );
   } finally {
     setRandomNumberGenerator(previousRng);
   }
@@ -700,8 +837,17 @@ function runSeededArm(
   target: number | undefined,
   config: ReturnType<typeof createNeatConfig>,
   rng: RandomNumberGenerator,
+  wallClock: WallClockBudget | undefined,
 ): ArmResult {
   const { train } = splits;
+  const startedAt = wallClock?.now() ?? 0;
+  let stoppedBy: "records" | "wall-clock" = "records";
+  const wallClockSpent = (): boolean => {
+    if (wallClock === undefined) return false;
+    if (wallClock.now() - startedAt < wallClock.ms) return false;
+    stoppedBy = "wall-clock";
+    return true;
+  };
   const mutator = new Mutator(config);
   let population = seedPopulation(settings, rng);
   let isolatedBest: Creature | undefined;
@@ -737,7 +883,22 @@ function runSeededArm(
     return scored.score;
   };
 
+  /**
+   * Budget spent, in records, as the contraction schedules read it. Without a
+   * wall-clock budget it is exactly `recordsCharged`; with one it is the
+   * further on of the records and the elapsed share of the wall-clock.
+   */
+  const budgetSpent = (): number => {
+    if (wallClock === undefined) return recordsCharged;
+    const elapsed = Math.min(
+      1,
+      (wallClock.now() - startedAt) / wallClock.ms,
+    );
+    return Math.max(recordsCharged, elapsed * settings.recordBudget);
+  };
+
   while (recordsCharged < settings.recordBudget) {
+    if (wallClockSpent()) break;
     generation++;
     const chargedAtStart = recordsCharged;
 
@@ -745,7 +906,10 @@ function runSeededArm(
     let exhausted = false;
     for (const creature of population) {
       if (creature.score !== undefined) continue;
-      if (recordsCharged + train.length > settings.recordBudget) {
+      if (
+        recordsCharged + train.length > settings.recordBudget ||
+        wallClockSpent()
+      ) {
         exhausted = true;
         break;
       }
@@ -775,16 +939,27 @@ function runSeededArm(
 
     // 4. Population size for the next generation.
     let nextSize = settings.populationSize;
-    if (arm.delayedContraction) {
-      nextSize = contractedSize({
-        basePopulationSize: settings.populationSize,
-        currentSize: size,
-        speciesCount,
-        scoreHistory: history,
-        recordsCharged,
-        recordBudget: settings.recordBudget,
-        settings,
-      });
+    if (arm.contraction !== "none") {
+      nextSize = arm.contraction === "adaptive"
+        ? contractedSize({
+          basePopulationSize: settings.populationSize,
+          currentSize: size,
+          speciesCount,
+          scoreHistory: history,
+          recordsCharged: budgetSpent(),
+          recordBudget: settings.recordBudget,
+          settings,
+        })
+        : Math.min(
+          size,
+          delayedLinearSize({
+            basePopulationSize: settings.populationSize,
+            minPopulationSize: settings.lpsrMinPopulationSize,
+            recordsCharged: budgetSpent(),
+            recordBudget: settings.recordBudget,
+            delayFraction: settings.contractionDelayFraction,
+          }),
+        );
       if (nextSize < size) {
         contractionEvents++;
         firstContractionRecords ??= recordsCharged;
@@ -808,7 +983,8 @@ function runSeededArm(
     const refinementCost = settings.refinementCandidates * train.length;
     if (
       Number.isFinite(bestScore) &&
-      recordsCharged + refinementCost <= settings.recordBudget
+      recordsCharged + refinementCost <= settings.recordBudget &&
+      !wallClockSpent()
     ) {
       const refinement = refineWeights(
         population[0],
@@ -816,6 +992,7 @@ function runSeededArm(
         settings.refinementSigma,
         rng,
         charge,
+        wallClockSpent,
       );
       if (refinement.best !== undefined) {
         refinementsAccepted++;
@@ -830,6 +1007,13 @@ function runSeededArm(
           isolatedBest = refinement.best;
         }
       }
+    }
+
+    // The clock ran out during refinement: keep what was scored, start no
+    // breeding. A re-entering descendant joins the population so it can ship.
+    if (wallClockSpent()) {
+      if (reentered !== undefined) population = [...population, reentered];
+      break;
     }
 
     // 6. Breed the next population.
@@ -917,6 +1101,7 @@ function runSeededArm(
     contractionEvents,
     firstContractionRecords,
     finalPopulationSize: size,
+    stoppedBy,
     slotsRequested,
     unfilledSlots,
     deSlotsRequested,
@@ -1129,7 +1314,7 @@ export interface Contrast {
 /** The comparisons the study reports, fixed before any run. */
 export const PREDECLARED_CONTRASTS: readonly Contrast[] = Object.freeze([
   ...["reenter", "isolated"].flatMap((suffix) =>
-    ["de", "contraction", "de+contraction"].map((name) =>
+    ["de", "contraction", "de+contraction", "lpsr", "de+lpsr"].map((name) =>
       Object.freeze({
         arm: `${name}@${suffix}`,
         control: `control@${suffix}`,

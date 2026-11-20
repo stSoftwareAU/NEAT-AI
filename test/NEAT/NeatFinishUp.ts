@@ -623,8 +623,9 @@ Deno.test("finishUp: an over-run stop does not wait on results it will never mer
     const options: NeatOptions = { populationSize: 10 };
     const neat = new Neat(2, 1, options, workers);
 
-    // The over-run path never calls evolve() again, so waiting here would spin
-    // until the hard deadline. Teardown discards these instead.
+    // finishUp itself never waits on the over-run path. The single merge pass
+    // is claimed by claimOverrunMergePass() before finishUp is called, and any
+    // result still queued after that pass is discarded at teardown.
     neat.terminationReason = "overrun";
     neat.trainingComplete.push(settledTraining(3, "abc12345"));
     neat.discoveryComplete.push(settledDiscovery(4, "def12345"));

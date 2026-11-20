@@ -432,11 +432,13 @@ export function seedPopulation(
   return population;
 }
 
-/** Breed `count` offspring from a score-sorted population, then mutate them. */
-export function breedOffspring(
+/**
+ * Breed `count` children from a score-sorted population by crossover alone —
+ * no mutation, so a caller can look at the child before the operators touch it.
+ */
+export function breedChildren(
   population: readonly Creature[],
   count: number,
-  mutator: Mutator,
   config: ReturnType<typeof createNeatConfig>,
   rng: RandomNumberGenerator,
 ): Creature[] {
@@ -459,6 +461,18 @@ export function breedOffspring(
     delete child.score;
     offspring.push(child);
   }
+  return offspring;
+}
+
+/** Breed `count` offspring from a score-sorted population, then mutate them. */
+export function breedOffspring(
+  population: readonly Creature[],
+  count: number,
+  mutator: Mutator,
+  config: ReturnType<typeof createNeatConfig>,
+  rng: RandomNumberGenerator,
+): Creature[] {
+  const offspring = breedChildren(population, count, config, rng);
   mutator.mutate(offspring);
   for (const child of offspring) {
     delete child.score;
