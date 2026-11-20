@@ -41,9 +41,16 @@ import {
 import { marshalCreatureValidateRequest } from "@architecture/CreatureValidateMarshal.ts";
 import type { ValidationError } from "@errors/ValidationError.ts";
 
-/** A valid 2-input, 1-hidden, 1-output creature. */
+/**
+ * A valid 2-input, 1-hidden, 1-output creature. The squashes are pinned: left
+ * random, an `IF` pick for the output makes construction add role synapses and
+ * the connection count is 5, not 3.
+ */
 function makeCreature(): Creature {
-  const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
+  const creature = new Creature(2, 1, {
+    layers: [{ count: 1, squash: "LOGISTIC" }],
+    outputLayer: { squash: "LOGISTIC" },
+  });
   creature.DEBUG = false;
   creatureValidate(creature);
   return creature;
@@ -198,7 +205,10 @@ Deno.test("packed: an absent bias is not the same as a bias of zero", () => {
  * next verdict is the failure mode this shape could have introduced.
  */
 Deno.test("packed: a creature is never judged on the previous creature's bytes", () => {
-  const wide = new Creature(8, 2, { layers: [{ count: 6 }] });
+  const wide = new Creature(8, 2, {
+    layers: [{ count: 6, squash: "LOGISTIC" }],
+    outputLayer: { squash: "LOGISTIC" },
+  });
   wide.DEBUG = false;
   const narrow = makeCreature();
 

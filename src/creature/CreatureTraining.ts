@@ -467,10 +467,11 @@ export interface EvolveDirDeps {
  */
 function requestOverrunStop(neat: Neat, factor: number): void {
   // Issue #3823: once we have decided to stop starting generations, a pending
-  // "do at least one more loop" request can never be honoured — `evolve()` is
-  // not called again on this path. Leaving it set makes `finishUp()` refuse to
-  // finish, and the over-run branch below spins (nothing is in flight, so
-  // `awaitInFlightTasks()` returns immediately) until the hard deadline.
+  // "do at least one more loop" request can never be honoured — at most one
+  // more `evolve()` runs (the Issue #4099 merge pass). Leaving it set makes
+  // `finishUp()` refuse to finish, and the over-run branch below spins
+  // (nothing is in flight, so `awaitInFlightTasks()` returns immediately)
+  // until the hard deadline.
   // Cleared before the already-stopped guard so it holds on every pass.
   neat.additionalGenerationCount = 0;
   if (neat.terminationReason === "overrun") return;
@@ -720,17 +721,21 @@ export async function evolveDir(
         ) {
           requestOverrunStop(neat, overrunFactor);
           if (interrupted) break;
-          // Graceful self-termination: do not take the hard-deadline abandon path.
-          if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-            break;
+          // Issue #4099: a settled result still queued gets one more evolve()
+          // to merge it; falling through runs that bounded generation.
+          if (!neat.claimOverrunMergePass()) {
+            // Graceful self-termination: do not take the hard-deadline abandon path.
+            if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+              break;
+            }
+            // deno-lint-ignore no-await-in-loop
+            await neat.awaitInFlightTasks(
+              AWAIT_IN_FLIGHT_TIMEOUT_MS,
+              hardDeadlineMS,
+              nowFn,
+            );
+            continue;
           }
-          // deno-lint-ignore no-await-in-loop
-          await neat.awaitInFlightTasks(
-            AWAIT_IN_FLIGHT_TIMEOUT_MS,
-            hardDeadlineMS,
-            nowFn,
-          );
-          continue;
         }
 
         // GRQ #4470: bound the generation itself. A discovery/training child that
@@ -1219,16 +1224,20 @@ export async function evolveEnv<S, A>(
         ) {
           requestOverrunStop(neat, overrunFactor);
           if (interrupted) break;
-          if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-            break;
+          // Issue #4099: a settled result still queued gets one more evolve()
+          // to merge it; falling through runs that bounded generation.
+          if (!neat.claimOverrunMergePass()) {
+            if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+              break;
+            }
+            // deno-lint-ignore no-await-in-loop
+            await neat.awaitInFlightTasks(
+              AWAIT_IN_FLIGHT_TIMEOUT_MS,
+              hardDeadlineMS,
+              nowFn,
+            );
+            continue;
           }
-          // deno-lint-ignore no-await-in-loop
-          await neat.awaitInFlightTasks(
-            AWAIT_IN_FLIGHT_TIMEOUT_MS,
-            hardDeadlineMS,
-            nowFn,
-          );
-          continue;
         }
 
         generation++;
@@ -1866,16 +1875,20 @@ export async function evolveRL<S, A>(
         ) {
           requestOverrunStop(neat, overrunFactor);
           if (interrupted) break;
-          if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-            break;
+          // Issue #4099: a settled result still queued gets one more evolve()
+          // to merge it; falling through runs that bounded generation.
+          if (!neat.claimOverrunMergePass()) {
+            if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+              break;
+            }
+            // deno-lint-ignore no-await-in-loop
+            await neat.awaitInFlightTasks(
+              AWAIT_IN_FLIGHT_TIMEOUT_MS,
+              hardDeadlineMS,
+              nowFn,
+            );
+            continue;
           }
-          // deno-lint-ignore no-await-in-loop
-          await neat.awaitInFlightTasks(
-            AWAIT_IN_FLIGHT_TIMEOUT_MS,
-            hardDeadlineMS,
-            nowFn,
-          );
-          continue;
         }
 
         generation++;

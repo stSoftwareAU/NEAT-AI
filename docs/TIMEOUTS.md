@@ -105,8 +105,9 @@ predicate, applying the same one-generation floor
   `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` are kept, GRQ #4794) and named in the log.
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
-  starting new generations and finishes with the population committed. This is
-  graceful self-termination, not the hard-deadline abandon.
+  starting new generations and finishes with the population committed, after at
+  most one more generation to merge settled training or discovery results (Issue
+  #4099). This is graceful self-termination, not the hard-deadline abandon.
 - **Finish-up wait** — `Neat.awaitInFlightTasks()` caps its own timeout at the
   time remaining before `hardDeadlineTS`, measured on the evolve loop's own
   clock. A never-resolving in-flight promise can therefore never wedge the wait
@@ -184,10 +185,22 @@ terminating the workers, so those tasks are named there too.
 On a normal finish, `finishUp()` also checks `trainingComplete` and
 `discoveryComplete`, even when neither in-progress map contains work. A queued
 result keeps the loop open for another generation to process it. In `evolveDir`,
-`evolveEnv` and `evolveRL`, the over-run guard can stop that generation from
-starting, and the hard deadline can abandon it; those bounds take precedence
-over merging a late result. The teardown then names the unmerged result as
-discarded rather than extending the run to re-score it.
+`evolveEnv` and `evolveRL`, the over-run guard trips at the same instant the
+time budget ends the last generation, so it fires on every run that ends on its
+time budget. When it stops new generations while a mergeable result is still
+queued (a training result with a finite error, or any discovery result), the
+loop runs exactly one more `evolve()` to merge and commit it, so a training
+result gets its `Training <id> completed` line and reaches the population and
+creature store (Issue #4099). A failed training task, queued with a non-finite
+error that `processCompletedResults()` skips, does not claim the pass and is
+left for the teardown. `Neat.claimOverrunMergePass()` grants that pass at most
+once per run and logs
+`[Neat] Over-run stop: running one more generation to merge N settled result(s) (training: T, discovery: D) before finishing`.
+The pass is still bounded by the hard deadline like every generation: if the
+hard cap passes during it, the generation is abandoned and its merged tasks are
+logged as discarded. A result that settles after the merge pass, or on a
+hard-deadline or interrupted (SIGTERM) stop, is not merged; the teardown names
+it as discarded rather than extending the run to re-score it.
 
 A discovery or replay creature that `processCompletedResults()` already merged
 into a generation the hard deadline then abandons (Issue #4050) has left
