@@ -139,6 +139,11 @@ Tuning guides and benchmark research.
   island-exchange study (Issue #4159): a neighbour-only ring against the global
   champion broadcast on equal budgets. A negative finding: the ring keeps
   topology diverse but does not beat the broadcast on held-out error.
+- **[evidence/protected-refinement-4158.md](evidence/protected-refinement-4158.md)**
+  — a negative result (Issue #4158): holding major topology mutations in a
+  protected pen for short refinement rounds lowered their retention and did not
+  improve held-out error. Opt-in study harness only; nothing under `src/`
+  changed.
 - **[evidence/differential-weight-4156.md](evidence/differential-weight-4156.md)**
   — the opt-in study of differential-weight offspring and delayed population
   contraction (Issue #4156): 2 DE settings × 3 contraction policies (none, the

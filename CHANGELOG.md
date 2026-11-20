@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4158:** opt-in `deno task protected-refinement-study` measures
+  whether short protected refinement helps major topology mutations survive
+  selection. It found no benefit: protection lowered retention of major
+  descendants (0.258 against 0.354) and refinement spent on ordinary descendants
+  did no better or worse (`no-benefit` on every contrast). Only 3 of 20 seeds
+  are exactly matched to the treatment's refinement and evaluation records, too
+  few to conclude from; 14 approximately matched seeds and all 20 seeds agree;
+  six seeds are listed as uncompletable. Nothing under `src/` changed. See
+  [`docs/evidence/protected-refinement-4158.md`](docs/evidence/protected-refinement-4158.md).
 - **Issue #4161:** the budget-conditioned study gains a `budgetInput` arm in
   which the budget is an input to expression (per-synapse priority and weight
   linear in the budget), the paper's key ingredient in its simplest form. With
