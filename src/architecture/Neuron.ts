@@ -22,6 +22,7 @@ import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { getSquashType } from "@wasm/SquashType.ts";
 import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { clearInwardSynapseRoles } from "@architecture/StaleSynapseRoles.ts";
 import type {
   NeuronExport,
   NeuronInternal,
@@ -193,6 +194,10 @@ export class Neuron implements TagsInterface, NeuronInternal {
     return String(this.id);
   }
 
+  /**
+   * Change this neuron's squash. Issue #4185: leaving `IF` also clears the
+   * roles on its inward synapses, since only an `IF` target reads them.
+   */
   setSquash(name?: string): void {
     // Issue #3797: every squash rewrite (mutation, discovery, repair, fine
     // tune) lands here, so this is the chokepoint that holds an output
@@ -202,10 +207,19 @@ export class Neuron implements TagsInterface, NeuronInternal {
       if (pinned !== null) name = pinned;
     }
     if (name !== this.squash) {
+      const wasIf = this.squash === "IF";
       delete this.squashMethodCache;
       delete this.complexityPenaltyCache;
       delete this.squashTypeCache;
       this.squash = name;
+      // Issue #4185: a neuron that stops being IF must not keep the roles
+      // on its inward synapses. Only attached neurons have inward synapses.
+      if (
+        wasIf && this.squash !== "IF" &&
+        this.creature?.neurons?.[this.index] === this
+      ) {
+        clearInwardSynapseRoles(this.creature, this.index);
+      }
       // Invalidate creature's score cache since complexity penalty may have changed
       // Issue #1043: Cache Activations.find() lookups in score calculation
       this.creature.invalidateScoreCache();
