@@ -7,6 +7,7 @@ generator, so every crossover and mutation in the Issue #3932 A/B was unseeded.
 The config now receives the generator `runArm` seeded. A new test asserts that
 two runs with the same seed return identical results. The #3932 study has been
 re-run, and its evidence is refreshed and now reproducible from its seeds.
+
 Closes #4170.
 
 ## Spec
