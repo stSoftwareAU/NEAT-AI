@@ -76,7 +76,13 @@ flowchart LR
     (+0.0015).
   - **Run-to-run variability:** the paragraph that blamed it on
     `crypto.randomUUID()` now says the cause was this bug, and that results are
-    reproducible.
+    reproducible. It also says which generators are seeded where: the corpus,
+    starting population and parent draws use generators the harness seeds
+    itself, and crossover and mutation use the global generator, seeded with the
+    same seed.
+  - **Crossover shortfall:** control bred a mean of 5.6 offspring per generation
+    against 22 slots. That is the artefact's mean `candidatesConsidered` (192.2)
+    minus the 24 seed creatures, divided by 30 generations.
 - **Same sentence updated elsewhere:** `docs/PRE_SELECTION.md` (Failure
   detection section), `docs/config/TRAINING.md` (the `preSelection` paragraph)
   and `CHANGELOG.md` (an `[Unreleased]` / Fixed entry).

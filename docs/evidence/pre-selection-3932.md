@@ -55,21 +55,22 @@ and `random-only` were behind control. At equal _generations_ all three
 over-generated arms beat control, and both screened arms also beat `random-only`
 (+3.93e-2 and +3.67e-2 against +2.49e-2), so part of that gain is the screens'.
 Much of it is the surplus: a surplus fills the population when crossover fails,
-and this harness's crossover fails often (control bred a mean of 6.4 offspring
+and this harness's crossover fails often (control bred a mean of 5.6 offspring
 per generation against 22 slots). Charge the extra exact evaluations that fuller
 population costs and the advantage is gone or within seed-to-seed spread.
 
 Every number here is reproducible from the stated seeds. Each arm's corpus,
-starting population, crossover and mutation draw from one seeded global
-generator; until Issue #4170, `createNeatConfig` replaced that generator with an
-unseeded one at the start of every arm, so crossover and mutation ran unseeded
-and the previous version of this file reported numbers that moved by about ±2e-2
-between invocations. Two invocations of the command above, on the fixed harness,
-produced identical results in every field except the wall-clock `screenMs`
-timings. `Offspring.breed` still mints neuron identities with
-`crypto.randomUUID()`, which no seed reaches, but in those two invocations that
-changed no reported number. The honest reading of the endpoint is still **no
-improvement demonstrated**.
+starting population and parent draws come from generators the harness seeds
+itself; crossover and mutation draw from the global generator, which the harness
+seeds with the same seed. Until Issue #4170, `createNeatConfig` replaced that
+global generator with an unseeded one at the start of every arm, so crossover
+and mutation ran unseeded and the previous version of this file reported numbers
+that moved by about ±2e-2 between invocations. Two invocations of the command
+above, on the fixed harness, produced identical results in every field except
+the wall-clock `screenMs` timings. `Offspring.breed` still mints neuron
+identities with `crypto.randomUUID()`, which no seed reaches, but in those two
+invocations that changed no reported number. The honest reading of the endpoint
+is still **no improvement demonstrated**.
 
 ### Diversity — the regression that would not show in the fitness trace
 
