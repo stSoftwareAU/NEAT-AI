@@ -155,6 +155,20 @@ for field, apart from `wallMs`, and its 11 contrasts equal that run's apart from
 `wallClockMedianRatio` and the new `attempted` field. The equal-wall-clock phase
 uses a real clock, so it is not bit-reproducible.
 
+**Clean-commit check (2026-11-20).** The command in [Reproduce](#reproduce) was
+run again at clean commit `6639854d` (NEAT-AI 7.1.32), writing to a scratch file
+rather than the committed manifest. Its record-budget phase matched the
+committed manifest: all 360 per-run lines it printed (held-out MSE to 4
+significant figures, records charged and generations), the five calibration
+train MSEs and the 0.01406 threshold, and all 11 contrast lines (mean
+difference, CI95 and wins). So the record-budget results do not depend on the
+uncommitted change. The equal-wall-clock phase did not finish: a 1,500 s timeout
+stopped it on a loaded host (25 minutes of real time for 6 minutes of user CPU),
+so no JSON was written, and that phase's results are still tied to `d85139e6`
+plus the review fix. The check charged 86,345,600 + 1,200,000 records and an
+unrecorded part of a wall-clock phase on 44156–44185. It came after the reported
+run and changed nothing, so it is not in the preparation table.
+
 ## Results
 
 Held-out MSE, arm minus control; negative is better. Values are from the
@@ -383,7 +397,10 @@ recorded at the time: 545,148,340 in all.
 One limit remains. This host holds no transcript of study commands from the
 later sessions, from 2026-11-16 on. Their full runs are counted from the
 artefacts committed at the time, but a smaller smoke run in those sessions would
-not show up in this audit.
+not show up in this audit. On 2026-11-20 every agent transcript on this host
+that names the study (29 files) was searched for study commands. They appear
+only in the 2026-11-13 session and in the 2026-11-20 replays, so no transcript
+here holds the commands of the later runs.
 
 The pilot, the smoke runs and the first full run all used validation seeds
 inside 4156–4185, the CLI default; the probe used seed 5, outside every
@@ -431,8 +448,16 @@ no full-text copy. The author's GitHub account (`lucianoambrosini`) was also
 checked: no file path in its `Ambrosinus-Toolkit`, `AmbrosinusDEV`,
 `Computational-Design-Manifesto` or profile repositories names MERLIN, RAPTOR,
 L-SHADE or Solis–Wets, and a code search of the account for RAPTOR, Solis and
-the arXiv id returned nothing. The committed manifest, generated before these
-attempts, records `paper.methodRead: "partial"`.
+the arXiv id returned nothing. A fifth attempt on 2026-11-20 at about 07:20 UTC
+was refused the same way: `curl` to arxiv.org (abstract and PDF),
+export.arxiv.org and Semantic Scholar returned no HTTP status, and WebFetch to
+`arxiv.org/html/2610.26202v1` returned `proxy refused the connection`. Two more
+web searches, for the delayed population-size reduction formula and for MERLIN's
+DE and Solis–Wets settings, returned no new fact about this paper. One result
+said another paper by the same author (arXiv 2610.22397) uses DE/rand/1/bin with
+self-adapted F and CR; that is a different paper and pins nothing here. The
+committed manifest, generated before these attempts, records
+`paper.methodRead: "partial"`.
 
 **Pinned.**
 
