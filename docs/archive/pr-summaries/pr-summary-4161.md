@@ -101,6 +101,6 @@ deno task budget-conditioned-study --code-version=df0fc5ac \
 - `deno test -A test/scripts/BudgetConditionedStudy.ts` passed 27 of 27 after
   the edit.
 - **Full gate:** `./quality.sh --rust-scorer-bin=<built rust_scorer>` on
-  `eef9b457` passed with exit 0: 10,577 passed, 0 failed, 50 ignored. It covered
+  `9d10e45d` passed with exit 0: 10,577 passed, 0 failed, 50 ignored. It covered
   fmt, lint, check and all tests.
 - **Not checked:** the paper's full text; macOS and Windows.
