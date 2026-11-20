@@ -49,6 +49,7 @@ import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
+import { msFromDeadline } from "@architecture/training/TrainDirBackendReport.ts";
 import { readDatasetDirEntriesSync } from "@architecture/DatasetIO.ts";
 import {
   closeNativeBackpropLibrary,
@@ -523,7 +524,7 @@ function buildTrainRequestFields(
  * error as `untrained-error` instead, so a real worker only has the latter.
  * `undefined` when neither tag holds a finite number.
  */
-function preTrainingErrorTag(creature: Creature): number | undefined {
+export function preTrainingErrorTag(creature: Creature): number | undefined {
   for (const name of ["error", "untrained-error"]) {
     const tag = getTag(creature, name);
     if (tag === null) continue;
@@ -555,9 +556,7 @@ export function __setFinalisationNowForTests(now?: () => number): void {
  * (Issue #4146). `undefined` when the task has no deadline.
  */
 function msFromDeadlineNow(setup: TrainingSetupState): number | undefined {
-  return setup.timeoutTS > 0
-    ? Math.round(finalisationNow() - setup.timeoutTS)
-    : undefined;
+  return msFromDeadline(setup.timeoutTS, finalisationNow());
 }
 
 function packageTrainingResult(
