@@ -17,8 +17,9 @@ evidence page:
   calibration MSE over its training budgets.
 - **Rewards (Section 3.4):** the optomotor reward rule (positive when facing the
   stimulus direction while moving forward, negative beyond 90°, zero with no
-  forward command), the phototaxis luminance reward, and the motor limits ωmax =
-  240° and vmax = 30. Mapped as `departs`.
+  forward command), the phototaxis luminance reward, and the motor limits (a
+  maximum turn rate of 240° and a maximum speed of 30 per time unit). Mapped as
+  `departs`.
 - **Testing (Section 3.6):** testing has no further evolution and uses 11
   equally spaced ages. Weights are regenerated from the testing substrate with
   the evolved CPPN kept. Mapped as `analogue`: the study re-expresses each
@@ -63,19 +64,19 @@ keeps `fullTextRead: false`, so that part of the issue stays open. Part of
 
 This is a backend research harness with no UI. Artefact:
 `docs/evidence/budget-conditioned-4161.json`, regenerated at code commit
-`4e908a10` (NEAT-AI 7.1.28, Deno 2.9.8): 80 of 80 runs, 0 failures. Both
+`df0fc5ac` (NEAT-AI 7.1.28, Deno 2.9.8): 80 of 80 runs, 0 failures. Both
 outcomes are still `failure`, and the manifest carries 14 pinned elements with
 `fullTextRead: false`.
 
 Reproducibility:
 
-- **Two runs at `4e908a10`:** the JSON was identical after `jq -S` with
+- **Two runs at `df0fc5ac`:** the JSON was identical after `jq -S` with
   `latencyMicros` and `medianLatencyMicros` deleted.
 - **Against the `37dfc1bb` artefact:** identical except latency, `codeVersion`,
   `neatAiVersion` (7.1.22 → 7.1.28) and `manifest.paper`.
 
 ```bash
-deno task budget-conditioned-study --code-version=4e908a10 \
+deno task budget-conditioned-study --code-version=df0fc5ac \
   --json=docs/evidence/budget-conditioned-4161.json
 ```
 

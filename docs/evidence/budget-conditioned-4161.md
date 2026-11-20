@@ -215,20 +215,21 @@ verdict, and are excluded from the reproducibility comparison.
 ## Reproducibility
 
 ```bash
-deno task budget-conditioned-study --code-version=4e908a10 \
+deno task budget-conditioned-study --code-version=df0fc5ac \
   --json=docs/evidence/budget-conditioned-4161.json
 ```
 
 The run takes about 20 s of wall time (indicative). It was run twice at the same
 commit and the two JSON files were identical apart from the latency fields.
-Versions, from the manifest: NEAT-AI 7.1.28, Deno 2.9.8, code commit `4e908a10`.
+Versions, from the manifest: NEAT-AI 7.1.28, Deno 2.9.8, code commit `df0fc5ac`.
 The three original arms reproduce the previous artefact, at `429f66b9`, exactly:
 their runs, and their primary, full-size, per-budget and outcome results, are
 identical ignoring latency, `codeVersion`, versions and the manifest's `paper`
 and `criteriaBudgetInput` fields. Against the `35e22395` artefact, only latency,
 `codeVersion` and the manifest's `paper` field differ. Against the `37dfc1bb`
 artefact, only latency, `codeVersion`, `neatAiVersion` and the manifest's
-`paper` field differ.
+`paper` field differ. Against the `4e908a10` artefact, only latency,
+`codeVersion` and the manifest's `paper` field differ.
 
 ## Limitations
 
