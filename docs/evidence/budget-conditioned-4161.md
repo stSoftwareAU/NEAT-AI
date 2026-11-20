@@ -47,13 +47,14 @@ the finding can be reproduced.
 The cited paper is arXiv [2611.06895](https://arxiv.org/abs/2611.06895) v1,
 _Learning Time-Varying Connectomes for Stable Behavior Across Development_
 (Christof Fehrman, Jacob J. Morra, Eva A. Naumann; submitted 2026-11-04;
-q-bio.NC, cross-listed cs.NE). It was read on 2026-11-15 and 2026-11-16 through
-search-indexed excerpts of the abstract page and the
+q-bio.NC, cross-listed cs.NE). It was read on 2026-11-15, 2026-11-16 and
+2026-11-20 through search-indexed excerpts of the abstract page and the
 [HTML full text](https://arxiv.org/html/2611.06895), covering Sections 2.2, 3.3,
-3.4 and 3.5 and Tables 1 and 3. This host's proxy refused a direct fetch of
+3.4, 3.5 and 3.6 and Tables 1 and 3. This host's proxy refused a direct fetch of
 arxiv.org, its HTML and PDF, and the SciRate, alphaXiv, Hugging Face and
-Semantic Scholar mirrors. The full text was never read whole, so the JSON
-records `manifest.paper.fullTextRead: false`. The same pin is in the JSON as
+Semantic Scholar mirrors, and the PMC (PMC13781166) and Europe PMC copies. The
+full text was never read whole, so the JSON records
+`manifest.paper.fullTextRead: false`. The same pin is in the JSON as
 `manifest.paper`.
 
 | Paper (as read)                                                                                                                                                                                                                                                                                                                                                                   | This study                                                                                                                                                                                                     | Fidelity |
@@ -69,6 +70,9 @@ records `manifest.paper.fullTextRead: false`. The same pin is in the JSON as
 | Five runs per condition, populations of 100 genomes, 200 generations. Table 3: add-connection and add-node probabilities 0.10 per offspring, compatibility threshold 1.0                                                                                                                                                                                                          | 20 seeds per arm, stopped by an equal charged-record budget; a (μ+λ) search with μ = λ = 10, uniform crossover, Gaussian gene mutation (rate 0.2, σ 0.3), no structural mutation, no speciation                | departs  |
 | Two substrates (Fish, Ring), two closed-loop visuomotor tasks: optomotor response (follow moving gratings) and phototaxis (approach a stationary light within a detection radius that grows from 20 to 40). Each step the agent turns by ωΔt, then moves vΔt, clipped at the boundaries. Behaviour is shown as heading error (optomotor) and distance to the emitter (phototaxis) | One synthetic 4-input regression                                                                                                                                                                               | departs  |
 | Substrates follow g(T): Fish g(T)=T (cohort ranks outside to inside), Ring g(T)=T² (inside to outside); τ(T)=0.4−0.2T (Fish), 0.4−0.2T² (Ring); coordinates used without normalisation                                                                                                                                                                                            | No developmental substrate: the topology and squashes are fixed; only the number and choice of expressed synapses varies                                                                                       | departs  |
+| Fitness: step rewards averaged per stimulus block, blocks to an episode, episodes per age, ages to the genome fitness. Training uses 15 episodes per genome per generation, split equally across its training ages                                                                                                                                                                | Mean calibration MSE over the arm's training budgets, each scored on the whole calibration split; cost counted in charged records, not episodes                                                                | analogue |
+| Rewards: optomotor — positive for facing the stimulus direction while moving forward, negative for facing more than 90° away while moving forward, zero for no forward command; phototaxis — depends on the luminance at the agent's centre. Motor limits: maximum turn rate 240°, maximum speed 30, per time unit                                                                | Negative squared error against a synthetic regression target                                                                                                                                                   | departs  |
+| Testing: no further evolution, 11 equally spaced ages; weights regenerated from the testing substrate's coordinates with the evolved CPPN kept; eye geometry, sampling and time constant follow their schedules                                                                                                                                                                   | Each searched genome re-expressed without further search at 5 budgets (25%, 37.5%, 50%, 75%, 100%), not 11 evenly spaced                                                                                       | analogue |
 
 The paper reports that single-age controllers generally failed at other ages,
 and that optimising at only three snapshots was often enough across the
@@ -76,10 +80,11 @@ interval.
 
 **What the excerpts do not pin:** the rest of Table 3 (weight mutation rate and
 power, survival threshold, elitism, stagnation, and the hidden CPPN nodes'
-activation set); the fitness equations of Section 3.4 (the excerpts show what is
-plotted, but not how fitness is computed from it); and the values of the three
-unseen ages. The full text was never read whole, so this list may be incomplete.
-None of these is guessed here.
+activation set); the exact equations of Section 3.4 (the excerpts give the
+reward rules and the averaging, but not the reward magnitudes, the luminance
+function or the block length); and which of the 11 test ages are the three
+unseen developmental times the baselines fail at. The full text was never read
+whole, so this list may be incomplete. None of these is guessed here.
 
 **What this means for the verdict.** The paper's core mechanism is a generator
 that takes the condition as an input. The conditioned arm tests a nested,
@@ -210,17 +215,20 @@ verdict, and are excluded from the reproducibility comparison.
 ## Reproducibility
 
 ```bash
-deno task budget-conditioned-study --code-version=37dfc1bb \
+deno task budget-conditioned-study --code-version=df0fc5ac \
   --json=docs/evidence/budget-conditioned-4161.json
 ```
 
 The run takes about 20 s of wall time (indicative). It was run twice at the same
 commit and the two JSON files were identical apart from the latency fields.
-Versions, from the manifest: NEAT-AI 7.1.22, Deno 2.9.8, code commit `37dfc1bb`.
+Versions, from the manifest: NEAT-AI 7.1.28, Deno 2.9.8, code commit `df0fc5ac`.
 The three original arms reproduce the previous artefact, at `429f66b9`, exactly:
 their runs, and their primary, full-size, per-budget and outcome results, are
 identical ignoring latency, `codeVersion`, versions and the manifest's `paper`
 and `criteriaBudgetInput` fields. Against the `35e22395` artefact, only latency,
+`codeVersion` and the manifest's `paper` field differ. Against the `37dfc1bb`
+artefact, only latency, `codeVersion`, `neatAiVersion` and the manifest's
+`paper` field differ. Against the `4e908a10` artefact, only latency,
 `codeVersion` and the manifest's `paper` field differ.
 
 ## Limitations
@@ -228,9 +236,9 @@ and `criteriaBudgetInput` fields. Against the `35e22395` artefact, only latency,
 - A synthetic 4-input regression with tiny networks.
 - The genome and the (μ+λ) search are harness-level, not NEAT-AI's
   `Offspring.breed` or `Mutator`.
-- arXiv 2611.06895 was read from search-indexed excerpts on 2026-11-15 and
-  2026-11-16, not a direct download; the unpinned details are listed under
-  [Source method (pinned)](#source-method-pinned).
+- arXiv 2611.06895 was read from search-indexed excerpts on 2026-11-15,
+  2026-11-16 and 2026-11-20, not a direct download; the unpinned details are
+  listed under [Source method (pinned)](#source-method-pinned).
 - The paper's generator, a CPPN over substrate coordinates, is not reproduced.
   The `budgetInput` arm takes the budget as an input in the simplest linear
   per-synapse form, which is closer but is not that generator; see the
