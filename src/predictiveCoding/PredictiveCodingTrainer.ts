@@ -8,12 +8,16 @@
  *
  * Training loop:
  *   For each iteration:
- *     For each sample:
+ *     For each sampled record (Issue #4180):
  *       1. Clamp inputs, run PC inference (settling)
  *       2. Accumulate weight/bias gradients from prediction errors
  *     3. Apply averaged weight updates (Hebbian learning)
  *     4. Compute validation error
  *     5. Check early stopping (targetError)
+ *
+ * Issue #4180: each iteration covers only the sampled records of each file
+ * (`trainingSampleRate`, `disableRandomSamples`), chosen with the standard
+ * loop's `selectFileSampleIndexes`.
  *
  * Issue #4146: after every sample the loop checks the task deadline
  * (`timeoutTS`). An iteration the deadline stops is partial and is discarded:
@@ -33,6 +37,10 @@ import {
   type SynapseGradient,
   type WeightGradients,
 } from "@predictiveCoding/PredictiveCodingLearning.ts";
+import {
+  type ScratchIndexBuffer,
+  selectFileSampleIndexes,
+} from "@architecture/training/TrainingSamples.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { computeEffectiveConfig } from "@predictiveCoding/AdaptiveScaling.ts";
 
@@ -76,6 +84,11 @@ export interface PCTrainingResult {
  * @param options Training loop options. `timeoutTS` is the absolute task
  *   deadline in epoch ms (0 or undefined = no deadline), checked after every
  *   sample (Issue #4146). `now` is the clock seam for it (default `Date.now`).
+ *   `trainingSampleRate` is the share of each file's records read per
+ *   iteration, in (0, 1] (default 1). `disableRandomSamples` takes each file's
+ *   leading records instead of a shuffled selection (default false), as does
+ *   `feedbackLoop` (default false). The set is chosen once per run (Issue
+ *   #4180).
  * @returns Training result with error and iteration count.
  */
 export function trainWithPredictiveCoding(
@@ -89,11 +102,24 @@ export function trainWithPredictiveCoding(
     log?: number;
     timeoutTS?: number;
     now?: () => number;
+    trainingSampleRate?: number;
+    disableRandomSamples?: boolean;
+    feedbackLoop?: boolean;
   },
 ): PCTrainingResult {
   const { iterations, targetError } = options;
   const timeoutTS = options.timeoutTS ?? 0;
   const now = options.now ?? Date.now;
+  const trainingSampleRate = options.trainingSampleRate ?? 1;
+  if (
+    !Number.isFinite(trainingSampleRate) || trainingSampleRate <= 0 ||
+    trainingSampleRate > 1
+  ) {
+    throw new ValidationError(
+      `trainingSampleRate must be in (0, 1], was: ${trainingSampleRate}`,
+      "OTHER",
+    );
+  }
 
   // Issue #1915: Apply adaptive learning rate scaling for complex creatures.
   const effective = computeEffectiveConfig(creature, pcConfig);
@@ -111,6 +137,12 @@ export function trainWithPredictiveCoding(
   const observationsBuffer = new Float32Array(creature.input);
   const targetsBuffer = new Float32Array(creature.output);
   const targetsFloat64 = new Float64Array(creature.output);
+
+  // Issue #4180: the sampled records are chosen once per run, as the standard
+  // loop does, so every iteration's error is measured on the same records and
+  // the best-error comparison is like with like.
+  const recordSets = new Map<string, Set<number>>();
+  const scratch: ScratchIndexBuffer = { buffer: null };
 
   let bestError: number | undefined;
   let bestCreatureJSON = creature.exportJSON();
@@ -132,9 +164,32 @@ export function trainWithPredictiveCoding(
     for (let fileIdx = 0; fileIdx < binaryFiles.length; fileIdx++) {
       const file = Deno.openSync(binaryFiles[fileIdx], { read: true });
       try {
-        while (true) {
+        let recordSet = recordSets.get(binaryFiles[fileIdx]);
+        if (!recordSet) {
+          // Floor ignores a trailing partial record, as reading to EOF did.
+          const fileRecords = Math.floor(
+            file.statSync().size / BYTES_PER_RECORD,
+          );
+          recordSet = selectFileSampleIndexes(
+            fileRecords,
+            trainingSampleRate,
+            options.disableRandomSamples,
+            options.feedbackLoop ?? false,
+            scratch,
+          );
+          recordSets.set(binaryFiles[fileIdx], recordSet);
+        }
+        for (const recordIndex of recordSet) {
+          file.seekSync(recordIndex * BYTES_PER_RECORD, Deno.SeekMode.Start);
           const bytesRead = file.readSync(recordBuffer);
-          if (bytesRead === null || bytesRead < BYTES_PER_RECORD) break;
+          if (bytesRead === null || bytesRead < BYTES_PER_RECORD) {
+            getLogger().warn(
+              `PC training: short read at record ${recordIndex} of ${
+                binaryFiles[fileIdx]
+              }`,
+            );
+            continue;
+          }
 
           // Extract input and target from record.
           observationsBuffer.set(recordArray.subarray(0, creature.input));

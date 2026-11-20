@@ -6,6 +6,8 @@
  * packages a {@link TrainingResult} compatible with the standard pipeline.
  * Issue #4146: the trainer honours the task deadline (`trainingTimeOutMinutes` /
  * `hardDeadlineTS`) and reports a `timedOut` result.
+ * Issue #4180: honours `trainingSampleRate` / `disableRandomSamples` with the
+ * standard loop's record selection.
  */
 
 import type { CostInterface } from "@costs/CostInterface.ts";
@@ -21,6 +23,7 @@ import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig
 import {
   resolveIterations,
   resolveTargetError,
+  resolveTrainingSampleRate,
 } from "@architecture/training/TrainingSetup.ts";
 import {
   msFromDeadline,
@@ -78,6 +81,7 @@ export function trainDirPredictiveCoding(
   // Read before the trainer: its best-creature restore may drop tags.
   const carriedError = preTrainingErrorTag(creature);
 
+  const feedbackLoop = options.feedbackLoop ?? false;
   const pcResult = trainWithPredictiveCoding(
     creature,
     binaryFiles,
@@ -89,10 +93,12 @@ export function trainDirPredictiveCoding(
       log: options.log,
       timeoutTS,
       now,
+      trainingSampleRate: resolveTrainingSampleRate(options),
+      disableRandomSamples: options.disableRandomSamples ?? false,
+      feedbackLoop,
     },
   );
 
-  const feedbackLoop = options.feedbackLoop ?? false;
   let compact = compactUnused(creature.traceJSON(), 1e-7);
   // Issue #3970: `compactUnused` spends a grace round on the copy it returns;
   // the `compactVariants` fallback below does not.
