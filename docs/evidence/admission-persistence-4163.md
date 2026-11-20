@@ -18,19 +18,55 @@ quality of an offspring at admission predict how much of the population descends
 from it many generations later, and would weighting parents by that signal beat
 choosing them uniformly?
 
-The issue cites arXiv 2611.06522. Neither the abstract page nor the HTML or API
-(application programming interface) copy could be fetched from this host: the
-egress proxy refused `arxiv.org` and `export.arxiv.org` (HTTP 403). A web search
-identifies the paper as "From Admission to Retention: Predicting Durable
-Offspring in Quality-Diversity Search" (Calamita, Mendicini, Ferrari and
-Bertamini, submitted 4 November 2026). According to the search result, it builds
-on Dominated Novelty Search in an unstructured quality-diversity archive, uses a
-capacity of 1024 and a retention horizon of H = 1000 generations, and reports
-that some selection signals reverse direction between entry and retention. That
-description comes from a search engine's summary, not from the paper, and the
-full method was **not** read. No method detail or number from it is used. The
-harness implements this repository's own reading of the issue text. It is
-**not** a reproduction of the paper.
+The issue cites arXiv 2611.06522. The paper itself still cannot be fetched from
+this host. On 2026-11-20 the egress proxy again refused `arxiv.org` (abstract,
+HTML and PDF), `export.arxiv.org`, `web.archive.org` and the Semantic Scholar
+API, each with `curl: (56) CONNECT tunnel failed, response 403`. A web fetch of
+`arxiv.org/html/2611.06522` returned `proxy refused the connection`.
+
+**Pinned (from arXiv's own announcement).** A copy of arXiv's cs.NE RSS item for
+5 November 2026, committed in the public GitHub repository `ehijano/rss_fetch`
+(`rss_data/cs.NE/2026-11-05_cs.NE.xml`), gives the following. The same abstract
+text appears in other feed archives found by `gh search code "2611.06522"`.
+
+- Title: "From Admission to Retention: Predicting Durable Offspring in
+  Quality-Diversity Search"; authors Corrado Calamita, Matteo Mendicini, Luca
+  Ferrari and Riccardo Bertamini; version v1; categories cs.NE and cs.AI.
+- The study uses an unstructured quality-diversity (QD) archive. It tests
+  whether signals available before an individual has reproduced distinguish
+  offspring that merely enter the archive from those still retained generations
+  later.
+- The tasks are a planar-arm benchmark and two robotic-locomotion tasks. The
+  same signals are often associated with entry and persistence in opposite
+  directions.
+- Lineage depth is the clearest such signal. Its persistence discrimination
+  grows with population capacity, which is associated with lower turnover.
+- Biasing parent selection toward the signals most associated with survival does
+  not improve search: "moderate bias matches uniform sampling, and strong bias
+  reduces QD-score".
+
+**Reported in search excerpts, unverified (2026-11-20).** These come from a
+search engine's summaries of the HTML page, not from the paper. One of those
+summaries cited this repository's own pull request #4178 as a source, so they
+are not independent evidence.
+
+- The setup builds on Dominated Novelty Search (DNS).
+- Entry means an offspring is kept in the archive right after it is created.
+  Offspring created too close to the end of a run to measure persistence are
+  excluded.
+- The bias is a rank-softmax over a signal with a temperature τ (for example τ =
+  0.5 and τ = 2.0 on Omnidirectional Ant at capacity 1024 over 10,000
+  generations).
+- Survival is measured 1000 generations after entry.
+
+**Not pinned.** The full method is still unread: the archive capacities per
+task, the exact persistence definition, every candidate signal, the bias rule
+and its settings, seeds and the statistics. No method detail or number from the
+paper is used in the harness. The harness implements this repository's own
+reading of the issue text, including its "capped roughly 2:1 odds" bias, which
+comes from the issue, not from the paper. It is **not** a reproduction of the
+paper. The committed artefact `admission-persistence-4163.json` holds no paper
+record, so this section is the only record of what was read.
 
 ## Reproduce
 
@@ -333,8 +369,11 @@ the shared helper `scripts/lib/gitProvenance.ts`.
 
 - **Nothing about production-scale creatures.** This is a synthetic task with
   small creatures and no private corpus.
-- **Nothing about the paper.** Its full method was not read, only a search
-  engine's summary of it.
+- **Nothing that confirms the paper.** Only its abstract was read. This study's
+  `no-benefit` verdict for a 2:1-capped bias points the same way as the
+  abstract's "moderate bias matches uniform sampling". But the task and the
+  selection loop differ, and the paper's bias rule is not pinned, so it is
+  neither a replication nor evidence for the paper.
 - **Nothing that changes ordinary behaviour.** Interfaces and defaults are
   untouched.
 
