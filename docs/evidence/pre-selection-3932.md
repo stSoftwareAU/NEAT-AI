@@ -44,28 +44,33 @@ those gives a different answer from the one stated here.)
 
 | Arm           | Equal generations | vs control            | Equal record budget | vs control          |
 | ------------- | ----------------- | --------------------- | ------------------- | ------------------- |
-| `control`     | −0.047237         | —                     | −0.047237           | —                   |
-| `sampled`     | −0.017237         | +3.00e-2 (9/10 seeds) | −0.047247           | −9.49e-6 (4/10)     |
-| `surrogate`   | −0.033025         | +1.42e-2 (7/10)       | −0.069645           | **−2.24e-2** (5/10) |
-| `random-only` | −0.016846         | +3.04e-2 (9/10)       | −0.049942           | −2.71e-3 (5/10)     |
+| `control`     | −0.052486         | —                     | −0.052486           | —                   |
+| `sampled`     | −0.013182         | +3.93e-2 (9/10 seeds) | −0.045907           | +6.58e-3 (5/10)     |
+| `surrogate`   | −0.015830         | +3.67e-2 (8/10)       | −0.059782           | **−7.30e-3** (4/10) |
+| `random-only` | −0.027564         | +2.49e-2 (7/10)       | −0.054290           | −1.80e-3 (3/10)     |
 
-**No arm improved at equal record budget.** At equal _generations_ all three
-over-generated arms beat control — but `random-only`, which never consults its
-screen, is the best of them. That gain is not the screen: a surplus fills the
-population when crossover fails, and this harness's crossover fails often
-(control bred a mean of 6.8 offspring per generation against 22 slots). Charge
-the extra exact evaluations that fuller population costs and the advantage
-disappears.
+**No arm showed a demonstrated improvement at equal record budget.** `"sampled"`
+came out ahead on the mean (+6.58e-3) but on only 5 of 10 seeds; `"surrogate"`
+and `random-only` were behind control. At equal _generations_ all three
+over-generated arms beat control, and both screened arms also beat `random-only`
+(+3.93e-2 and +3.67e-2 against +2.49e-2), so part of that gain is the screens'.
+Much of it is the surplus: a surplus fills the population when crossover fails,
+and this harness's crossover fails often (control bred a mean of 5.6 offspring
+per generation against 22 slots). Charge the extra exact evaluations that fuller
+population costs and the advantage is gone or within seed-to-seed spread.
 
-Run-to-run variability is real and is not seed noise. Both arms of an invocation
-share one seeded corpus, one seeded starting population and one seeded global
-generator, but `Offspring.breed` mints new neuron identities with
-`crypto.randomUUID()`, which no seed reaches — so a run is same-seed **within**
-an invocation and not bit-reproducible **across** invocations. Repeated
-invocations moved the equal-budget deltas by ±2e-2, the size of the deltas
-themselves, and flipped their sign. The honest reading is **no improvement
-demonstrated**; the diversity result below is the finding that survived
-repetition.
+Every number here is reproducible from the stated seeds. Each arm's corpus,
+starting population and parent draws come from generators the harness seeds
+itself; crossover and mutation draw from the global generator, which the harness
+seeds with the same seed. Until Issue #4170, `createNeatConfig` replaced that
+global generator with an unseeded one at the start of every arm, so crossover
+and mutation ran unseeded and the previous version of this file reported numbers
+that moved by about ±2e-2 between invocations. Two invocations of the command
+above, on the fixed harness, produced identical results in every field except
+the wall-clock `screenMs` timings. `Offspring.breed` still mints neuron
+identities with `crypto.randomUUID()`, which no seed reaches, but in those two
+invocations that changed no reported number. The honest reading of the endpoint
+is still **no improvement demonstrated**.
 
 ### Diversity — the regression that would not show in the fitness trace
 
@@ -74,20 +79,22 @@ functions.
 
 | Arm           | Species count | vs control | Mean genetic distance | vs control  |
 | ------------- | ------------- | ---------- | --------------------- | ----------- |
-| `control`     | 2.92          | —          | 0.1308                | —           |
-| `sampled`     | 3.63          | +0.71      | 0.1147                | **−0.0161** |
-| `surrogate`   | 3.37          | +0.45      | 0.1120                | **−0.0188** |
-| `random-only` | 4.92          | +2.00      | 0.1541                | +0.0233     |
+| `control`     | 3.02          | —          | 0.1256                | —           |
+| `sampled`     | 3.59          | +0.57      | 0.0986                | **−0.0270** |
+| `surrogate`   | 6.99          | +3.97      | 0.1501                | +0.0244     |
+| `random-only` | 4.44          | +1.42      | 0.1272                | +0.0015     |
 
-**Both screens cut mean genetic distance; keeping the same surplus at random
-raises it.** Every over-generated arm sees more offspring, so a screen that were
-neutral on diversity would look like `random-only` — and neither does. Across
-repeated invocations the screened arms' distance deficit ranged from −0.016 to
-−0.088 while `random-only` stayed at or above control, so the direction is
-stable even though the magnitude is not. Species count rises in every
-over-generated arm because more offspring survive to be speciated at all; it is
-the **distance** number that carries the warning, and it is the diversity sink
-the issue predicted.
+**The `"sampled"` screen cuts mean genetic distance; the `"surrogate"` screen
+and keeping the same surplus at random do not.** Every over-generated arm sees
+more offspring, so a screen that were neutral on diversity would look like
+`random-only`, which sits at control (+0.0015). `"sampled"`, the screen closest
+to the true objective, sits 0.027 below control: that is the diversity sink the
+issue predicted. `"surrogate"`, which ranks only weakly on this objective
+(below), raised both species count and distance. The previous, unseeded version
+of this file reported both screens cutting distance; the `"surrogate"` half of
+that did not survive seeding. Species count rises in every over-generated arm
+because more offspring survive to be speciated at all; it is the **distance**
+number that carries the warning.
 
 This is the measurement that says a screened run must never be judged on its
 fitness trace alone.
@@ -99,15 +106,15 @@ once, so the distribution describes the screen rather than elitism.
 
 | Arm           | Screened elites | Mean screen percentile | Kept by the uniform draw |
 | ------------- | --------------- | ---------------------- | ------------------------ |
-| `sampled`     | 317             | **0.053**              | 54                       |
-| `surrogate`   | 231             | 0.298                  | 65                       |
-| `random-only` | 313             | 0.411                  | 313                      |
+| `sampled`     | 340             | **0.063**              | 64                       |
+| `surrogate`   | 298             | 0.289                  | 69                       |
+| `random-only` | 251             | 0.399                  | 251                      |
 
 `0` is the screen's top pick, `1` its worst, and `random-only` is the
 no-information baseline. The `"sampled"` screen is strongly predictive here —
-eventual elites come from the top 5 % of its ordering — which is unsurprising
+eventual elites come from the top 7 % of its ordering — which is unsurprising
 given it is the true objective over a twentieth of the corpus. The `"surrogate"`
-screen at 0.298 is modestly better than picking at random: weakly informative on
+screen at 0.289 is modestly better than picking at random: weakly informative on
 this objective rather than useless, and certainly not anti-correlated. Neither
 number licenses the stage; both are what the diagnostic is for.
 
@@ -118,21 +125,23 @@ sort, the uniform draw and the partitioning are not the screen.
 
 | Arm         | Mean screen ms/generation | Max |
 | ----------- | ------------------------- | --- |
-| `sampled`   | 4.95                      | 23  |
-| `surrogate` | 0.66                      | 13  |
+| `sampled`   | 5.57                      | 15  |
+| `surrogate` | 1.95                      | 9   |
 
-Both stay a small fraction of a generation on this objective. The `"sampled"`
-figure scales with the cheap rate and the corpus, so a production-sized corpus
-at rate 0.05 would cost 5 % of an exact sweep per screened candidate — at ratio
-3 that is roughly 15 % of one exact sweep per generation, which is the number to
-watch.
+These are wall-clock readings from a shared host, so indicative only, and they
+are the one field that differs between invocations. Both stay a small fraction
+of a generation on this objective. The `"sampled"` figure scales with the cheap
+rate and the corpus, so a production-sized corpus at rate 0.05 would cost 5 % of
+an exact sweep per screened candidate — at ratio 3 that is roughly 15 % of one
+exact sweep per generation, which is the number to watch.
 
 ## What this does not say
 
 - **Nothing about a 5,317-neuron GRQ creature.** The creatures here are tiny and
   the corpus is synthetic. The stage is what was measured, not the lineage.
 - **Nothing that licenses turning the stage on in production.** At equal record
-  budget every arm was a regression, and both screened arms cost genetic
+  budget no arm showed a demonstrated improvement (the one positive mean,
+  `"sampled"`, won on half the seeds), and the `"sampled"` screen cost genetic
   diversity. The stage ships **off**, and this file is the reason.
 - **Nothing about `"sampled"` inside the evolution loop.** The harness supplies
   its own cheap evaluator; the loop has none, and refuses that screen rather

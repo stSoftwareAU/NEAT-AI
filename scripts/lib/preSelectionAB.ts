@@ -276,6 +276,9 @@ async function runSeededArm(
     populationSize: settings.populationSize,
     elitism: settings.elitism,
     mutationRate: 0.5,
+    // Without this `createNeatConfig` installs an unseeded generator over the
+    // seeded one `runArm` set up (Issue #4170).
+    rng: getRandomNumberGenerator(),
   });
   const mutator = new Mutator(config);
   const cheapStride = Math.max(2, Math.round(1 / settings.cheapRate));

@@ -65,6 +65,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4170:** the pre-selection A/B harness (`deno task pre-selection-ab`)
+  now runs crossover and mutation from its seeded generator; `createNeatConfig`
+  used to replace it with an unseeded one, so two runs with the same seed
+  searched differently. The Issue #3932 evidence
+  (`docs/evidence/pre-selection-3932.md`) is re-run and now reproducible from
+  its seeds: the `"sampled"` screen still cuts mean genetic distance, the
+  `"surrogate"` screen no longer does, and no arm shows a demonstrated
+  improvement at equal record budget.
 - **Issue #4188:** a predictive-coding training result (plain or compacted) that
   becomes the new fittest no longer aborts `evolveDir`. `logApproach` now logs
   both `predictive-coding` approaches, its switch is exhaustive at compile time,
