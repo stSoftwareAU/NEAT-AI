@@ -25,6 +25,7 @@ import { buildSquashOutputPath } from "@intelligentDesign/SquashOutputPath.ts";
 import { WorkerHandler } from "@intelligentDesign/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { squashSubstitutionBlockedReason } from "@intelligentDesign/SquashSubstitutionEligibility.ts";
+import { clearStaleSynapseRoles } from "@architecture/StaleSynapseRoles.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 function remainingTimeMs(deadlineMs: number): number {
@@ -225,6 +226,8 @@ export function makeModifiedCreatureWithPrevious(
   }
 
   neuronData.squash = nextSquash;
+  // Issue #4185: leaving IF must clear the roles on the inward synapses.
+  clearStaleSynapseRoles(tmpJson, neuronUuid);
   addTag(
     neuronData,
     "intelligentDesign",
@@ -774,6 +777,8 @@ export async function combineImprovements(
     assert(neuron, "Neuron not found in the final JSON");
     const previousSquash = neuron.squash;
     neuron.squash = improvement.squash;
+    // Issue #4185: leaving IF must clear the roles on the inward synapses.
+    clearStaleSynapseRoles(finalJson, uuid);
     addTag(
       neuron,
       "intelligentDesign",

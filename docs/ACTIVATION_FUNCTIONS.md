@@ -218,6 +218,10 @@ With a pin configured:
   over `squashBudget.allowedSquashes` when a budget is also set).
 - **Unknown names fail loud** at configuration time.
 
+A pinned `IF` output keeps its roles through `Neuron.setSquash()`; under any
+other pin the output stops being `IF`, so its inward `condition` / `positive` /
+`negative` roles are cleared (Issue #4185).
+
 Leaving `fixedOutputSquash` unset (the default) keeps today's behaviour exactly.
 
 ```mermaid

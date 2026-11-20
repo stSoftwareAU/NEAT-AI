@@ -20,7 +20,8 @@ import { coalesceInwardDuplicates } from "@architecture/CoalesceInwardSynapses.t
  * `duplicate synapse … -> …`.
  *
  * Called when a neuron *leaves* `IF`: `neuron.fix()` after `MOD_SQUASH`,
- * `downgradeToIdentity`, and `IF.fix` when it cannot keep the three roles.
+ * `downgradeToIdentity`, `IF.fix` when it cannot keep the three roles, and
+ * `Neuron.setSquash` (Issue #4185).
  */
 export function stripRolesAndCoalesceSources(
   creature: Creature,

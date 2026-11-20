@@ -193,7 +193,8 @@ Deno.test("Issue #3880: coalesceInwardDuplicates sums every role on a non-IF tar
   // `input-0` (untyped + positive) and `input-2` (negative + positive) alike.
   const creature = Creature.fromJSON(gateWithSpareUntypedRow(["positive"]));
   const gate = gateNeuron(creature);
-  gate.setSquash("IDENTITY");
+  // Issue #4185: setSquash now strips roles on leaving IF; write the field to keep the typed rows this test merges.
+  gate.squash = "IDENTITY";
 
   const merged = coalesceInwardDuplicates(creature, gate.index);
 

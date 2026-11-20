@@ -65,6 +65,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4185:** a neuron changed away from `IF` no longer keeps the
+  `condition` / `positive` / `negative` roles on its inward synapses. Only an
+  `IF` target reads roles, so the untyped squash was left carrying roles it
+  could not read, and a source feeding it twice was refused by validation.
+  `Neuron.setSquash()` clears the roles on a live creature, the new
+  `clearStaleSynapseRoles()` (exported from the package root) does the same on a
+  `CreatureExport` using the effective squash, and every Intelligent Design
+  squash substitution calls it.
 - **Issue #4099:** a training or discovery result that settles after the last
   generation is no longer discarded on every run that ends on its time budget.
   The over-run guard trips as the budget ends the last generation, so it used to
