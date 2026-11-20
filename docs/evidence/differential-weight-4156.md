@@ -395,8 +395,17 @@ third attempt on 2026-11-20 was refused the same way (curl:
 `proxy refused the connection`). A GitHub code search for `2610.26202` found
 only the two secondary sources above. Search-engine excerpts retrieved that day
 added the facts listed under "Reported in search excerpts, unverified" below;
-they are second-hand and unchecked against the full text. The committed
-manifest, generated before that attempt, records `paper.methodRead: "partial"`.
+they are second-hand and unchecked against the full text. A fourth attempt later
+that day was refused the same way: `curl` to arxiv.org, export.arxiv.org,
+Hugging Face, alphaXiv, scholar.archive.org and a reader proxy returned no HTTP
+status, and WebFetch again returned `proxy refused the connection`. GitHub code
+searches for the title, for `2610.26202` and for phrases from the abstract found
+no full-text copy. The author's GitHub account (`lucianoambrosini`) was also
+checked: no file path in its `Ambrosinus-Toolkit`, `AmbrosinusDEV`,
+`Computational-Design-Manifesto` or profile repositories names MERLIN, RAPTOR,
+L-SHADE or Solis–Wets, and a code search of the account for RAPTOR, Solis and
+the arXiv id returned nothing. The committed manifest, generated before these
+attempts, records `paper.methodRead: "partial"`.
 
 **Pinned.**
 
@@ -424,6 +433,13 @@ as pinned and are not in the committed manifest's `paper.pinned` list.
 - In the paper's Grasshopper (parametric design tool) runs, the L-SHADE variants
   ran with a constant population, and MERLIN without its Solis–Wets step. Which
   problems the 40-of-51 delayed-LPSR comparisons cover is not pinned.
+- Section 3.3 is titled "L-SHADE-SW and a budget-aware population-size
+  schedule"; an excerpt says the L-SHADE variants can delay the reduction when
+  the budget is known at the start.
+- In RAPTOR, after each move the worst particles are replaced by DE offspring.
+- The paper's future work says MERLIN's injection fraction should decrease with
+  the dimension. An excerpt opens "The injection fraction in MERLIN" but is cut
+  off before any value, so the fraction itself is still not pinned.
 
 **Not pinned.** The delay formula and delay cap, the DE variant, F and CR, the
 injection fraction, and the Solis–Wets parameters.
