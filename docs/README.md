@@ -148,6 +148,9 @@ Tuning guides and benchmark research.
   offspring-census restart study (Issue #4157): census-triggered against
   plateau-triggered restarts on a synthetic objective. Negative result; run it
   with `deno task census-restart-study`.
+- **[evidence/topology-weight-luck-4162.md](evidence/topology-weight-luck-4162.md)**
+  — topology gains versus new-edge weight-placement luck (Issue #4162): the
+  preregistered primary test (median-paired against best-draw) is no-benefit.
 - **[evidence/budget-conditioned-4161.md](evidence/budget-conditioned-4161.md)**
   — one genome expressed at several connection budgets (Issue #4161): a negative
   result; it was harmful against independent per-budget searches on unseen
