@@ -415,8 +415,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   is negative: no benefit by the predeclared criteria, individual survival is 0
   at 100 and 1000 generations, and about 11% of admitted offspring still have a
   living descendant after 100 and 1000 generations. Persistence is also broken
-  down per Genus species at birth (`--species-csv`) and per founder clade.
-  Nothing in `src/` calls it. See
+  down per Genus species at birth (`--species-csv`) and per founder clade. The
+  paper's method is now pinned on the evidence page from a text conversion of
+  arXiv's v1 PDF; the harness is not a reproduction of it. Nothing in `src/`
+  calls it. See
   [docs/evidence/admission-persistence-4163.md](docs/evidence/admission-persistence-4163.md).
 - **Issue #4159:** an opt-in island-exchange study
   (`deno task island-exchange-study`) comparing three arms on equal budgets
