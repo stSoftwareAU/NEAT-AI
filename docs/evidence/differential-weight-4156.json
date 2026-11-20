@@ -199,20 +199,44 @@
     "contractionPolicy": "adaptive (contraction, de+contraction): contraction uses the existing adaptive shrink rule, never growing, only after the delay; the production highDiversityThreshold is 0.8 but a 3-seed pilot showed 1.3-2.3 species per 24 creatures so the shrink branch never fired; the study sets contractionHighDiversityThreshold to 0, so the rule contracts on every post-delay plateau, bounded below by minPopulationFraction 0.5; the rule's low-diversity grow branch is disabled (lowDiversityThreshold 0) because it is checked first and would pre-empt the shrink; linear (lpsr, de+lpsr): the paper's budget-aware delayed L-SHADE linear population-size reduction, held at the base size until contractionDelayFraction of the record budget, then linear to lpsrMinPopulationSize (4, L-SHADE's N_min) at budget exhaustion, never growing; the paper's own delay cap value was not obtained",
     "budgetPolicy": "two phases. Primary (validationSeeds): records charged held equal, holdout and diversity probe uncharged, wall-clock measured. Equal-wall-clock (wallClockPhase): every arm gets the same per-run wall-clock cap, checked before every evaluation and before every refinement candidate, so no evaluation starts after the deadline, on fresh seeds, with the record budget raised tenfold so the clock is what stops each run; a run that ends with no scored candidate is recorded as censored and left out of every paired statistic; contraction schedules read the elapsed share of the wall-clock as budget progress. The wall-clock phase is not bit-reproducible, because the clock is real, so its arm order is rotated per seed to spread machine-load drift across arms",
     "preparation": {
-      "note": "records charged by every run that shaped the design or the harness, counted as search cost alongside calibration; bounds are 240,000 records per run, which is the most one run can charge",
+      "note": "records charged by every run that shaped the design or the harness, counted as search cost alongside calibration",
       "calibrationRecordsCharged": 1200000,
       "runs": [
         {
-          "what": "3-seed pilot that set contractionHighDiversityThreshold to 0",
-          "seeds": "not recorded",
-          "arms": "not recorded",
-          "recordsCharged": "not recorded; at most 3 seeds x 8 arms x 240,000 = 5,760,000, plus up to 1,200,000 for a calibration phase if it ran through this CLI (not known)"
+          "what": "smoke run before the pilot (--seeds=2 --calibration-seeds=1 --budget=40000), at commit 34045199 without its two contraction-threshold lines (highDiversityThreshold and lowDiversityThreshold at the production defaults 0.8 and 0.3)",
+          "seeds": "4156-4157 (2); calibration 94156",
+          "arms": "8 arms",
+          "recordsCharged": "replayed on 2026-11-20 at that code version from the command in the session transcript; the harness is deterministic per seed and the replay matched every value the transcript printed apart from wall-clock times: 640,000 validation + 40,000 calibration = 680,000"
         },
         {
-          "what": "first full run, discarded after it showed ordinary breeding left slots empty (the top-up retry was added)",
-          "seeds": "not recorded; the CLI default then was 4156-4185",
+          "what": "3-seed pilot that set contractionHighDiversityThreshold to 0 (--seeds=3 --calibration-seeds=1), run twice with the same arguments, the second time to write JSON, at commit 34045199 without its two contraction-threshold lines (highDiversityThreshold and lowDiversityThreshold at the production defaults 0.8 and 0.3)",
+          "seeds": "4156-4158 (3); calibration 94156",
           "arms": "8 arms",
-          "recordsCharged": "not recorded; at most 30 seeds x 8 arms x 240,000 = 57,600,000, plus 1,200,000 for the calibration phase the CLI has run since its first commit = 58,800,000"
+          "recordsCharged": "replayed on 2026-11-20 at that code version from the command in the session transcript; the harness is deterministic per seed and the replay matched every value the transcript printed apart from wall-clock times: 2 x (5,756,800 validation + 240,000 calibration) = 11,993,600"
+        },
+        {
+          "what": "smoke run after the threshold change (--seeds=3 --calibration-seeds=1), at commit 34045199",
+          "seeds": "4156-4158 (3); calibration 94156",
+          "arms": "8 arms",
+          "recordsCharged": "replayed on 2026-11-20 at that code version from the command in the session transcript; the harness is deterministic per seed and the replay matched every value the transcript printed apart from wall-clock times: 5,754,000 validation + 240,000 calibration = 5,994,000"
+        },
+        {
+          "what": "first full run at commit 34045199 (CLI defaults), discarded after it showed ordinary breeding left slots empty (the top-up retry was added)",
+          "seeds": "4156-4185 (30); calibration 94156-94160",
+          "arms": "8 arms",
+          "recordsCharged": "replayed on 2026-11-20 at that code version from the command in the session transcript; the harness is deterministic per seed and the replay matched every value the transcript printed apart from wall-clock times: 57,540,400 validation + 1,198,800 calibration = 58,739,200"
+        },
+        {
+          "what": "probe of the top-up retry at commit 52a59186's harness: control@reenter and de@reenter on seed 5 at reduced settings (60 train records, population 8, budget 14,400)",
+          "seeds": "5 (1)",
+          "arms": "2 arms",
+          "recordsCharged": "replayed on 2026-11-20 at that code version from the command in the session transcript; the harness is deterministic per seed and the replay matched every value the transcript printed apart from wall-clock times: 14,340 + 14,400 = 28,740"
+        },
+        {
+          "what": "smoke run of the top-up retry (--seeds=3 --calibration-seeds=1), at commit 52a59186",
+          "seeds": "4156-4158 (3); calibration 94156",
+          "arms": "8 arms",
+          "recordsCharged": "replayed on 2026-11-20 at that code version from the command in the session transcript; the harness is deterministic per seed and the replay matched every value the transcript printed apart from wall-clock times: 5,760,000 validation + 240,000 calibration = 6,000,000"
         },
         {
           "what": "second full run on 4156-4185 after the top-up, discarded because time-to-target ignored creatures that can ship but are not the population's best (review of PR 4165)",
@@ -260,7 +284,7 @@
           "last": 34185
         }
       ],
-      "earlierRunSeedNote": "three ranges are used and refused as validation ranges: 4156-4185 was the earlier full runs' CLI default, 14156-14185 was PR 4165's reported validation and the ccf3d612 re-run, and 34156-34185 was the first equal-wall-clock phase, seen before review found that a refinement batch ran past the deadline; the pilot's seeds were not recorded"
+      "earlierRunSeedNote": "three ranges are used and refused as validation ranges: 4156-4185 was the earlier full runs' CLI default, 14156-14185 was PR 4165's reported validation and the ccf3d612 re-run, and 34156-34185 was the first equal-wall-clock phase, seen before review found that a refinement batch ran past the deadline; the pilot and the smoke runs used 4156-4158, inside the first range, and the probe used seed 5, outside every validation range"
     },
     "paper": {
       "url": "https://arxiv.org/abs/2610.26202",
