@@ -13,7 +13,6 @@ import {
 } from "@architecture/DataSet.ts";
 import { trainDir } from "@architecture/Training.ts";
 import { setTrainDirReporter } from "@architecture/training/TrainDirBackendReport.ts";
-import { __setPredictiveCodingNowForTests } from "@architecture/training/TrainingPredictiveCoding.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 
@@ -48,21 +47,28 @@ function runOnce(
   }
 }
 
-Deno.test("predictive-coding trainDir with disableRandomSamples trains on each file's leading share", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-  const o = Creature.fromJSON(creature.exportJSON()).activate(
+/** The untrained output for input [0, 0]; every record below uses that input. */
+function untrainedOutput(creature: Creature): number {
+  return Creature.fromJSON(creature.exportJSON()).activate(
     new Float32Array([0, 0]),
   )[0];
+}
+
+Deno.test("predictive-coding trainDir with disableRandomSamples trains on each file's leading share", () => {
+  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+  const o = untrainedOutput(creature);
+  // Targets are offsets from the untrained output, so the per-record errors
+  // (MSE over one output = squared offset) are 1 for the leading 5 records and
+  // 100 for the trailing 5, whatever the random creature outputs.
   const dataSet: DataRecordInterface[] = [];
   for (let i = 0; i < 10; i++) {
     dataSet.push({
       input: new Float32Array([0, 0]),
-      output: new Float32Array([i < 5 ? 0 : 10]),
+      output: new Float32Array([o + (i < 5 ? 1 : 10)]),
     });
   }
-  // MSE over one output is the squared difference.
-  const prefixError = o * o;
-  const fullError = (o * o + (10 - o) * (10 - o)) / 2;
+  const prefixError = 1;
+  const fullError = (1 + 100) / 2;
   assert(
     Math.abs(fullError - prefixError) > 10,
     `expected values must differ: ${prefixError} vs ${fullError}`,
@@ -73,48 +79,51 @@ Deno.test("predictive-coding trainDir with disableRandomSamples trains on each f
     dataSet,
     { trainingSampleRate: 0.5, disableRandomSamples: true },
   );
-  assertAlmostEquals(half.error, prefixError, 1e-4);
+  assertAlmostEquals(half.error, prefixError, 1e-3);
 
   const full = runOnce(
     Creature.fromJSON(creature.exportJSON()),
     dataSet,
     { trainingSampleRate: 1, disableRandomSamples: true },
   );
-  assertAlmostEquals(full.error, fullError, 1e-3);
+  assertAlmostEquals(full.error, fullError, 1e-2);
 });
 
-Deno.test("predictive-coding trainDir random sampling reads ceil(rate × records) per file", () => {
+/** Number of set bits in a non-negative integer. */
+function bitCount(n: number): number {
+  let count = 0;
+  for (let v = n; v > 0; v = Math.floor(v / 2)) count += v % 2;
+  return count;
+}
+
+Deno.test("predictive-coding trainDir random sampling trains on ceil(rate × records) records per file", () => {
+  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+  const o = untrainedOutput(creature);
+  // Record k's error is 2^k, so the summed error over any subset of records is
+  // an integer whose set bits name exactly the records that were read.
   const dataSet: DataRecordInterface[] = [];
-  for (let i = 0; i < 10; i++) {
+  for (let k = 0; k < 10; k++) {
     dataSet.push({
-      input: new Float32Array([i / 10, 1 - i / 10]),
-      output: new Float32Array([i / 10]),
+      input: new Float32Array([0, 0]),
+      output: new Float32Array([o + Math.sqrt(2 ** k)]),
     });
   }
-  // The clock is read once per processed sample plus a fixed overhead, so the
-  // difference between runs counts samples.
-  const countCalls = (rate: number): number => {
-    let calls = 0;
-    __setPredictiveCodingNowForTests(() => {
-      calls++;
-      return 0;
-    });
-    try {
-      runOnce(
-        new Creature(2, 1, { layers: [{ count: 3 }] }),
-        dataSet,
-        {
-          trainingSampleRate: rate,
-          disableRandomSamples: false,
-          hardDeadlineTS: 1e15,
-        },
-      );
-    } finally {
-      __setPredictiveCodingNowForTests(undefined);
-    }
-    return calls;
+  // `error` is the mean over the records read, so `error × n` must be a
+  // whole number with exactly n set bits (n distinct records) and below 2^10.
+  const assertReads = (rate: number, n: number) => {
+    const result = runOnce(
+      Creature.fromJSON(creature.exportJSON()),
+      dataSet,
+      { trainingSampleRate: rate, disableRandomSamples: false },
+    );
+    const sum = result.error * n;
+    const rounded = Math.round(sum);
+    assertAlmostEquals(sum, rounded, 1e-2, `rate ${rate}: sum ${sum}`);
+    assert(rounded > 0 && rounded < 1024, `rate ${rate}: sum ${rounded}`);
+    assertEquals(bitCount(rounded), n, `rate ${rate}: sum ${rounded}`);
   };
-  const full = countCalls(1);
-  assertEquals(countCalls(0.5), full - 5);
-  assertEquals(countCalls(0.01), full - 9);
+
+  assertReads(1, 10);
+  assertReads(0.5, 5);
+  assertReads(0.01, 1);
 });

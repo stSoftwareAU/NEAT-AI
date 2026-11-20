@@ -62,22 +62,28 @@ flowchart LR
 ```
 
 - `test/architecture/training/PredictiveCodingSampling.ts::predictive-coding trainDir with disableRandomSamples trains on each file's leading share`:
-  a 10-record file whose first 5 targets are 0 and last 5 are 10. At rate 0.5,
-  `trainDir`'s first-iteration error equals the error over the leading 5
-  records. At rate 1 (the control) it equals the error over all 10. The test
-  also asserts that the two expected values differ by more than 10.
-- `test/architecture/training/PredictiveCodingSampling.ts::predictive-coding trainDir random sampling reads ceil(rate × records) per file`:
-  shuffled selection, with samples counted through the existing clock seam
-  (`__setPredictiveCodingNowForTests`). The trainer reads it once per sample, so
-  rate 0.5 reads 5 fewer records than rate 1 and rate 0.01 reads 9 fewer.
+  a 10-record file where every record has input [0, 0]. Each target is the
+  creature's untrained output `o` plus 1 (first 5 records) or plus 10 (last 5),
+  so the per-record errors are 1 and 100 whatever the random creature outputs.
+  At rate 0.5, `trainDir`'s first-iteration error is 1, the error over the
+  leading 5 records. At rate 1 (the control) it is 50.5, the error over all 10.
+  The test also asserts that the two expected values differ by more than 10.
+- `test/architecture/training/PredictiveCodingSampling.ts::predictive-coding trainDir random sampling trains on ceil(rate × records) records per file`:
+  shuffled selection. Same input on every record; record k's target is
+  `o + sqrt(2^k)`, so its error is exactly 2^k. `trainDir`'s error is the mean
+  over the records read, so `error × n` must be a whole number below 1024 with
+  exactly n set bits, one per distinct record. The test asserts this for n = 10
+  at rate 1, n = 5 at rate 0.5 and n = 1 at rate 0.01. It asserts only the
+  `trainDir` result, not how the trainer is clocked.
 - `test/predictiveCoding/PredictiveCodingTrainer.ts::PC trainer refuses a trainingSampleRate outside (0, 1]`:
   0, 1.5 and NaN each throw a `ValidationError` naming `trainingSampleRate`. The
   control rate of 1 trains.
 - Red run on the unfixed code, run with `--no-check` because the new option did
   not type-check there:
-  - the leading-share test got error `56.226…` instead of `0.3458`, the whole
-    file's error;
-  - the sample counts were equal at every rate;
+  - the leading-share test got error `50.5` instead of `1`, the whole file's
+    error;
+  - the random-sampling test got `error × 5 = 511.5` at rate 0.5, the mean over
+    all 10 records rather than a sum of 5;
   - the refusal test failed with "Expected function to throw".
 - Issue numbers cited in the diff: #4180 (this issue) and #4146 ("Recurrence of
   #4119 on 7.1.12 + engine 0.1.50: training tasks still overrun the per-task
@@ -87,7 +93,8 @@ flowchart LR
 ## Test Plan
 
 - Added `test/architecture/training/PredictiveCodingSampling.ts`, with the two
-  tests above.
+  tests above. Neither depends on the random creature's output: each target is
+  an offset from it. Both passed 40 of 40 consecutive runs at the head.
 - Added one test to `test/predictiveCoding/PredictiveCodingTrainer.ts`. No
   existing test or assertion was edited or removed.
 - Existing coverage of the touched paths still passes:
