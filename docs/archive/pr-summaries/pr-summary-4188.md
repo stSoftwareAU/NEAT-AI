@@ -74,7 +74,7 @@ predictive-coding-compact' and kills evolveDir).
   at `logApproach` (`LogApproach.ts:147`), called from `FindTunePopulation.make`
   (`FineTunePopulation.ts:162`). The sampler stage exited 1.
 - **status** — `verified` — these tests failed against the base
-  `src/NEAT/LogApproach.ts` (`FAILED | 8 passed | 6 failed`):
+  `src/NEAT/LogApproach.ts` (`FAILED | 10 passed | 6 failed`):
   - `ValidationError: Unknown approach 'predictive-coding-compact'`, raised at
     `FindTunePopulation.make (src/blackbox/FineTunePopulation.ts:162:9)`.
   - `ValidationError: Unknown approach 'predictive-coding'`.
@@ -155,7 +155,12 @@ against `AGENTS.md` and `docs/ENGINEERING_PRINCIPLES.md`.
       issue says an unknown runtime tag "**warns** instead of throwing".
     - The new test still names the tag: it asserts one warn line containing
       `Unknown approach 'invalid-approach'`, and no info line.
-  - Other existing tests are unchanged.
+  - Edited test: "should handle all valid approach types" no longer sets an
+    `errorThrown` flag, calls `console.error` and asserts the flag afterwards. A
+    throw now fails it through `assert(false, ...)` inside the `catch`, with the
+    approach and the error message in the assertion text (the semgrep unsafe
+    format-string fix). It still fails on any throw.
+  - The remaining existing tests are unchanged.
 - `test/blackbox/FineTunePopulationZeroScore.ts`: new entry-point test through
   `FindTunePopulation.make`.
   - The previous fittest has a different UUID and a lower score, so `make()`
@@ -164,7 +169,8 @@ against `AGENTS.md` and `docs/ENGINEERING_PRINCIPLES.md`.
 - Targeted run:
   `deno test --allow-all test/NEAT/LogApproach.ts test/NEAT/LogApproachDiscoveryReplay.ts test/blackbox/FineTunePopulationZeroScore.ts`
   gave `ok | 16 passed | 0 failed`. The same tests against the base
-  `LogApproach.ts` gave `FAILED | 8 passed | 6 failed`.
+  `LogApproach.ts` (restored from d7570fc7) gave
+  `FAILED | 10 passed | 6 failed`.
 - Full gate:
   `./quality.sh --rust-scorer-bin=<rust_scorer built from NEAT-AI-scorer 742c5df>`
   gave `ok | 10596 passed (5 steps) | 0 failed | 50 ignored`.
