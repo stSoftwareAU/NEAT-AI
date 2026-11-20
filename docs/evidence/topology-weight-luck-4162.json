@@ -1,8 +1,8 @@
 {
   "manifest": {
     "issue": 4162,
-    "codeVersion": "4ccb7100",
-    "neatAiVersion": "7.1.20",
+    "codeVersion": "1125fce4",
+    "neatAiVersion": "7.1.34",
     "denoVersion": "2.9.8",
     "corpusSeed": 4162,
     "settings": {
@@ -70,7 +70,13 @@
       }
     ],
     "criteria": "Primary test: holdout precision of median-paired minus best-draw; benefit iff the paired-bootstrap 95% CI lies above 0, harm iff below, else no-benefit. Secondary: median-paired minus single-draw, same criteria. Descriptive: the holdout distribution of medianPairedGain. A mutation is confirmed on a corpus iff its median paired gain there is above 0. Selection uses the cheap sample only.",
-    "paper": "arXiv 2611.01213 — method not pinned; this is the repository's reading of the issue",
+    "paper": {
+      "arxiv": "2611.01213v1",
+      "title": "Is Newborn Wiring Special? Separating Wiring from Weight Placement in Connectome Reservoirs",
+      "abstractSource": "arXiv cs.NE RSS item of 2026-11-03, copied in github.com/ehijano/rss_fetch@fbd3c873cc7d24e7c8d3dd2f1cd63dc3a3a71980 (rss_data/cs.NE/2026-11-03_cs.NE.xml)",
+      "methodSource": "github.com/Riccardo8888/connectome-reservoir-nulls@994ceb97e20c9807cb777b05759d00d837914db7, paper/esn_connectome_devai.tex (sha256 c7235bcc88f86c484a7e6f4b5353eb7c7165433b6df8760d99137cc60f454d2c)",
+      "relation": "adapts the paper's wiring / weight-placement decomposition (average over weight draws) with eight draws instead of the paper's K >= 25; not a reproduction"
+    },
     "scorer588": "Scorer #588 perturbation machinery is not in this repository; perturbations are built here from Synapse.randomWeight and Math.fround"
   },
   "mutations": [

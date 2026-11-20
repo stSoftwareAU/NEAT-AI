@@ -197,6 +197,7 @@ distinct parents. All 99 mutations were evaluated, with 0 failures.
 - **Null family:** N = (R, ω), a rewiring R of the binary topology plus a weight
   rule ω that places the original weight multiset on the rewired edges. μ and σ
   are the mean and SD of the score over a null ensemble of 200 draws per family
+  per graph. In the 524-infant dHCP sweep the ensemble is 100 draws per family
   per graph.
 - **Nulls:** degree-preserving (Maslov–Sneppen rewiring, weight multiset
   shuffled); rank-matched (static sort by product of endpoint strengths); and
@@ -266,11 +267,14 @@ distinct parents. All 99 mutations were evaluated, with 0 failures.
 
 ```bash
 deno task topology-weight-luck-study \
-  --json=docs/evidence/topology-weight-luck-4162.json --code-version=4ccb7100
+  --json=docs/evidence/topology-weight-luck-4162.json --code-version=1125fce4
 ```
 
-The run used neatAiVersion 7.1.20, Deno 2.9.8 and code version 4ccb7100 (the
-base commit).
+The committed artefact was regenerated at code version 1125fce4 (neatAiVersion
+7.1.34, Deno 2.9.8) after the paper record was added to the manifest. Every
+result section (mutations, distributions, rules, primary, secondary, cost,
+coverage) is identical to the original run at 4ccb7100 (neatAiVersion 7.1.20);
+only `codeVersion`, `neatAiVersion` and `paper` in the manifest changed.
 
 ---
 
