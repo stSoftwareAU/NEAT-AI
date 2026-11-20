@@ -147,9 +147,9 @@ endpoint at equal generations **and** at equal record budget, the diversity of
 each arm, and the screen percentile of every creature that became an elite. The
 measured result, including what it does not say, is in
 [`docs/evidence/pre-selection-3932.md`](evidence/pre-selection-3932.md). In
-short: at equal record budget **no arm improved**, and both screens cut mean
-genetic distance while a keep-at-random control raised it. That is why the stage
-ships off.
+short: at equal record budget no arm showed a demonstrated improvement, and the
+`"sampled"` screen cut mean genetic distance while a keep-at-random control did
+not. That is why the stage ships off.
 
 Read it this way:
 

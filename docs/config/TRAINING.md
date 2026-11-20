@@ -304,8 +304,9 @@ and it lives in [`preSelection`](../PRE_SELECTION.md) (Issue #3932): breed a
 surplus, screen it cheaply, and spend the true evaluation only on the survivors.
 Also off by default (`ratio: 1`), and the measured result —
 [`docs/evidence/pre-selection-3932.md`](../evidence/pre-selection-3932.md) — is
-why: at equal record budget no arm improved, and both screens cut mean genetic
-distance while a keep-at-random control raised it.
+why: at equal record budget no arm showed a demonstrated improvement, and the
+`"sampled"` screen cut mean genetic distance while a keep-at-random control did
+not.
 
 If the `"surrogate"` screen is turned on, the uncertainty guard of Issue #3933
 comes with it — see [`SURROGATE_UNCERTAINTY.md`](../SURROGATE_UNCERTAINTY.md).

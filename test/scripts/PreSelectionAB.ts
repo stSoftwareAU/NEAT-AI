@@ -110,3 +110,26 @@ Deno.test("pre-selection A/B — an over-generated arm considers more candidates
     }
   });
 });
+
+Deno.test("pre-selection A/B — two runs with the same seed return identical results", async () => {
+  await withRngTestLock(async () => {
+    const corpus = buildCorpus(SMALL);
+    const arm = { arm: "surrogate", ratio: 3, screen: "surrogate" } as const;
+    // Issue #4170: crossover and mutation draw from the global generator, so
+    // it must be seeded too. Only the wall-clock `screenMs` is excluded.
+    const extract = (result: Awaited<ReturnType<typeof runArm>>) => ({
+      finalScore: result.finalScore,
+      exactEvaluations: result.exactEvaluations,
+      recordsScored: result.recordsScored,
+      candidatesConsidered: result.candidatesConsidered,
+      generations: result.generations.map((generation) => {
+        const { screenMs: _screenMs, ...deterministic } = generation;
+        return deterministic;
+      }),
+      eliteScreenRanks: result.eliteScreenRanks,
+    });
+    const first = extract(await runArm(arm, SMALL, corpus));
+    const second = extract(await runArm(arm, SMALL, corpus));
+    assertEquals(second, first);
+  });
+});
