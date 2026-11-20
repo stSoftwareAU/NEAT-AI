@@ -25,6 +25,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4161:** the budget-conditioned study gains a `budgetInput` arm in
+  which the budget is an input to expression (per-synapse priority and weight
+  linear in the budget), the paper's key ingredient in its simplest form. With
+  its own predeclared rule it is also negative: harmful against independent
+  per-budget searches on unseen budgets, and harmful at full size. No `src/`
+  change; see
+  [`docs/evidence/budget-conditioned-4161.md`](docs/evidence/budget-conditioned-4161.md).
 - **Issue #4156:** opt-in `deno task differential-weight-study`, a research
   harness that measures differential-weight (DE) offspring and delayed
   population contraction as a 2×2 at equal charged records, crossed with whether

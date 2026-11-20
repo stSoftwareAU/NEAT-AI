@@ -152,8 +152,9 @@ Tuning guides and benchmark research.
   — topology gains versus new-edge weight-placement luck (Issue #4162): the
   preregistered primary test (median-paired against best-draw) is no-benefit.
 - **[evidence/budget-conditioned-4161.md](evidence/budget-conditioned-4161.md)**
-  — one genome expressed at several connection budgets (Issue #4161): a negative
-  result; it was harmful against independent per-budget searches on unseen
+  — one genome expressed at several connection budgets (Issue #4161): both
+  encodings, a gene-ordered one and one that takes the budget as an input, were
+  negative; both were harmful against independent per-budget searches on unseen
   budgets.
 - **[evidence/connectivity-prior-4160.md](evidence/connectivity-prior-4160.md)**
   — initial connectivity and input fan-out as priors (Issue #4160): a negative
