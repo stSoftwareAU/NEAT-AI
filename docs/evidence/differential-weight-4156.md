@@ -1,21 +1,23 @@
 # Differential-weight offspring and delayed contraction (Issue #4156)
 
-**Finding: negative on fresh validation seeds, mixed at equal wall-clock, and
-the paper's method is only partly pinned.** At equal records no arm meets the
-benefit criterion and none is harm. On a synthetic objective,
-differential-weight (DE) offspring were not better on held-out error. Delayed
-population contraction, by the existing adaptive rule, was about neutral. The
-paper's own mechanism, a delayed linear population-size reduction (LPSR, section
-3.3 of [arXiv 2610.26202](https://arxiv.org/abs/2610.26202)), was tested as well
-and was not better here either: it also cut behavioural diversity below the 0.8
-floor. Do not read this as evidence for any of these ideas; do not read it as
-evidence against them at GRQ scale either (see [Limits](#limits)). The paper's
-full text could not be fetched, so only part of its method is pinned (see
-[Paper (partly pinned)](#paper-partly-pinned)). When wall-clock, not records, is
-the budget held equal, one contrast is harm by the predeclared criteria
-(`contraction@reenter`, a difference of +0.0003255) and `lpsr@reenter` leans
-better but fails the diversity floor (see
-[Equal wall-clock](#equal-wall-clock)).
+**Finding: negative on fresh validation seeds, mixed at equal wall-clock in one
+run but not replicated, and the paper's method is only partly pinned.** At equal
+records no arm meets the benefit criterion and none is harm. On a synthetic
+objective, differential-weight (DE) offspring were not better on held-out error.
+Delayed population contraction, by the existing adaptive rule, was about
+neutral. The paper's own mechanism, a delayed linear population-size reduction
+(LPSR, section 3.3 of [arXiv 2610.26202](https://arxiv.org/abs/2610.26202)), was
+tested as well and was not better here either: it also cut behavioural diversity
+below the 0.8 floor. Do not read this as evidence for any of these ideas; do not
+read it as evidence against them at GRQ scale either (see [Limits](#limits)).
+The paper's full text could not be fetched, so only part of its method is pinned
+(see [Paper (partly pinned)](#paper-partly-pinned)). When wall-clock, not
+records, is the budget held equal, the reported run has one contrast that is
+harm by the predeclared criteria (`contraction@reenter`, a difference of
++0.0003255), and `lpsr@reenter` leans better but fails the diversity floor (see
+[Equal wall-clock](#equal-wall-clock)). Neither replicated when the study was
+re-run at a clean commit on the same seeds: there, no contrast is harm or
+benefit (see [Versions](#versions)).
 
 Harness:
 [`scripts/differential_weight_study.ts`](../../scripts/differential_weight_study.ts).
@@ -155,6 +157,51 @@ for field, apart from `wallMs`, and its 11 contrasts equal that run's apart from
 `wallClockMedianRatio` and the new `attempted` field. The equal-wall-clock phase
 uses a real clock, so it is not bit-reproducible.
 
+**Clean-commit checks (2026-11-20).** The command in [Reproduce](#reproduce) was
+run twice more at clean commit `6639854d` (NEAT-AI 7.1.32), each time writing to
+a separate file rather than the committed manifest. The first run hit a 1,500 s
+timeout on a loaded host (25 minutes of real time for 6 minutes of user central
+processing unit (CPU) time) during the equal-wall-clock phase and wrote no JSON.
+Its record-budget lines, all it printed, matched the manifest. The second run,
+between about 08:10 and 08:17 Coordinated Universal Time (UTC) on a lightly
+loaded host, finished and wrote
+[`differential-weight-4156-clean-6639854d.json`](./differential-weight-4156-clean-6639854d.json).
+Compared with the committed manifest, field by field:
+
+- **Record-budget phase: identical.** All 360 results match on every field apart
+  from `wallMs`, and so do the 12 coverage rows and the empty failures and
+  censored lists. The 11 contrasts match on every field the reported run wrote
+  apart from `wallClockMedianRatio`. The clean code also writes `diversitySeeds`
+  and `speciesSeeds`, which are 30 in every contrast. In `manifest`, only
+  `codeVersion` and `neatAiVersion` differ, so the settings, criteria, seeds and
+  preparation list are the same. The record-budget results therefore do not
+  depend on the uncommitted review fix.
+- **Equal-wall-clock phase: same design, different outcome.** It ran with the
+  same 600 ms cap, record budget, seeds 44156–44185 and arm order. On this less
+  loaded host every arm turned the 600 ms into more records (medians 268,000 to
+  293,200, against 222,000 to 252,600). One run was censored: `de+lpsr@reenter`
+  at seed 44166 scored no creature in 1,311 ms. Seed 44183 of `de@isolated` and
+  of `contraction@isolated` stopped after one generation (842 ms and 723 ms)
+  with no diversity measurement. The clean code's rule that a contrast missing a
+  required measurement is `insufficient-data` therefore applies to those two
+  contrasts. The other nine are `no-benefit`. **No contrast is harm and none is
+  a benefit.** The reported run's harm contrast did not replicate:
+  `contraction@reenter` is +0.00006616, CI95 [−0.0002722, +0.0004307], with 12
+  wins of 30. `lpsr@reenter` is −0.0004365, CI95 [−0.001025, +0.0001308], with
+  14 wins of 30, so its CI no longer excludes zero. Its diversity is 0.692 of
+  the control's, again below the 0.8 floor.
+
+So the equal-wall-clock phase has now been run once at `d85139e6` plus the
+review fix (the committed manifest) and once at a clean commit, on the same
+seeds. Its single harm result and the `lpsr@reenter` lean appear in only the
+first. As expected for a phase that runs on a real clock, they depend on how
+fast the host is. The committed manifest stays the reported run, and replacing
+half of it would mix two runs.
+
+The two checks came after the reported run and changed no setting, arm, seed or
+criterion, so they are not in the preparation table. Their cost is counted under
+[Preparation and search cost](#preparation-and-search-cost).
+
 ## Results
 
 Held-out MSE, arm minus control; negative is better. Values are from the
@@ -261,10 +308,12 @@ negative:
   wins. Isolation versus re-entry is again not distinguishable (8 wins of 30).
 
 None of this is established at this sample size, and 600 ms on a shared
-container is far from the paper's 15 minutes. Per-run results, coverage and
-contrasts are under `wallClockPhase` in the artefact. The earlier run's table on
-34156–34185 (the version that scored refinement candidates after the deadline)
-is superseded, and its cost is counted in
+container is far from the paper's 15 minutes. A re-run at clean commit
+`6639854d` on the same seeds, on a less loaded host, replicated neither the harm
+result nor the `lpsr@reenter` lean (see [Versions](#versions)). Per-run results,
+coverage and contrasts are under `wallClockPhase` in the artefact. The earlier
+run's table on 34156–34185 (the version that scored refinement candidates after
+the deadline) is superseded, and its cost is counted in
 [Preparation and search cost](#preparation-and-search-cost).
 
 ## Coverage
@@ -374,16 +423,28 @@ in every quality gate.
 | 12-arm run at `b224f0df` with the first wall-clock phase, superseded after review found a refinement batch ran past the deadline and a run with no scored creature was counted as completed | 24156–24185 and 34156–34185        | recorded (artefact at commit `1439479d`): 86,345,600 + 1,200,000 + 81,493,600 (wall-clock phase) = 169,039,200        |
 | Reported run at `d85139e6` + review fix: validation 24156–24185 (12 arms) and equal wall-clock 44156–44185                                                                                  | 24156–24185 and 44156–44185        | validation 86,345,600 (budget 30 × 12 × 240,000 = 86,400,000) + 1,200,000 calibration + 84,250,800 (wall-clock phase) |
 
-So every run in the table is counted exactly, within the limit below. The runs
-before the reported run charged 680,000 + 11,993,600 + 5,994,000 + 58,739,200 +
-28,740 + 6,000,000 = 83,435,540 records in the recovered rows, and 58,794,400 +
+So every run in the table is counted exactly, within the limit below.
+
+The two clean-commit checks under [Versions](#versions) came after the reported
+run and are counted here rather than in the table. The finished check charged
+86,345,600 validation records on 24156–24185, 1,200,000 calibration records on
+94156–94160 and 100,096,800 in the wall-clock phase on 44156–44185: 187,642,400
+in all. The validation and wall-clock figures are the sums of `recordsCharged`
+in its JSON, and calibration is 5 × 240,000. The timed-out check charged the
+same 86,345,600 + 1,200,000 = 87,545,600 before the wall-clock phase, plus an
+unrecorded part of that phase, because it wrote no JSON. The runs before the
+reported run charged 680,000 + 11,993,600 + 5,994,000 + 58,739,200 + 28,740 +
+6,000,000 = 83,435,540 records in the recovered rows, and 58,794,400 +
 58,796,400 + 87,537,200 + 87,545,600 + 169,039,200 = 461,712,800 in the rows
 recorded at the time: 545,148,340 in all.
 
 One limit remains. This host holds no transcript of study commands from the
 later sessions, from 2026-11-16 on. Their full runs are counted from the
 artefacts committed at the time, but a smaller smoke run in those sessions would
-not show up in this audit.
+not show up in this audit. On 2026-11-20 every agent transcript on this host
+that names the study (29 files) was searched for study commands. They appear
+only in the 2026-11-13 session and in the 2026-11-20 replays, so no transcript
+here holds the commands of the later runs.
 
 The pilot, the smoke runs and the first full run all used validation seeds
 inside 4156–4185, the CLI default; the probe used seed 5, outside every
@@ -431,8 +492,22 @@ no full-text copy. The author's GitHub account (`lucianoambrosini`) was also
 checked: no file path in its `Ambrosinus-Toolkit`, `AmbrosinusDEV`,
 `Computational-Design-Manifesto` or profile repositories names MERLIN, RAPTOR,
 L-SHADE or Solis–Wets, and a code search of the account for RAPTOR, Solis and
-the arXiv id returned nothing. The committed manifest, generated before these
-attempts, records `paper.methodRead: "partial"`.
+the arXiv id returned nothing. A fifth attempt on 2026-11-20 at about 07:20 UTC
+was refused the same way: `curl` to arxiv.org (abstract and PDF),
+export.arxiv.org and Semantic Scholar returned no HTTP status, and WebFetch to
+`arxiv.org/html/2610.26202v1` returned `proxy refused the connection`. Two more
+web searches, for the delayed population-size reduction formula and for MERLIN's
+DE and Solis–Wets settings, returned no new fact about this paper. One result
+said another paper by the same author (arXiv 2610.22397) uses DE/rand/1/bin with
+self-adapted F and CR; that is a different paper and pins nothing here. A sixth
+attempt on 2026-11-20 at about 08:10 UTC was refused the same way: WebFetch to
+`arxiv.org/pdf/2610.26202v1` returned `proxy refused the connection`, and `curl`
+to OpenAlex, the Semantic Scholar API, alphaXiv and a reader proxy returned no
+HTTP status. Only GitHub answered, and code searches there for `L-SHADE-SW` and
+for Solis–Wets with RAPTOR found no copy of the paper outside this repository.
+One web search returned new excerpts of section 3.3, listed below as unverified.
+The committed manifest, generated before these attempts, records
+`paper.methodRead: "partial"`.
 
 **Pinned.**
 
@@ -463,13 +538,23 @@ as pinned and are not in the committed manifest's `paper.pinned` list.
 - Section 3.3 is titled "L-SHADE-SW and a budget-aware population-size
   schedule"; an excerpt says the L-SHADE variants can delay the reduction when
   the budget is known at the start.
+- Section 3.3, from excerpts retrieved in the sixth attempt: the delay is zero
+  for budgets above a reference budget and grows as the budget shrinks towards
+  that of a short run. After the delay, the reduction is compressed linearly
+  into the rest of the budget. At a budget of 1,200 evaluations the delay is δ =
+  0.76, and the population keeps its 20 members over that share of the budget.
+  The reference budget, the formula for δ and N_min are cut off.
 - In RAPTOR, after each move the worst particles are replaced by DE offspring.
 - The paper's future work says MERLIN's injection fraction should decrease with
   the dimension. An excerpt opens "The injection fraction in MERLIN" but is cut
   off before any value, so the fraction itself is still not pinned.
 
 **Not pinned.** The delay formula and delay cap, the DE variant, F and CR, the
-injection fraction, and the Solis–Wets parameters.
+injection fraction, and the Solis–Wets parameters. If the unverified δ = 0.76
+holds, this study's 50% delay comes sooner than the paper's would, since this
+study's budget (about 600 evaluations) is half the paper's 1,200 and a smaller
+budget gets a longer delay, so the LPSR arms test an earlier reduction than the
+paper's.
 
 **How the harness maps.**
 
