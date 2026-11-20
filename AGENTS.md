@@ -293,11 +293,10 @@ The rule that makes that safe is **provenance**:
    neuron, synapse, bias, weight, squash, synapse role, frozen flag — must
    `delete creature.uuid` at the mutation site. `clearCache()`, `clearState()`,
    `connect`/`disconnect`/`connectBatch` and `Neuron.setSquash()` all look like
-   invalidation points and are **not** (the exception is `Neuron.setSquash()`
-   leaving `IF` with typed inward rows, which clears them and so sheds `uuid`,
-   Issue #4185); the removal/insertion primitives `removeHiddenNeuron()` and
-   `createConstantOne()` are, and clear `uuid` alongside `memetic`. The two full
-   safe harbours are `Creature.fix()` and `loadFrom()`.
+   invalidation points and are **not**; the removal/insertion primitives
+   `removeHiddenNeuron()` and `createConstantOne()` are, and clear `uuid`
+   alongside `memetic`. The two full safe harbours are `Creature.fix()` and
+   `loadFrom()`.
 3. **Identity from outside the process is discarded.** `loadFrom` deliberately
    does **not** adopt the incoming creature-level `uuid` — a uuid read from a
    file, deserialised from JSON, or received over a wire carries no guarantee
@@ -864,12 +863,11 @@ sums the rows that now share a triple and restores the canonical order (Issue
 #3880). Do not leave either for a later `creatureValidate`.
 
 Changing a neuron away from `IF` clears its inward roles, because only an `IF`
-target reads them (Issue #4185). `Neuron.setSquash` does it for a live creature.
-For an export, `clearStaleSynapseRoles` (exported from the root barrel) does it,
-and judges the **effective** squash, so an output neuron held by the
-`Activations` output pin is judged by the pin. Intelligent Design calls it at
-every squash write. Any other pass that writes `squash` into an export must call
-it too, or the roles survive the change.
+target reads them (Issue #4185). `Neuron.setSquash` does it for a live creature,
+through `stripRolesAndCoalesceSources`. For an export, `clearStaleSynapseRoles`
+(exported from the root barrel) does it, and judges the **effective** squash, so
+an output neuron held by the `Activations` output pin is judged by the pin.
+Intelligent Design calls it after each squash it writes into an export.
 
 The rules themselves are NEAT-AI-core's (`validate_no_duplicate_synapses`,
 `creature_validate` rules 25/26); the conformance cases that pin them are

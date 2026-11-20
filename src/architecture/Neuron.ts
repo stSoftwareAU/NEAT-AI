@@ -22,7 +22,7 @@ import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { getSquashType } from "@wasm/SquashType.ts";
 import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { clearInwardSynapseRoles } from "@architecture/StaleSynapseRoles.ts";
+import { stripRolesAndCoalesceSources } from "@architecture/RepairInvalidIfNeurons.ts";
 import type {
   NeuronExport,
   NeuronInternal,
@@ -218,7 +218,7 @@ export class Neuron implements TagsInterface, NeuronInternal {
         wasIf && this.squash !== "IF" &&
         this.creature?.neurons?.[this.index] === this
       ) {
-        clearInwardSynapseRoles(this.creature, this.index);
+        stripRolesAndCoalesceSources(this.creature, this.index);
       }
       // Invalidate creature's score cache since complexity penalty may have changed
       // Issue #1043: Cache Activations.find() lookups in score calculation

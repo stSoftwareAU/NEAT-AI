@@ -8,56 +8,22 @@
  * keeps its typed inward rows leaves roles that mean nothing, and two rows from
  * one source into a non-`IF` neuron are a validator error
  * (`duplicate-synapse-roles-into-non-if`). Intelligent Design wrote `squash`
- * straight into exports, so the roles survived every substitution. Two entry
- * points close that gap:
+ * straight into exports, so the roles survived every substitution.
  *
- * - {@link clearInwardSynapseRoles} for a live creature, called from
- *   `Neuron.setSquash` when a neuron leaves `IF`.
  * - {@link clearStaleSynapseRoles} for a `CreatureExport`, called by the
- *   Intelligent Design sites that write `squash` into the export.
+ *   Intelligent Design sites that write `squash` into the export. It judges the
+ *   squash that will actually be in force, so an output neuron pinned by
+ *   `Activations.setFixedOutputSquash` is judged by the pin.
  *
- * Both judge the squash that will actually be in force, so an output neuron
- * pinned by `Activations.setFixedOutputSquash` is judged by the pin.
+ * The live-creature counterpart is `Neuron.setSquash`, which calls
+ * `stripRolesAndCoalesceSources` (`RepairInvalidIfNeurons.ts`) when a neuron
+ * leaves `IF`.
  */
 
-import type { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
-import { isRoleReadingTarget } from "@architecture/SynapseKey.ts";
-import { normaliseInwardRoles } from "@architecture/CoalesceInwardSynapses.ts";
 import { Activations } from "@methods/activations/Activations.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
-
-/**
- * Remove the role from every inward synapse of `indx` when that neuron does
- * not read roles, then restore the canonical shape of its inward rows.
- *
- * The scan goes over `creature.synapses` directly rather than the topology
- * caches, so a stale cache cannot hide a typed row.
- *
- * @returns the number of rows whose role was cleared (0 when `indx` is `IF`).
- */
-export function clearInwardSynapseRoles(
-  creature: Creature,
-  indx: number,
-): number {
-  if (isRoleReadingTarget(creature.neurons, indx)) return 0;
-
-  let cleared = 0;
-  for (const synapse of creature.synapses) {
-    if (synapse.to !== indx || synapse.type === undefined) continue;
-    delete synapse.type;
-    cleared++;
-  }
-  if (cleared === 0) return 0;
-
-  // A role is a hash input, so the cached creature identity is shed here
-  // (AGENTS.md: every in-process mutation sheds identity).
-  delete creature.uuid;
-  creature.clearCache();
-  normaliseInwardRoles(creature, indx);
-  return cleared;
-}
 
 /**
  * Remove the role from the inward synapses of one neuron in a
