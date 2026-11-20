@@ -341,20 +341,22 @@ scored members.
 ## Preparation and search cost
 
 The validation arms are not the only records the study spent. The manifest
-(`preparation` in the JSON) records the rest, each run exactly. Every run made
-through the CLI paid its calibration phase as well, so that is counted with it.
+(`preparation` in the JSON) records the rest; each listed run is exact (see the
+limit below). Every run made through the CLI paid its calibration phase as well,
+so that is counted with it.
 
 The runs before the second full run were not written down when they were made.
 On 2026-11-20 they were recovered from the 2026-11-13 session transcript, which
-holds every study command that session ran and the output it printed. Each was
-then replayed at its own code version. The harness is deterministic per seed,
-and every replay matched every value the transcript printed apart from
-wall-clock times: 28 of 28 printed per-run lines for the first full run, and
-every printed line of the pilot, the smoke runs and the probe. The pilot ran
-before the contraction-threshold change was committed, so it was replayed at
-`34045199` with those two lines removed. The thresholds were then the production
-defaults, 0.8 and 0.3. Correctness tests are not counted: they run at small
-fixed settings in every quality gate.
+holds every study command that session ran and the output it printed. It lives
+in the worker's private agent state and is not committed. Each was then replayed
+at its own code version. The harness is deterministic per seed, and every replay
+matched every value the transcript printed apart from wall-clock times: 28 of 28
+printed per-run lines for the first full run, and every printed line of the
+pilot, the smoke runs and the probe. The pilot ran before the
+contraction-threshold change was committed, so it was replayed at `34045199`
+with those two lines removed. The thresholds were then the production defaults,
+0.8 and 0.3. Correctness tests are not counted: they run at small fixed settings
+in every quality gate.
 
 | Run                                                                                                                                                                                         | Seeds                              | Records charged                                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -372,11 +374,11 @@ fixed settings in every quality gate.
 | 12-arm run at `b224f0df` with the first wall-clock phase, superseded after review found a refinement batch ran past the deadline and a run with no scored creature was counted as completed | 24156–24185 and 34156–34185        | recorded (artefact at commit `1439479d`): 86,345,600 + 1,200,000 + 81,493,600 (wall-clock phase) = 169,039,200        |
 | Reported run at `d85139e6` + review fix: validation 24156–24185 (12 arms) and equal wall-clock 44156–44185                                                                                  | 24156–24185 and 44156–44185        | validation 86,345,600 (budget 30 × 12 × 240,000 = 86,400,000) + 1,200,000 calibration + 84,250,800 (wall-clock phase) |
 
-So every run in the table is counted exactly. The runs before the reported run
-charged 680,000 + 11,993,600 + 5,994,000 + 58,739,200 + 28,740 + 6,000,000 =
-83,435,540 records in the recovered rows, and 58,794,400 + 58,796,400 +
-87,537,200 + 87,545,600 + 169,039,200 = 461,712,800 in the rows recorded at the
-time: 545,148,340 in all.
+So every run in the table is counted exactly, within the limit below. The runs
+before the reported run charged 680,000 + 11,993,600 + 5,994,000 + 58,739,200 +
+28,740 + 6,000,000 = 83,435,540 records in the recovered rows, and 58,794,400 +
+58,796,400 + 87,537,200 + 87,545,600 + 169,039,200 = 461,712,800 in the rows
+recorded at the time: 545,148,340 in all.
 
 One limit remains. This host holds no transcript of study commands from the
 later sessions, from 2026-11-16 on. Their full runs are counted from the
@@ -384,14 +386,15 @@ artefacts committed at the time, but a smaller smoke run in those sessions would
 not show up in this audit.
 
 The pilot, the smoke runs and the first full run all used validation seeds
-inside 4156–4185, the CLI default. They shaped three decisions: the contraction
-thresholds, the top-up retry and the time-to-target reading. So the original
-validation seeds had been seen before the harness was finalised, and the
-reported validation was re-run on 14156–14185. That range was then seen too: it
-produced PR #4165's 8-arm validation, and the 12-arm re-run at `ccf3d612`
-reproduced that PR's 8 original arms exactly. Validation therefore moved to the
-fresh range 24156–24185, and the CLI now refuses both seen ranges. Nothing was
-changed after seeing the 24156–24185 results.
+inside 4156–4185, the CLI default; the probe used seed 5, outside every
+validation range. They shaped three decisions: the contraction thresholds, the
+top-up retry and the time-to-target reading. So the original validation seeds
+had been seen before the harness was finalised, and the reported validation was
+re-run on 14156–14185. That range was then seen too: it produced PR #4165's
+8-arm validation, and the 12-arm re-run at `ccf3d612` reproduced that PR's 8
+original arms exactly. Validation therefore moved to the fresh range
+24156–24185, and the CLI now refuses both seen ranges. Nothing was changed after
+seeing the 24156–24185 results.
 
 The calibration threshold (0.01406) was set on 94156–94160 and is unchanged by
 the time-to-target fix: that fix changes what is measured, not any trajectory.

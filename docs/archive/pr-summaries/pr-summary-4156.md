@@ -164,13 +164,26 @@ versus durable lineage contribution, whose paper the mirrors did hold).
 
 <!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
 
-- **clean** — the repository has no `CODING-STANDARDS.md`, so the review used
-  `AGENTS.md`, `docs/ENGINEERING_PRINCIPLES.md` and `docs/DOC_STYLE.md`. None of
-  them marks a rule as enforced by review only. Checked and compliant: acronyms
-  defined on first use (DOC_STYLE rule 1), themed terms (rule 2), NEAT vs
-  NEAT-AI wording (rule 3), claims kept under the unverified heading (rule 4),
-  one source of truth with the manifest (rule 8), Australian English, and valid
-  `docs/cspell.json`. Code, testing, UUID and WASM rules do not apply.
+- **violation** — DOC_STYLE rule 4, claims match the evidence: "each run
+  exactly" and "every run in the table is counted exactly" overstated the result
+  — evidence: `docs/evidence/differential-weight-4156.md` § Preparation and
+  search cost — reason: fixed in this diff; both now point to the stated limit.
+- **violation** — single source of truth: the seed notes left out the probe's
+  seed 5 — evidence: `scripts/differential_weight_study.ts`
+  `earlierRunSeedNote`, `scripts/lib/differentialWeightStudy.ts`
+  `USED_SEED_RANGES` comment — reason: fixed in this diff; the notes name seed 5
+  as outside every validation range.
+- **violation** — DOC_STYLE rule 4, every claim needs a reference: the session
+  transcript behind the replayed figures is not committed or linked — evidence:
+  `docs/evidence/differential-weight-4156.md` § Preparation and search cost —
+  reason: not fixed. The transcript is private worker state, and the page now
+  says so. The replay commands and code versions are given, so the figures can
+  be reproduced.
+- **clean** — no `CODING-STANDARDS.md`; reviewed against `AGENTS.md`,
+  `docs/ENGINEERING_PRINCIPLES.md` and `docs/DOC_STYLE.md`. `PREPARATION_RUNS`
+  matches the committed manifest byte for byte, all sums are correct, the text
+  is in Australian English, no new acronyms, no logging or test changes, and no
+  UUID, `semanticVersion`, WASM or wire-format impact.
 
 ## Test Plan
 

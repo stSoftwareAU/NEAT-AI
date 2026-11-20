@@ -89,7 +89,8 @@ export const VALIDATION_SEED_COUNT = 30;
  * 14156-14185 (PR #4165's reported validation, seen before the delayed-LPSR
  * arms were added) and 34156-34185 (the first equal-wall-clock phase, seen
  * before review found that a refinement batch ran past the deadline). The
- * pilot and the smoke runs used 4156-4158, inside the first range; their
+ * pilot and the smoke runs used 4156-4158, inside the first range, and the
+ * probe used seed 5, outside every validation range; their
  * costs are in the manifest's `preparation.runs`.
  */
 export const USED_SEED_RANGES: readonly (readonly [number, number])[] = [

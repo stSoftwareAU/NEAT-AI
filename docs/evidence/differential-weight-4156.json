@@ -284,7 +284,7 @@
           "last": 34185
         }
       ],
-      "earlierRunSeedNote": "three ranges are used and refused as validation ranges: 4156-4185 was the earlier full runs' CLI default, 14156-14185 was PR 4165's reported validation and the ccf3d612 re-run, and 34156-34185 was the first equal-wall-clock phase, seen before review found that a refinement batch ran past the deadline; the pilot and the smoke runs used 4156-4158, inside the first range"
+      "earlierRunSeedNote": "three ranges are used and refused as validation ranges: 4156-4185 was the earlier full runs' CLI default, 14156-14185 was PR 4165's reported validation and the ccf3d612 re-run, and 34156-34185 was the first equal-wall-clock phase, seen before review found that a refinement batch ran past the deadline; the pilot and the smoke runs used 4156-4158, inside the first range, and the probe used seed 5, outside every validation range"
     },
     "paper": {
       "url": "https://arxiv.org/abs/2610.26202",
