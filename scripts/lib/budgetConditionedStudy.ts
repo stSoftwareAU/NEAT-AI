@@ -902,7 +902,7 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
-          "Rewards (Section 3.4): in the optomotor task the target heading is the world direction the stimulus moves in during the block; facing it while commanding forward motion earns positive reward, facing more than 90° away while moving forward earns negative reward, and a zero forward command earns zero whatever the heading. In phototaxis the emitter is placed relative to the agent by shared random draws and the reward depends on the luminance at the agent's centre. Motor limits are ωmax = 240° and vmax = 30 environment units per simulation time unit.",
+          "Rewards (Section 3.4): in the optomotor task the target heading is the world direction the stimulus moves in during the block; facing it while commanding forward motion earns positive reward, facing more than 90° away while moving forward earns negative reward, and a zero forward command earns zero whatever the heading. In phototaxis the emitter is placed relative to the agent by shared random draws and the reward depends on the luminance at the agent's centre. Motor limits are a maximum turn rate of 240° and a maximum forward speed of 30 environment units, both per simulation time unit.",
         study:
           "The reward is the negative squared error against a synthetic regression target; there is no heading, luminance or motor command.",
         fidelity: "departs",
