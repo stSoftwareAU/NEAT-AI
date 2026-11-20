@@ -56,6 +56,12 @@ keeps `fullTextRead: false`, so that part of the issue stays open. Part of
   `arxiv.org/html/2611.06895`, the PMC copy (`PMC13781166`) and the Europe PMC
   full-text API gave `proxy refused the connection`. The new details come from
   web-search excerpts of the HTML full text.
+- **Retry (2026-11-20, completion pass):** curl to arxiv.org (abs, PDF, export),
+  PMC and Europe PMC got no response, and WebFetch of
+  `arxiv.org/html/2611.06895` gave `proxy refused the connection`. Three more
+  web searches gave no Table 3 values, reward equations or unseen ages. Their
+  excerpts disagreed on other points (CPPN outputs, the baseline's training
+  age), so nothing new was pinned.
 - **Scorer:** `./quality.sh` needs the native `rust_scorer`, and this worktree
   has none next to it. It was built from a fresh clone of NEAT-AI-scorer,
   outside the checkout, and passed with `--rust-scorer-bin`.
@@ -82,11 +88,14 @@ deno task budget-conditioned-study --code-version=df0fc5ac \
 
 ## Acceptance Criteria
 
-- **missing** — "Read and pin the full method before reproducing it" — reason:
-  the full text is still refused by the host proxy (arxiv.org, its mirrors, PMC
-  and Europe PMC). Sections 3.4 and 3.6 are now pinned from excerpts, but the
-  rest of Table 3, the exact reward equations and the identity of the three
-  unseen ages remain in `SOURCE_METHOD.unpinned`.
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **partial** — "Read and pin the full method before reproducing it" — evidence:
+  `scripts/lib/budgetConditionedStudy.ts` (`SOURCE_METHOD`: 14 pinned elements,
+  `fullTextRead: false`, `unpinned`) — reviewer: partial — reason: the full text
+  is still refused by the host proxy, so the method was pinned from excerpts
+  only; the rest of Table 3, the exact reward equations and which ages are the
+  three unseen ones remain in `SOURCE_METHOD.unpinned`.
 
 ## Test Plan
 
