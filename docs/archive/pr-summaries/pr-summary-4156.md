@@ -4,7 +4,16 @@
 
 PRs #4165, #4177 and #4181 merged the opt-in harness, the 12-arm study, its
 negative/mixed result and three attempts to read arXiv 2610.26202. This PR
-changes documentation only, in `docs/evidence/differential-weight-4156.md`:
+changes no behaviour. It edits the evidence page, the manifest's `preparation`
+block and the `PREPARATION_RUNS` constant that writes it:
+
+- § Preparation and search cost now counts the pilot and the first full run
+  exactly, in place of bounds. Their commands were recovered from the 2026-11-13
+  session transcript on this host, and each was replayed at its own code version
+  (`34045199`, `52a59186`, and `34045199` with the two contraction-threshold
+  lines removed for the pilot). The transcript also showed three smoke runs and
+  a probe, which are now counted as well. The six recovered rows charged
+  83,435,540 records, so the total before the reported run is 545,148,340.
 
 - § Paper (partly pinned) records a fourth attempt to read the full text. arXiv
   and every mirror tried were still unreachable. GitHub code search found no
@@ -19,8 +28,9 @@ changes documentation only, in `docs/evidence/differential-weight-4156.md`:
   regenerates the committed manifest.
 
 `docs/cspell.json` gains the two names the page now quotes. No setting, arm,
-seed, result or manifest changes. The full method still is not read, and the
-pilot's preparation records cannot be recovered, so two criteria stay partial.
+seed or result changes. In the manifest only `preparation` changes. Two criteria
+stay partial: the full method is still unread, and study commands from the
+sessions after 2026-11-13 cannot be audited from this host.
 
 Part of #4156.
 
@@ -47,6 +57,17 @@ Part of #4156.
 
 ### Undiscoverable Facts
 
+- The 2026-11-13 session transcript (agent session `f9e7bdc5…` in the worker's
+  Claude config and its executor subagent `agent-a5f4525b3f8c51b01`) holds every
+  study command that session ran, with its printed output. Each replay matched
+  every value printed apart from wall-clock times: for example, 28 of 28 per-run
+  lines for the first full run, and the probe's `control@reenter 529 474 89`.
+  The first full run charged 1,198,800 calibration records, not the 1,200,000
+  assumed before. No transcript on this host holds study commands from
+  2026-11-16 on.
+- arXiv and its mirrors still returned HTTP `000` on 2026-11-20 at about 06:40
+  UTC (`arxiv.org/abs`, `/pdf`, `/html`, `export.arxiv.org`, ar5iv, Semantic
+  Scholar's API, alphaXiv, Hugging Face, a reader proxy, `web.archive.org`).
 - `curl -m 12` returned HTTP status `000` from each of these: `arxiv.org/abs`,
   `export.arxiv.org`, the Hugging Face papers page and API, alphaXiv,
   `scholar.archive.org`, a reader proxy, and the author's solver and portfolio
@@ -66,7 +87,14 @@ Part of #4156.
 
 ## Evidence
 
-Documentation only. No UI, script or test file changed.
+No UI or test file changed. `scripts/differential_weight_study.ts` changes only
+the `PREPARATION_RUNS` strings, its doc comment and `earlierRunSeedNote`.
+`scripts/lib/differentialWeightStudy.ts` changes one doc comment.
+
+- `docs/evidence/differential-weight-4156.md` § Preparation and search cost: the
+  replay paragraph, six new table rows, and the totals and limits paragraphs.
+- `docs/evidence/differential-weight-4156.json` `manifest.preparation`: `note`,
+  `runs` and `earlierRunSeedNote`, the same text as the CLI constant.
 
 - `docs/evidence/differential-weight-4156.md` § Paper (partly pinned): the
   fourth-attempt sentences in "What was read." and the three new bullets under
@@ -88,9 +116,10 @@ versus durable lineage contribution, whose paper the mirrors did hold).
 
 - **partial** — Read and pin the full method before reproducing it — evidence:
   `docs/evidence/differential-weight-4156.md` § Paper (partly pinned) —
-  reviewer: partial — reason: no route from this host reaches the full text, so
-  the delay formula and cap, the DE variant, F/CR, the injection fraction and
-  the Solis–Wets parameters are still not pinned.
+  reviewer: partial — reason: no route from this host reaches the full text
+  (rechecked on 2026-11-20, every route still HTTP `000`), so the delay formula
+  and cap, the DE variant, F/CR, the injection fraction and the Solis–Wets
+  parameters are still not pinned.
 - **met** — First inspect current code, merged work and repository instructions.
   Reuse existing mechanisms — evidence: the adaptive arms reuse
   `computeAdaptivePopulationSize` (`src/NEAT/AdaptivePopulationSizer.ts`) and
@@ -104,15 +133,16 @@ versus durable lineage contribution, whose paper the mirrors did hold).
   success/failure criteria. Identify code/model/data versions; separate
   calibration from untouched validation and count all preparation/search costs —
   evidence: `settings`, `criteria`, `validationSeeds` and `preparation` in
-  `docs/evidence/differential-weight-4156.json` — reviewer: met — reason: the
-  pilot's and first full run's seeds and records were never written down, so
-  their costs are bounds, not measurements. "Count all" is therefore not fully
-  met, and those records cannot be recovered.
+  `docs/evidence/differential-weight-4156.json`; § Preparation and search cost —
+  reviewer: partial — reason: the pilot and first full run are now counted
+  exactly. But smoke runs from the 2026-11-16-onward sessions cannot be audited,
+  and the reported run's `codeVersion` is `d85139e6+uncommitted-review-fix`, not
+  a clean commit.
 - **met** — Provide deterministic positive/negative correctness tests for new
   behaviour and pass the repository's normal quality checks. Research runs are
   separate from routine feature CI — evidence:
-  `test/scripts/DifferentialWeightStudy.ts`; `./quality.sh` passed on this head
-  (see Test Plan) — reviewer: met
+  `test/scripts/DifferentialWeightStudy.ts`; `./quality.sh` passed on 11588454,
+  and the worker re-runs it on this head (see Test Plan) — reviewer: met
 - **met** — Deliver a reproducible command/manifest and machine-readable results
   with paired distributions, uncertainty, failures and actual coverage —
   evidence: `deno task differential-weight-study` and
@@ -144,17 +174,24 @@ versus durable lineage contribution, whose paper the mirrors did hold).
 
 ## Test Plan
 
-- No tests were added or changed. The diff touches two docs files.
+- No tests were added or changed. The replay is the evidence for the new
+  figures, and it rests on the existing test
+  `runArm is deterministic per seed and restores the caller's generator`.
+- `deno test -A --parallel test/scripts/DifferentialWeightStudy.ts test/docs/*.ts`
+  on 7be4d7c7: 354 passed, 0 failed. `deno lint`, `deno check` and `deno fmt` on
+  the changed scripts were clean, and cspell found 0 issues in the page and the
+  CLI.
 - `deno fmt --check docs/evidence/differential-weight-4156.md` passed, and
   cspell with `docs/cspell.json` on that file found 0 issues.
   `deno test -A --parallel test/docs/*.ts` passed: 318 passed, 0 failed.
 - `./quality.sh --rust-scorer-bin=<rust_scorer built from NEAT-AI-scorer>` on
-  head 11588454 exited 0: 10577 passed, 0 failed, 50 ignored (12m17s).
+  head 11588454 exited 0: 10577 passed, 0 failed, 50 ignored (12m17s). It has
+  not been run on 7be4d7c7 in this session; the worker re-runs it.
 - Tests removed: none. Assertions removed: none.
 
 Not done: the paper's full text is unread, and the excerpt facts are unchecked
-against it. The pilot's preparation cost is still a bound. Remaining risk: if
-the full text differs from the excerpts, the "How the harness maps" list may
-need revising.
+against it. Smoke runs from the later sessions cannot be audited. Remaining
+risk: if the full text differs from the excerpts, the "How the harness maps"
+list may need revising.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
