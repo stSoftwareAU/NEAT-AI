@@ -58,6 +58,14 @@ the paper" bullet in "What this does not say" now reflects the read text. The
 Issue #4163 entry in `CHANGELOG.md` gains one sentence, and `docs/cspell.json`
 gains `Brax`, `Curosr`, `semanticscholar` and `zhangcursor`.
 
+The rewritten sections follow `docs/DOC_STYLE.md` rule 1. Each acronym is
+expanded and linked where the page first uses it: multilayer perceptron (MLP),
+exponentially weighted moving average (EWMA), area under the receiver operating
+characteristic curve (AUC) and quality-diversity (QD, linked to
+`docs/comparison/TRAINING_PARADIGMS.md#-quality-diversity-qd`). The "mean
+squared error (MSE, glossary)" expansion moved up to MSE's first use, the
+harness-comparison table. The later Controls bullet now says "calibration MSE".
+
 Docs sweep:
 
 - I grepped the evidence page, `README.md`, `docs/README.md` and `CHANGELOG.md`
@@ -77,6 +85,9 @@ asks for undone, so there are no `missing` entries.
 - `deno run --no-config --no-lock -A npm:cspell@8 lint --no-progress -c docs/cspell.json docs/evidence/admission-persistence-4163.md CHANGELOG.md`
   reported `Files checked: 2, Issues found: 0 in 0 files.`
 - `deno fmt --check` on the three edited files passed.
+- After the acronym fix, `deno fmt --check` and cspell on the evidence page
+  passed, and `deno test -A --parallel test/docs/*.ts` reported
+  `ok | 318 passed | 0 failed`.
 - `./quality.sh < /dev/null` stopped at once with
   `Native rust_scorer is required (quality.sh default) but was not found`. This
   host has no `rust_scorer` binary and no `../NEAT-AI-scorer` checkout.

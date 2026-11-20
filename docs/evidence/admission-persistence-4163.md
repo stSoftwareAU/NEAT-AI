@@ -60,8 +60,9 @@ Everything below is what the text states.
     −std(angles).
   - Omnidirectional Ant (Brax): final-position descriptor in [−30, 30]², forward
     reward removed, horizon 1000.
-  - Walker 2D (Brax): MLP [16] policy, feet-contact descriptor, standard reward,
-    horizon 1000.
+  - Walker 2D (Brax): multilayer perceptron
+    ([MLP](https://en.wikipedia.org/wiki/Multilayer_perceptron)) [16] policy,
+    feet-contact descriptor, standard reward, horizon 1000.
 - **Outcomes.** Entry is an offspring kept in the archive immediately after
   creation. Persistence is still being in the archive H generations later
   (individual survival). H = 1000 is the main result; H ∈ {100, 1000} is checked
@@ -70,19 +71,21 @@ Everything below is what the text states.
 - **Signals.** Twelve, in five groups (Table 1). Ancestry entropy is undefined
   at capacity 4096, so that condition has 11.
 
-  | Group              | Cold-start | Signals                                                                       |
-  | ------------------ | ---------- | ----------------------------------------------------------------------------- |
-  | Lineage at birth   | yes        | depth; ancestral-fitness EWMA; ancestry entropy; competition fitness at birth |
-  | Current state      | yes        | age                                                                           |
-  | Archive state      | yes        | parent fitness; current competition fitness                                   |
-  | Mating event       | no         | \|λ\|; compositional residual; child fitness                                  |
-  | Offspring feedback | no         | curiosity; offspring survival rate                                            |
+  | Group              | Cold-start | Signals                                                                                                                                                                      |
+  | ------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | Lineage at birth   | yes        | depth; ancestral-fitness exponentially weighted moving average ([EWMA](https://en.wikipedia.org/wiki/Exponential_smoothing)); ancestry entropy; competition fitness at birth |
+  | Current state      | yes        | age                                                                                                                                                                          |
+  | Archive state      | yes        | parent fitness; current competition fitness                                                                                                                                  |
+  | Mating event       | no         | \|λ\|; compositional residual; child fitness                                                                                                                                 |
+  | Offspring feedback | no         | curiosity; offspring survival rate                                                                                                                                           |
 
   Lineage depth is the number of reproduction steps from the founder along the
   base-parent chain.
-- **Statistic.** AUC = Pr(g⁺ > g⁻) + ½Pr(g⁺ = g⁻) over parent signal values, and
-  Δ = |AUC − 0.5|. There is one AUC per signal per run, and runs (not the ≈2.5 ×
-  10⁷ correlated pairs) are the unit of analysis. All AUCs are measured under
+- **Statistic.** Area under the receiver operating characteristic curve
+  ([AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve)),
+  AUC = Pr(g⁺ > g⁻) + ½Pr(g⁺ = g⁻) over parent signal values, and Δ = |AUC −
+  0.5|. There is one AUC per signal per run, and runs (not the ≈2.5 × 10⁷
+  correlated pairs) are the unit of analysis. All AUCs are measured under
   uniform selection.
 - **Intervention.** Rank-softmax P(i) ∝ exp(rank(g_i)/τ) over occupied slots,
   with a most-to-least ratio of exp(1/τ) and tie-averaged ranks.
@@ -92,8 +95,9 @@ Everything below is what the text states.
   Omnidirectional Ant at 1024, 10,000 generations, ±depth with τ ∈ {0.5, 2.0},
   10 seeds. The 1024 fitness-sweep row reads "r ∈ {0.1, 0.5}" in the conversion;
   it is read here as τ, as in the 4096 row.
-- **Outcome metrics.** Projected QD-score, projected coverage, mean novelty and
-  maximum fitness.
+- **Outcome metrics.** Projected quality-diversity (QD,
+  [training paradigms](../comparison/TRAINING_PARADIGMS.md#-quality-diversity-qd))
+  score (QD-score), projected coverage, mean novelty and maximum fitness.
 
 ### The paper's findings, pinned
 
@@ -125,7 +129,7 @@ method was read.
 
 | Aspect         | Paper                                                                                                             | Harness                                                                                                                                                                                           |
 | -------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Search         | DNS archive with global re-ranking, on robotics QD tasks                                                          | Mutation-only mu + lambda truncation by train MSE on `synthetic-quadrant-v1` (N = 12, lambda = 12, 1100 generations)                                                                              |
+| Search         | DNS archive with global re-ranking, on robotics QD tasks                                                          | Mutation-only mu + lambda truncation by train mean squared error (MSE, [glossary](../GLOSSARY.md#-acronyms)) on `synthetic-quadrant-v1` (N = 12, lambda = 12, 1100 generations)                   |
 | Persistence    | Individual survival only                                                                                          | Individual survival and descendant contribution                                                                                                                                                   |
 | Analysis       | Per-run AUC of parent signal values                                                                               | Admission and persistence rates by rank                                                                                                                                                           |
 | Signal         | Twelve signals, including lineage depth as a selection signal                                                     | Calibration MSE rank, nearest to the paper's archive-state "parent fitness" baseline; lineage depth is not used as a selection signal                                                             |
@@ -182,9 +186,8 @@ provenance capture timing, command-line argument validation and comments in
 numbers.
 
 - **Controls:** uniform parent selection is the control. The `biased` arm is the
-  treatment: it weights parents by the rank of their calibration mean squared
-  error (MSE, [glossary](../GLOSSARY.md#-acronyms)) only, with best-to-worst
-  odds capped at 2:1.
+  treatment: it weights parents by the rank of their calibration MSE only, with
+  best-to-worst odds capped at 2:1.
 - **Seeds and sample size:** 20 seeds, numbered 4163 to 4182, each run in both
   arms with the same starting population, so the comparison is paired.
 - **Compute limits:** 1100 generations per run. Each arm is charged 52,848,000
