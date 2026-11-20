@@ -389,8 +389,14 @@ secondary sources through github.com: a copy of the abstract
 at equal evaluations and at equal wall-clock can rank solvers differently. That
 is why this study now reports both. Neither source gives section 3. Direct
 fetches of arxiv.org (abstract and PDF) were refused by the container proxy
-(`CONNECT tunnel failed, response 403`), so the full text was **not** read. The
-manifest records `paper.methodRead: "partial"`.
+(`CONNECT tunnel failed, response 403`), so the full text was **not** read. A
+third attempt on 2026-11-20 was refused the same way (curl:
+`CONNECT tunnel failed, response 403`; WebFetch:
+`proxy refused the connection`). A GitHub code search for `2610.26202` found
+only the two secondary sources above. Search-engine excerpts retrieved that day
+added the two facts marked (2026-11-20) below; they are second-hand and
+unchecked against the full text. The committed manifest, generated before that
+attempt, records `paper.methodRead: "partial"`.
 
 **Pinned.**
 
@@ -407,6 +413,11 @@ manifest records `paper.methodRead: "partial"`.
   equal wall-clock, 15 minutes per run).
 - Ablations attribute the gain to the injection and find that local search pays
   off only when its result re-enters the population.
+- MERLIN is described in section 3.1, "CMA-ES with interleaved
+  differential-evolution injection" (2026-11-20).
+- In the paper's Grasshopper (parametric design tool) runs, the L-SHADE variants
+  ran with a constant population, and MERLIN without its Solis–Wets step. So the
+  delayed contraction was not used in those Grasshopper runs (2026-11-20).
 
 **Not pinned.** The delay formula and delay cap, the DE variant, F and CR, the
 injection fraction, and the Solis–Wets parameters.
@@ -416,7 +427,8 @@ injection fraction, and the Solis–Wets parameters.
 - DE injection maps to the issue's 20% DE weight-only slots (DE/rand/1/bin, F =
   0.5, CR = 0.9, this repository's choices).
 - Delayed contraction maps to both the existing adaptive rule and the paper's
-  delayed LPSR. The 50% delay is this study's choice.
+  delayed LPSR. The 50% delay is this study's choice. The paper's Grasshopper
+  runs used no contraction (above), so they say nothing about this arm.
 - Re-entry: `@reenter` puts the refined descendant into the next population in
   place of one ordinary child. This is close to the paper's "replaces the worst
   member", since the population size is fixed.
