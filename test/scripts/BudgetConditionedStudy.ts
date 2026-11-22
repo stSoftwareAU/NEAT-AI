@@ -310,14 +310,17 @@ Deno.test("the manifest pins the source method it maps onto", () => {
   assert(paper.elements.some((e) => e.fidelity === "departs"));
 });
 
-Deno.test("a manifest that did not read the full text names what it could not pin", () => {
+Deno.test("the manifest records a full reading and names what the paper leaves unstated", () => {
   const study = runStudy({ seedCount: 1, baseSeed: 100, settings: SMALL });
   const paper = study.manifest.paper;
-  // The method was pinned from excerpts, not the whole paper: the manifest
-  // must say so rather than imply a complete reading.
-  assertEquals(paper.fullTextRead, false);
+  // The full text was read (2026-11-22). What remains unpinned is what the
+  // paper itself does not state, and the manifest says so rather than
+  // implying every setting is known.
+  assertEquals(paper.fullTextRead, true);
   assert(paper.unpinned.length > 0);
-  for (const gap of paper.unpinned) assert(gap.length > 0);
+  for (const gap of paper.unpinned) {
+    assert(gap.startsWith("not stated in the paper"), gap);
+  }
   // Every pinned element is distinct, so no detail is pinned twice with two
   // different readings.
   const read = paper.elements.map((e) => e.paper);

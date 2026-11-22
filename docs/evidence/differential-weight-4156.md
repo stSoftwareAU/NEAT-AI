@@ -1,20 +1,23 @@
 # Differential-weight offspring and delayed contraction (Issue #4156)
 
 **Finding: negative on fresh validation seeds, mixed at equal wall-clock in one
-run but not replicated, and the paper's method is only partly pinned.** At equal
-records no arm meets the benefit criterion and none is harm. On a synthetic
-objective, differential-weight (DE) offspring were not better on held-out error.
-Delayed population contraction, by the existing adaptive rule, was about
-neutral. The paper's own mechanism, a delayed linear population-size reduction
-(LPSR, section 3.3 of [arXiv 2610.26202](https://arxiv.org/abs/2610.26202)), was
-tested as well and was not better here either: it also cut behavioural diversity
-below the 0.8 floor. Do not read this as evidence for any of these ideas; do not
-read it as evidence against them at GRQ scale either (see [Limits](#limits)).
-The paper's full text could not be fetched, so only part of its method is pinned
-(see [Paper (partly pinned)](#paper-partly-pinned)). When wall-clock, not
-records, is the budget held equal, the reported run has one contrast that is
-harm by the predeclared criteria (`contraction@reenter`, a difference of
-+0.0003255), and `lpsr@reenter` leans better but fails the diversity floor (see
+run but not replicated, with the paper's method now pinned from its full text.**
+At equal records no arm meets the benefit criterion and none is harm. On a
+synthetic objective, differential-weight (DE) offspring were not better on
+held-out error. Delayed population contraction, by the existing adaptive rule,
+was about neutral. The paper's own mechanism, a delayed linear population-size
+reduction (LPSR, section 3.3 of
+[arXiv 2610.26202](https://arxiv.org/abs/2610.26202)), was tested as well and
+was not better here either: it also cut behavioural diversity below the 0.8
+floor. Do not read this as evidence for any of these ideas; do not read it as
+evidence against them at GRQ scale either (see [Limits](#limits)). The paper's
+full text was read on 2026-11-22 (see [Paper (pinned)](#paper-pinned)): its
+delayed reduction needs the evaluation budget before the run, so it does not fit
+production's wall-clock-stopped runs, and this study's 50% delay starts earlier
+than the paper's δ = 0.76. When wall-clock, not records, is the budget held
+equal, the reported run has one contrast that is harm by the predeclared
+criteria (`contraction@reenter`, a difference of +0.0003255), and `lpsr@reenter`
+leans better but fails the diversity floor (see
 [Equal wall-clock](#equal-wall-clock)). Neither replicated when the study was
 re-run at a clean commit on the same seeds: there, no contrast is harm or
 benefit (see [Versions](#versions)).
@@ -79,8 +82,9 @@ separately so that neither stands in for the other.
   (1 − progress)) + 4, where progress runs from 0 at the delay to 1 at budget
   exhaustion. It falls linearly to N_min = 4 (`lpsrMinPopulationSize`, L-SHADE's
   N_min per Tanabe & Fukunaga 2014) and never grows. Every LPSR run therefore
-  ends at size 4. The 50% delay is this study's choice, because the paper's
-  delay cap was not obtained.
+  ends at size 4. The 50% delay is this study's choice, fixed before the paper's
+  full text was read; the paper's δ is 0.76 at 1,200 evaluations and larger at
+  smaller budgets (see [Paper (pinned)](#paper-pinned)).
 - **Local refinement** is a stand-in for production backprop: 4 Gaussian weight
   perturbations of the best creature each generation (σ = 0.1), charged in every
   arm. `@reenter` arms let the improved descendant join the population, as
@@ -368,8 +372,9 @@ scored members.
   the species count to about 0.65–0.69. `lpsr@isolated` also has more spread
   across seeds: SD ratio 1.167, CI [1.012, 1.445], which excludes 1. This does
   not reproduce the paper's improvement of three adaptive DE variants in 40 of
-  51 comparisons. The caveats are real: a different problem class, a delay cap
-  that differs from the paper's, and a harness that is not an L-SHADE.
+  51 comparisons. The caveats are real: a different problem class, a delay that
+  starts earlier than the paper's (0.5 against δ = 0.76), and a harness that is
+  not an L-SHADE.
 - **Re-entry versus isolation is not distinguishable on held-out MSE.** The
   difference is +0.002116 for isolated, CI [−0.004805, +0.008168]. Isolation
   does reach the time-to-target threshold on fewer seeds (13 against 18), the
@@ -460,118 +465,112 @@ seeing the 24156–24185 results.
 The calibration threshold (0.01406) was set on 94156–94160 and is unchanged by
 the time-to-target fix: that fix changes what is measured, not any trajectory.
 
-## Paper (partly pinned)
+## Paper (pinned)
 
 The paper is arXiv 2610.26202, "Hybrid metaheuristics for architectural design
 optimization under small evaluation and wall-clock budgets", Luciano Ambrosini,
 v1 submitted 2026-10-19, 39 pages.
 
-**What was read.** Search-engine excerpts of the abstract page and of the PDF
-text, retrieved 2026-11-16. A second attempt the same day reached two more
-secondary sources through github.com: a copy of the abstract
-(`vip3001003/nofx-papers`), and a third party's reading note
-(`Lee2817794840/feishu-wenxian`). The note covers only the abstract, sections
-4.5, 5.5 and 7.5 and table 6. From it: the shell runs give each solver 5 runs of
-15 minutes, some external tools ran to a preset evaluation count, and the
-1,200-evaluation cap does not apply to the shell. The paper warns that comparing
-at equal evaluations and at equal wall-clock can rank solvers differently. That
-is why this study now reports both. Neither source gives section 3. Direct
-fetches of arxiv.org (abstract and PDF) were refused by the container proxy
-(`CONNECT tunnel failed, response 403`), so the full text was **not** read. A
-third attempt on 2026-11-20 was refused the same way (curl:
-`CONNECT tunnel failed, response 403`; WebFetch:
-`proxy refused the connection`). A GitHub code search for `2610.26202` found
-only the two secondary sources above. Search-engine excerpts retrieved that day
-added the facts listed under "Reported in search excerpts, unverified" below;
-they are second-hand and unchecked against the full text. A fourth attempt later
-that day was refused the same way: `curl` to arxiv.org, export.arxiv.org,
-Hugging Face, alphaXiv, scholar.archive.org and a reader proxy returned no HTTP
-status, and WebFetch again returned `proxy refused the connection`. GitHub code
-searches for the title, for `2610.26202` and for phrases from the abstract found
-no full-text copy. The author's GitHub account (`lucianoambrosini`) was also
-checked: no file path in its `Ambrosinus-Toolkit`, `AmbrosinusDEV`,
-`Computational-Design-Manifesto` or profile repositories names MERLIN, RAPTOR,
-L-SHADE or Solis–Wets, and a code search of the account for RAPTOR, Solis and
-the arXiv id returned nothing. A fifth attempt on 2026-11-20 at about 07:20 UTC
-was refused the same way: `curl` to arxiv.org (abstract and PDF),
-export.arxiv.org and Semantic Scholar returned no HTTP status, and WebFetch to
-`arxiv.org/html/2610.26202v1` returned `proxy refused the connection`. Two more
-web searches, for the delayed population-size reduction formula and for MERLIN's
-DE and Solis–Wets settings, returned no new fact about this paper. One result
-said another paper by the same author (arXiv 2610.22397) uses DE/rand/1/bin with
-self-adapted F and CR; that is a different paper and pins nothing here. A sixth
-attempt on 2026-11-20 at about 08:10 UTC was refused the same way: WebFetch to
-`arxiv.org/pdf/2610.26202v1` returned `proxy refused the connection`, and `curl`
-to OpenAlex, the Semantic Scholar API, alphaXiv and a reader proxy returned no
-HTTP status. Only GitHub answered, and code searches there for `L-SHADE-SW` and
-for Solis–Wets with RAPTOR found no copy of the paper outside this repository.
-One web search returned new excerpts of section 3.3, listed below as unverified.
-The committed manifest, generated before these attempts, records
-`paper.methodRead: "partial"`.
+**What was read.** The full PDF text (<https://arxiv.org/pdf/2610.26202v1>), on
+2026-11-22. Six earlier attempts, from 2026-11-16 to 2026-11-20, were refused by
+the container proxy, so PR #4165 and its follow-ups worked from search-engine
+excerpts and two secondary sources on github.com (an abstract copy and a third
+party's reading note). Everything those excerpts reported is confirmed by the
+full text, including δ = 0.76 at 1,200 evaluations. The committed manifest now
+records `paper.methodRead: "full"`. Its `pinned` and `notPinned` lists were
+refreshed from the full text, and nothing else in the artefact changed: no run
+was repeated, so every result above is unchanged.
 
 **Pinned.**
 
-- MERLIN is CMA-ES whose sampling is enriched with DE trial vectors added as
-  extra offspring; removing them leaves CMA-ES.
-- RAPTOR is a particle swarm with success-history parameter adaptation, DE
-  injection and local refinement.
-- L-SHADE-SW is L-SHADE with interleaved Solis–Wets local search whose result
-  replaces the worst population member.
-- A budget-aware delay of L-SHADE's linear population-size reduction (section
-  3.3, figure 2) improves three adaptive DE variants in 40 of 51 comparisons
-  with no loss.
-- A hard cap of 1,200 evaluations, all counted (the finite-element problem is at
-  equal wall-clock, 15 minutes per run).
-- Ablations attribute the gain to the injection and find that local search pays
-  off only when its result re-enters the population.
+- **MERLIN** is CMA-ES whose sampling is enriched with DE trial vectors added as
+  extra offspring. λ = N = 20 (4 + ⌊3 ln D⌋ < N at these dimensions), CMA-ES
+  defaults otherwise, initial mean at the box centre, σ₀ = 0.1 in normalised
+  coordinates (0.3 for the plain CMA-ES baseline). Each generation it adds K =
+  ρλ DE trial vectors with **ρ = 0.2** (K = 4), built by standard DE mutation
+  and crossover with **self-adapted** control parameters (Brest et al. 2006)
+  from an archive of good solutions. From a fixed generation a Solis–Wets step
+  around the incumbent costs one or two evaluations per generation; an accepted
+  point replaces the incumbent but not the archive or the CMA-ES update.
+- **RAPTOR** is a global-best particle swarm, N = 20. Inertia and acceleration
+  adapt per particle from a SHADE-style success history; particles whose
+  personal best stagnates are relocated by Lévy steps (Mantegna 1994); after
+  each move the worst particles are replaced by DE trial vectors from an
+  archive; a Solis–Wets step around the global best is written back into the
+  swarm. Velocity clamp 0.5 of the variable range (0.2 and 1.0 also tested).
+- **L-SHADE-SW** is L-SHADE (Tanabe & Fukunaga 2014) with N_init = 20 and all
+  other components unchanged, plus one Solis–Wets step around the elite per
+  generation from a fixed generation, whose accepted point replaces the worst
+  member. It uses the section 3.3 delay.
+- **Section 3.3, the delayed reduction.** The onset of L-SHADE's linear
+  population-size reduction is delayed by a fraction δ of the evaluation budget.
+  δ is zero above a reference budget and grows as the budget shrinks. It is
+  capped so that some reduction still happens at the end of a short run, and the
+  reduction is then compressed linearly into the rest of the budget. At FE_max =
+  1,200 with N_init = 20, **δ = 0.76** (the text also says the population keeps
+  its 20 members for "three quarters of the run"). It adds no evaluations or
+  adaptive parameters, reduces to standard LPSR for large budgets, and is
+  applied identically to L-SHADE, L-SHADE-SW and L-SHADE-RSP. It **needs FE_max
+  before the run starts, so the paper says it cannot be used in
+  wall-clock-stopped runs.**
+- **40 of 51** (section 6.3) is 3 L-SHADE variants × 17 problems (7
+  shifted-rotated functions at D = 10, 7 at D = 30, 3 building objectives),
+  delay on versus off, two-sided Mann–Whitney at α = 0.05: 40 wins, 11 ties, 0
+  losses. Section 4.7 says the ablations carry no multiple-comparison
+  correction, and the 51 comparisons are not independent.
+- **Budget.** A hard cap of 1,200 evaluations, injected and Solis–Wets
+  evaluations included; a generation that would exceed it stops mid-generation.
+  The nominal horizon is ⌊1,200 / N⌋ = 60 generations at N = 20, over 30 seeds
+  (5000 + 137r). The finite-element shell runs at equal wall-clock instead (15
+  minutes per run).
+- **Ablations** attribute the gain to the DE injection and find that local
+  search pays off only when its result re-enters the population.
 
-**Reported in search excerpts, unverified (2026-11-20).** These are not counted
-as pinned and are not in the committed manifest's `paper.pinned` list.
+**Not stated in the paper.** The delay formula, the reference budget and the
+delay cap (section 3.3 gives the schedule in words only); N_min for the delayed
+reduction; L-SHADE's H, archive rate, p-best fraction and initial memories;
+MERLIN's DE strategy and F/CR beyond self-adaptation, its archive size and the
+generation Solis–Wets starts at; and RAPTOR's initial coefficients, memory size,
+stagnation threshold, Lévy exponent, replacement count and DE settings. The
+author offers further implementation details on request; none were obtained.
 
-- Section 3.1 is titled "CMA-ES with interleaved differential-evolution
-  injection", and the paper's method table lists MERLIN as "CMA-ES + DE
-  injection (+ Solis–Wets)". An excerpt says removing the Solis–Wets step does
-  not hurt MERLIN anywhere.
-- In the paper's Grasshopper (parametric design tool) runs, the L-SHADE variants
-  ran with a constant population, and MERLIN without its Solis–Wets step. Which
-  problems the 40-of-51 delayed-LPSR comparisons cover is not pinned.
-- Section 3.3 is titled "L-SHADE-SW and a budget-aware population-size
-  schedule"; an excerpt says the L-SHADE variants can delay the reduction when
-  the budget is known at the start.
-- Section 3.3, from excerpts retrieved in the sixth attempt: the delay is zero
-  for budgets above a reference budget and grows as the budget shrinks towards
-  that of a short run. After the delay, the reduction is compressed linearly
-  into the rest of the budget. At a budget of 1,200 evaluations the delay is δ =
-  0.76, and the population keeps its 20 members over that share of the budget.
-  The reference budget, the formula for δ and N_min are cut off.
-- In RAPTOR, after each move the worst particles are replaced by DE offspring.
-- The paper's future work says MERLIN's injection fraction should decrease with
-  the dimension. An excerpt opens "The injection fraction in MERLIN" but is cut
-  off before any value, so the fraction itself is still not pinned.
+**How the harness maps, now that the paper is read.**
 
-**Not pinned.** The delay formula and delay cap, the DE variant, F and CR, the
-injection fraction, and the Solis–Wets parameters. If the unverified δ = 0.76
-holds, this study's 50% delay comes sooner than the paper's would, since this
-study's budget (about 600 evaluations) is half the paper's 1,200 and a smaller
-budget gets a longer delay, so the LPSR arms test an earlier reduction than the
-paper's.
+| Element       | Paper                                                 | This study                                                    | Fidelity |
+| ------------- | ----------------------------------------------------- | ------------------------------------------------------------- | -------- |
+| Optimiser     | CMA-ES (MERLIN), PSO (RAPTOR), L-SHADE                | NEAT-AI GA-style breeding with speciation                     | departs  |
+| DE share      | ρ = 0.2 of λ per generation                           | 20% of offspring slots                                        | same     |
+| DE parameters | self-adapted (Brest et al. 2006)                      | DE/rand/1/bin, fixed F = 0.5, CR = 0.9                        | departs  |
+| Delay δ       | 0.76 at 1,200 evaluations, larger for smaller budgets | 0.5 of the record budget (about 600 evaluations)              | departs  |
+| N_min         | not stated                                            | 4 (L-SHADE's)                                                 | analogue |
+| Local search  | Solis–Wets around the incumbent or elite              | 4 Gaussian perturbations of the best creature (σ = 0.1)       | analogue |
+| Re-entry      | accepted point replaces the worst member (L-SHADE-SW) | `@reenter` puts the descendant in place of one ordinary child | analogue |
+| Budget        | 1,200 evaluations, all counted                        | 240,000 records ≈ 600 evaluations, all counted                | analogue |
 
-**How the harness maps.**
+Two of those gaps bear on the LPSR result. The study's 50% delay starts reducing
+well before the paper's: at about half the paper's budget the paper's δ would be
+at least 0.76, since δ grows as the budget shrinks. So the LPSR arms test an
+**earlier and longer** reduction than the paper's, which is consistent with the
+diversity loss seen here. And the DE arms use fixed F and CR where the paper
+self-adapts them.
 
-- DE injection maps to the issue's 20% DE weight-only slots (DE/rand/1/bin, F =
-  0.5, CR = 0.9, this repository's choices).
-- Delayed contraction maps to both the existing adaptive rule and the paper's
-  delayed LPSR. The 50% delay is this study's choice.
-- Re-entry: `@reenter` puts the refined descendant into the next population in
-  place of one ordinary child. This is close to the paper's "replaces the worst
-  member", since the population size is fixed.
-- The refinement is Gaussian perturbation, not Solis–Wets.
-- Budget scale: 240,000 records at 400 per evaluation is about 600 evaluations
-  per run, the same order as the paper's 1,200.
+**What this means for NEAT-AI.** The paper's own conclusion is that solvers
+should be chosen by problem structure and stopping time. Two facts from the full
+text limit transfer to production:
 
-The full text still needs reading to pin the delay cap, F and CR, and the
-injection fraction. The issue's paper-method criterion is therefore only partly
-met, and this work does **not** close the issue.
+1. **Production runs are wall-clock-stopped.** GRQ stops evolution on
+   `--timeout` minutes, not an evaluation count, and the paper says its delayed
+   schedule cannot be used without FE_max before the run. A production version
+   would need a wall-clock analogue that the paper does not provide or test.
+2. **The DE gain is measured inside CMA-ES and PSO,** where the injected vectors
+   add diversity to a sampling distribution. NEAT-AI's breeding already mixes
+   homologous genes through crossover, which is the role DE plays there; that is
+   consistent with DE adding nothing here.
+
+A faithful retest would use δ = 0.76 (or larger) and self-adapted F/CR. It is
+not pursued: the study found no benefit at the earlier delay, and the schedule
+cannot run in production's wall-clock-stopped runs as the paper defines it. This
+closes the issue's paper-method criterion; the finding stays negative.
 
 ## Limits
 
@@ -580,10 +579,10 @@ met, and this work does **not** close the issue.
 - Local refinement is a perturbation stand-in, not backprop.
 - The contraction arms use deviated diversity thresholds (above), so they test
   the policy's shape, not production's tuning.
-- The paper (<https://arxiv.org/abs/2610.26202>) is only partly pinned and its
-  full text was not read (see [Paper (partly pinned)](#paper-partly-pinned)).
-  The LPSR delay cap is this study's choice, and DE variant, F, CR and injection
-  fraction are this repository's reading of the issue.
+- The paper (<https://arxiv.org/abs/2610.26202>) was read in full only after the
+  runs (see [Paper (pinned)](#paper-pinned)). The LPSR delay (50%) is earlier
+  than the paper's δ = 0.76, and DE uses fixed F and CR where the paper
+  self-adapts them. The paper states no delay formula, cap or N_min.
 - The harness is not CMA-ES, PSO or L-SHADE, so DE injection is tested in
   NEAT-AI's GA-style breeding, not in the paper's optimisers.
 - Seeds and records of the pilot and the first full run were recovered from a

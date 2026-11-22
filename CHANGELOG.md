@@ -34,6 +34,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   few to conclude from; 14 approximately matched seeds and all 20 seeds agree;
   six seeds are listed as uncompletable. Nothing under `src/` changed. See
   [`docs/evidence/protected-refinement-4158.md`](docs/evidence/protected-refinement-4158.md).
+- **Issues #4161 and #4156:** both research studies now pin their source papers
+  from the full text (read 2026-11-22), and both issues are closed with negative
+  findings. For #4161 (arXiv 2611.06895) the paper's generalisation comes from
+  an indirect encoding (a CPPN computing weights from neuron coordinates and
+  age), which NEAT-AI's direct encoding cannot interpolate. For #4156 (arXiv
+  2610.26202) the delayed population-size reduction needs the evaluation budget
+  before the run, which the paper says rules out wall-clock-stopped runs such as
+  GRQ's; the study's 50% delay was also earlier than the paper's δ = 0.76.
+  Manifests and evidence pages are refreshed in place; no result changes and
+  nothing under `src/` changes.
 - **Issue #4161:** the budget-conditioned study gains a `budgetInput` arm in
   which the budget is an input to expression (per-synapse priority and weight
   linear in the budget), the paper's key ingredient in its simplest form. With
@@ -53,9 +63,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   predeclared criteria, and the delayed LPSR with re-entry leans better but
   fails the diversity floor. A deadline that expires during refinement scores no
   further candidate, and a run with no scored candidate is recorded as censored
-  rather than as a completed sample. The paper's method was pinned only from
-  excerpts (the full text could not be fetched), so the issue stays open.
-  Nothing under `src/` imports the harness. See
+  rather than as a completed sample. The paper's method was at first pinned only
+  from excerpts; see the full-text entry above. Nothing under `src/` imports the
+  harness. See
   [`docs/evidence/differential-weight-4156.md`](docs/evidence/differential-weight-4156.md).
 - **Issue #4096:** the event-loop watchdog breach line now ends with
   `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>` (V8 heap used at the last

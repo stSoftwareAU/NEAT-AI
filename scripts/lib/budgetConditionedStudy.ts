@@ -57,7 +57,8 @@
  * an evolved priority gene. The `budgetInput` arm takes the budget as a linear
  * input per synapse (priority and weight each move linearly with the budget),
  * which is closer to the paper but still not its CPPN over coordinates. The
- * paper's excerpts were read on 2026-11-15, 2026-11-16 and 2026-11-20.
+ * paper was read from excerpts on 2026-11-15, 2026-11-16 and 2026-11-20, and
+ * in full on 2026-11-22.
  *
  * @module budgetConditionedStudy
  */
@@ -795,12 +796,10 @@ export interface PinnedMethodElement {
  * budget as a linear input per synapse, which is closer to the paper's
  * generator but still not its CPPN.
  *
- * The paper was read on 2026-11-15, 2026-11-16 and 2026-11-20 through
- * search-indexed excerpts of its abstract page and its HTML full text. Direct
- * fetches of arxiv.org, its mirrors and the PMC copy were refused by this
- * host's proxy, so
- * `fullTextRead` is `false` and the details the excerpts do not give are
- * listed in `unpinned`, not guessed.
+ * The paper was first read on 2026-11-15, 2026-11-16 and 2026-11-20 through
+ * search-indexed excerpts, while direct fetches were refused by the host's
+ * proxy. Its full PDF text was read on 2026-11-22, so `fullTextRead` is `true`;
+ * `unpinned` now lists only what the paper itself does not state.
  */
 export const SOURCE_METHOD = Object.freeze({
   arxivId: "2611.06895",
@@ -811,10 +810,11 @@ export const SOURCE_METHOD = Object.freeze({
     "Learning Time-Varying Connectomes for Stable Behavior Across Development",
   authors: ["Christof Fehrman", "Jacob J. Morra", "Eva A. Naumann"],
   categories: ["q-bio.NC", "cs.NE"],
-  readOn: "2026-11-15, 2026-11-16 and 2026-11-20",
+  readOn:
+    "2026-11-15, 2026-11-16 and 2026-11-20 (excerpts); 2026-11-22 (full text)",
   readVia:
-    "search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895 (Sections 2.2, 3.3, 3.4, 3.5 and 3.6, Tables 1 and 3); direct fetch of arxiv.org, its HTML and PDF, the SciRate, alphaXiv, Hugging Face and Semantic Scholar mirrors, and the PMC (PMC13781166) and Europe PMC copies refused by the host proxy",
-  fullTextRead: false,
+    "the full PDF text, https://arxiv.org/pdf/2611.06895v1, on 2026-11-22; before that, search-indexed excerpts of https://arxiv.org/abs/2611.06895 and https://arxiv.org/html/2611.06895 (Sections 2.2, 3.3, 3.4, 3.5 and 3.6, Tables 1 and 3), while direct fetches of arxiv.org, its mirrors and the PMC copies were refused by the host proxy",
+  fullTextRead: true,
   elements: Object.freeze(
     [
       {
@@ -847,7 +847,7 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
-          "Developmentally aware conditions optimise mean fitness across 3, 5 or 15 evenly spaced developmental snapshots.",
+          "Developmentally aware conditions optimise mean fitness across 3, 5 or 15 evenly spaced developmental snapshots: T = 0, 0.5, 1; T = 0, 0.25, 0.5, 0.75, 1; and T = k/14 for k = 0 to 14 (0, 0.07, 0.14, ..., 0.93, 1).",
         study:
           "The conditioned arm optimises mean calibration MSE across 3 budgets: 25%, 50% and 100% (not evenly spaced).",
         fidelity: "analogue",
@@ -868,14 +868,14 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
-          "Controls: standard HyperNEAT optimised at the initial substrate only (T=0) and 'Reverse' HyperNEAT at the mature substrate only (T=1), with the CPPN time input held at its training value during testing (T=0 and T=1 respectively; five conditions in all). Both baselines fail to generalise to the three unseen developmental times.",
+          "Controls: standard HyperNEAT optimised at the initial substrate only (T=0) and 'Reverse' HyperNEAT at the mature substrate only (T=1), with the CPPN time input held at its training value during testing (T=0 and T=1 respectively; five conditions in all). Both baselines fail to generalise to the three unseen developmental times; the phototaxis results name them as T = 0.2, 0.6 and 0.8, none of which is in any training schedule.",
         study:
           "Controls: independent per-budget searches (including the unseen budgets, which is stronger than single-snapshot training) and a full-size search pruned by frozen-weight magnitude, all at an equal charged-record budget.",
         fidelity: "analogue",
       },
       {
         paper:
-          "Five independent evolutionary runs per condition for each substrate-task pair, populations of 100 genomes evolved for 200 generations. Table 3: add-connection and add-node mutation probabilities 0.10 per offspring, speciation compatibility threshold 1.0.",
+          "Five independent evolutionary runs per condition for each substrate-task pair, populations of 100 genomes evolved for 200 generations. Table 3: initial CPPN hidden activations drawn from Gaussian, sigmoid, tanh, cos, sin, step and ReLU, and a node inserted by add-node starts as identity with zero bias; initial connections sampled with probability 0.70 and enabled with probability 0.80; connection-parameter mutation 0.25 per gene, of which 0.10 resample from N(0, 1) and the rest add N(0, 0.1^2); disable- and enable-connection mutation 0.05 per offspring (at most one each); add-connection and add-node 0.10 per offspring; hidden-activation mutation 0.05 per hidden node; bias mutation 0.05 per non-input node, adding N(0, 0.5^2); crossover 0.40 within species of at least two; a gene disabled in either parent stays disabled with probability 0.75; within-species tournament selection of size 5; global elitism; speciation compatibility threshold 1.0 with excess, disjoint and matching-weight coefficients 1.0, 1.0 and 0.4, normalised by the larger connection-gene count (minimum 1); decoded controller weights bounded to [-1, 1], and Fish outgoing sensory weights to [0, 1].",
         study:
           "20 seeds per arm, stopped by an equal charged-calibration-record budget rather than a generation count; a (μ+λ) search with μ = λ = 10 over a fixed candidate topology, uniform crossover and Gaussian gene mutation (rate 0.2, σ 0.3), no structural mutation and no speciation.",
         fidelity: "departs",
@@ -902,14 +902,14 @@ export const SOURCE_METHOD = Object.freeze({
       },
       {
         paper:
-          "Rewards (Section 3.4): in the optomotor task the target heading is the world direction the stimulus moves in during the block; facing it while commanding forward motion earns positive reward, facing more than 90° away while moving forward earns negative reward, and a zero forward command earns zero whatever the heading. In phototaxis the emitter is placed relative to the agent by shared random draws and the reward depends on the luminance at the agent's centre. Motor limits are a maximum turn rate of 240° and a maximum forward speed of 30 environment units, both per simulation time unit.",
+          "Rewards (Section 3.4): optomotor step reward R = cos(theta - phi) * u_forward, where theta is the heading after the move, phi the world direction the stimulus moves in during the block and u_forward in [0, 1] the forward command, so the reward lies in [-1, 1]; phototaxis step reward R = L(||p - e||), with luminance L(d) = exp(-d^2 / (2 sigma^2)), sigma = 10, peak 1 and ambient 0, so the reward lies in [0, 1]. Each block lasts 60 to 140 steps (6 to 14 time units at dt = 0.1); an optomotor episode has 8 blocks and a phototaxis episode 5; episode fitness is the mean over blocks of each block's mean step reward, so each block counts equally whatever its length. The emitter is placed relative to the agent by shared random draws. Motor limits are a maximum turn rate of 240 degrees and a maximum forward speed of 30 environment units, both per simulation time unit.",
         study:
           "The reward is the negative squared error against a synthetic regression target; there is no heading, luminance or motor command.",
         fidelity: "departs",
       },
       {
         paper:
-          "Testing (Section 3.6): evolved controllers are evaluated without further evolution at 11 equally spaced developmental ages; at each age the controller weights are regenerated from the testing substrate's coordinates with the evolved CPPN parameters kept, and eye geometry, phototaxis sampling and the controller time constant follow their developmental schedules.",
+          "Testing (Section 3.6): evolved controllers are evaluated without further evolution at 11 equally spaced developmental ages, T = 0, 0.1, ..., 1; at each age the controller weights are regenerated from the testing substrate's coordinates with the evolved CPPN parameters kept, and eye geometry, phototaxis sampling and the controller time constant follow their developmental schedules.",
         study:
           "Each searched genome is re-expressed, without further search, at 5 budgets (25%, 37.5%, 50%, 75% and 100%), not at an evenly spaced grid of 11.",
         fidelity: "analogue",
@@ -918,10 +918,9 @@ export const SOURCE_METHOD = Object.freeze({
   ),
   unpinned: Object.freeze(
     [
-      "the rest of Table 3: weight mutation rate and power, survival threshold, elitism, stagnation, and the activation set of hidden CPPN nodes",
-      "the exact equations of Section 3.4: the excerpts give the reward rules and how rewards are averaged, but not the reward magnitudes, the luminance function or the block length",
-      "which ages are the 'three unseen developmental times' the baselines fail at: the excerpts give the 11-age equally spaced test grid, but not which of its ages are highlighted as unseen",
-      "anything else the excerpts do not reach: the full text was never read whole, so this list may be incomplete",
+      "not stated in the paper: a weight-mutation power separate from the N(0, 0.1^2) perturbation, a survival threshold, a numeric elitism count, or any stagnation rule",
+      "not stated in the paper: the total episode length in steps (it follows from 8 or 5 blocks of 60 to 140 steps, but is not given)",
+      "not stated in the paper: which three unseen ages the optomotor figure reports; only the phototaxis results name them (T = 0.2, 0.6 and 0.8)",
     ] as readonly string[],
   ),
 });
