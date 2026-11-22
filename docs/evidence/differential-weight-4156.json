@@ -291,21 +291,27 @@
       "title": "Hybrid metaheuristics for architectural design optimization under small evaluation and wall-clock budgets",
       "author": "Luciano Ambrosini",
       "version": "v1, submitted 2026-10-19",
-      "methodRead": "partial",
-      "sourcesRead": "search-engine excerpts of the abstract page and the PDF text, retrieved 2026-11-16; direct fetches of arxiv.org (abs and pdf) were refused by the container proxy, so the full text was not read",
+      "methodRead": "full",
+      "sourcesRead": "the full PDF text (https://arxiv.org/pdf/2610.26202v1), read 2026-11-22, after search-engine excerpts retrieved 2026-11-16 to 2026-11-20 while direct fetches were refused by the container proxy; the paper gives several settings only in words or not at all, and those are listed in notPinned",
       "pinned": [
         "MERLIN: CMA-ES whose sampling is enriched with differential-evolution trial vectors added as extra offspring; removing them leaves CMA-ES with the same initial step size",
+        "MERLIN settings: lambda = N = 20 (4 + floor(3 ln D) < N at these dimensions), CMA-ES defaults otherwise, initial mean at the box centre, initial step size 0.1 in normalised coordinates (0.3 for the CMA-ES baseline); K = rho * lambda DE trial vectors per generation with rho = 0.2 (K = 4), built by standard DE mutation and crossover with self-adapted control parameters (Brest et al. 2006) from an archive of good solutions; a Solis-Wets step around the incumbent from a fixed generation, costing one or two evaluations per generation, whose accepted point replaces the incumbent but not the archive or the CMA-ES update",
         "RAPTOR: particle swarm with success-history parameter adaptation, differential-evolution injection and local refinement",
+        "RAPTOR settings: N = 20, global-best topology, inertia and acceleration adapted per particle from a SHADE-style success history, Levy relocation (Mantegna 1994) of particles whose personal best stagnates, the worst particles replaced by DE trial vectors from an archive after each move, a Solis-Wets step around the global best written back into the swarm, velocity clamp 0.5 of the variable range (0.2 and 1.0 also tested)",
         "L-SHADE-SW: L-SHADE with an interleaved Solis-Wets local search whose result replaces the worst population member",
+        "L-SHADE-SW settings: L-SHADE (Tanabe and Fukunaga 2014) with N_init = 20 and all other components unchanged; from a fixed generation one Solis-Wets step around the elite per generation; the section 3.3 delay at delta = 0.76",
         "budget-aware delay of L-SHADE linear population-size reduction (section 3.3, figure 2): improves three adaptive DE variants in 40 of 51 comparisons with no loss",
-        "budget: hard cap of 1,200 evaluations, all counted; the finite-element problem runs at equal wall-clock (15 minutes per run)",
+        "section 3.3 schedule: the onset of linear population-size reduction is delayed by a fraction delta of the evaluation budget; delta is zero for budgets above a reference budget and grows as the budget shrinks, is capped so that some reduction still happens at the end of a short run, and the reduction is then compressed linearly into the rest of the budget; delta = 0.76 at FE_max = 1,200 with N_init = 20 (the text also says the population keeps its 20 members for three quarters of the run); it adds no evaluations and no adaptive parameters, reduces to standard LPSR for large budgets, is applied identically to L-SHADE, L-SHADE-SW and L-SHADE-RSP, and needs FE_max before the run starts, so it cannot be used in wall-clock-stopped runs",
+        "40 of 51 (section 6.3): 3 L-SHADE variants x 17 problems (7 shifted-rotated functions at D = 10, 7 at D = 30, 3 building objectives), delay on versus off, two-sided Mann-Whitney at alpha = 0.05: 40 wins, 11 ties, 0 losses, with no multiple-comparison correction (section 4.7)",
+        "budget: hard cap of 1,200 evaluations, all counted, injected and Solis-Wets evaluations included; a generation that would exceed the cap stops mid-generation; nominal horizon floor(1,200 / N) = 60 generations at N = 20; 30 seeds (5000 + 137r); the finite-element problem runs at equal wall-clock (15 minutes per run)",
         "ablations: the gain is attributed to the DE injection; local search pays off only when its result re-enters the population"
       ],
       "notPinned": [
-        "the delay formula and delay cap value",
-        "the DE variant, F and CR used for injection",
-        "the injection fraction (this study uses the issue's 20%)",
-        "Solis-Wets step parameters (this study uses Gaussian perturbation of every weight)"
+        "not stated in the paper: the delay formula, the reference budget and the delay cap value (section 3.3 describes the schedule in words only)",
+        "not stated in the paper: N_min for the delayed reduction, and L-SHADE's memory size H, archive rate, p-best fraction and initial F/CR memories (this study uses L-SHADE's N_min = 4)",
+        "not stated in the paper: MERLIN's DE strategy and F/CR beyond self-adaptation per Brest et al. 2006, its archive size and update rule, and the generation at which Solis-Wets starts (this study uses DE/rand/1/bin with fixed F = 0.5 and CR = 0.9)",
+        "not stated in the paper: RAPTOR's initial inertia and acceleration, history memory size, stagnation threshold, Levy exponent, number of particles replaced and its DE settings",
+        "not stated in the paper: Solis-Wets step parameters (this study uses Gaussian perturbation of every weight); the author offers further implementation details on request, and none were obtained"
       ]
     }
   },
@@ -466,7 +472,7 @@
         "meanDiff": -0.00028237560229789273,
         "ci95": [
           -0.0007422344527023647,
-          0.00002502309681086488
+          2.502309681086488e-05
         ],
         "wins": 9
       },
@@ -10621,7 +10627,7 @@
           "populationSize": 8,
           "assembledSize": 7,
           "speciesCount": 1,
-          "behaviouralDiversity": 0.00007721609442121617
+          "behaviouralDiversity": 7.721609442121617e-05
         },
         {
           "generation": 26,
@@ -10630,7 +10636,7 @@
           "populationSize": 8,
           "assembledSize": 3,
           "speciesCount": 1,
-          "behaviouralDiversity": 0.00006966394595324988
+          "behaviouralDiversity": 6.966394595324988e-05
         },
         {
           "generation": 27,
@@ -10639,7 +10645,7 @@
           "populationSize": 7,
           "assembledSize": 2,
           "speciesCount": 1,
-          "behaviouralDiversity": 0.000041961669921875
+          "behaviouralDiversity": 4.1961669921875e-05
         },
         {
           "generation": 28,
@@ -12760,7 +12766,7 @@
           "n": 30,
           "meanDiff": 0.0003255396481061368,
           "ci95": [
-            0.0000443497219416486,
+            4.43497219416486e-05,
             0.0006819331461717831
           ],
           "wins": 7
@@ -12827,7 +12833,7 @@
           "meanDiff": -0.002560876548535912,
           "ci95": [
             -0.006084395389567386,
-            -0.00008182994895026488
+            -8.182994895026488e-05
           ],
           "wins": 18
         },
@@ -12925,7 +12931,7 @@
           "n": 30,
           "meanDiff": 0.001632656737047884,
           "ci95": [
-            -0.00008440555712451308,
+            -8.440555712451308e-05,
             0.004102933996973818
           ],
           "wins": 9
