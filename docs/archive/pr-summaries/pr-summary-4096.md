@@ -78,7 +78,7 @@ Backend-only change; no UI file is touched. Timings below come from this host
 Inside core (a native release build at `1d44889`), one settled cleanup pass
 takes 18.27 s at 7,764 non-input neurons / 66,056 synapses. Of that,
 `splice_identity_neurons` takes over 98 %. With the core fix the same pass takes
-1.93 s, and the first cleanup drops from 96 s to 14.5 s.
+1.86 s, and the first cleanup drops from 96 s to 14.5 s.
 
 ```mermaid
 flowchart LR
@@ -174,4 +174,12 @@ removal moved to WASM); core PR #703 (`splice_identity_neurons`).
   `cargo test -p neat-core --release --test prune_splice` — 26 passed, 0 failed.
   The full `cargo test -p neat-core --release` showed no failures.
   `cargo clippy -p neat-core --all-targets` and `cargo fmt --check` are clean.
-- CORE_ALLOC_TEST_LINE
+- `neat-core/tests/splice_identity_allocations.rs` (core branch, new) counts the
+  bytes one cleanup allocates on 200 cap-refused `IDENTITY` relays in an
+  8,000-synapse creature. Against the base `prune_cleanup.rs` it failed with
+  `cleanup allocated 624099686 bytes, ceiling 32000000`; with the fix it passes,
+  and the creature's neurons and edges are unchanged.
+- `./quality.sh < /dev/null` on the head: exit 0, 10600 passed, 0 failed, 50
+  ignored.
+
+<!-- vibe-cross-repo-pr repo="stSoftwareAU/NEAT-AI-core" branch="fix/splice-identity-quadratic-neat-ai-4096" base="Develop" title="Refuse a capped IDENTITY splice before cloning the synapse list (NEAT-AI#4096)" summary="splice_identity_neurons cost O(identity neurons x synapses) per cleanup pass, about 16 s per prune_synapse call at NEAT-AI's field creature size; exact early refusal plus an allocation oracle" -->
