@@ -1035,8 +1035,9 @@ confirm it. A breach line from a release carrying
 carries those fields; see it for what they showed.
 
 The generation-11 case in Issue #4096 (7.0.62, 8 GB swap-backed host) was not
-reproduced; these logs are from different hosts and generation 1. The root cause
-the next subsection identifies covers it; see there.
+reproduced; these logs are from different hosts and generation 1. The next
+subsection measures a cause on the same core revision that is consistent with
+it, though not confirmed for that run; see there.
 
 #### Field observation (2026-11-21) and root cause
 
@@ -1069,20 +1070,26 @@ They are indicative timings from a shared host, not a gate.
   neurons including 2,054 inputs, 64,940 synapses, built with `buildNetwork`
   from `bench/_productionScaleCreature.ts` and repaired once with
   `fix({ forwardOnly: true })`), mutationRate 1, took 92,074 ms in total. One
-  `SUB_CONN` took 85,292 ms. The other 39 mutations took about 7 s together
-  (`MOD_BIAS` 22 × 25.7 ms mean, `MOD_WEIGHT` 16 × 27.0 ms, `SUB_NODE` 65 ms;
-  `repairAfterMutation` 110 ms mean per creature).
+  `SUB_CONN` took 85,292 ms; the clones were each that creature's first prune,
+  so that figure includes splicing it (see below). The other 39 mutations took
+  about 7 s together (`MOD_BIAS` 22 × 25.7 ms mean, `MOD_WEIGHT` 16 × 27.0 ms,
+  `SUB_NODE` 65 ms; `repairAfterMutation` 110 ms mean per creature).
 - `SubConnection` (`src/mutate/SubConnection.ts`) hands the creature to
   `corePruneSynapse` (`src/wasm/WasmPruneSynapse.ts`). Timing that call
   directly: export 8–11 ms, `loadFrom` 35–64 ms, and the core call itself:
 
-  | Neurons | Synapses | Core call                         |
-  | ------: | -------: | --------------------------------- |
-  |   4,107 |   26,930 | 11,246 ms                         |
-  |   6,157 |   39,486 | 25,801 ms                         |
-  |  10,257 |   64,940 | 84,077–85,519 ms (three synapses) |
+  | Neurons | Synapses | First call (also splices the creature's spliceable `IDENTITY` neurons) | Settled creature |
+  | ------: | -------: | ---------------------------------------------------------------------- | ---------------: |
+  |   4,107 |   26,930 | 11,246 ms (direct) / 11,641 ms (operator)                              |         2,275 ms |
+  |   6,157 |   39,486 | 25,801 ms (direct)                                                     |    6.1 s (bench) |
+  |  10,257 |   64,940 | 84,077–86,192 ms                                                       |        15,922 ms |
 
-  That is roughly quadratic: 2.5× the neurons costs 7.5×.
+  The settled-row sizes are those after the first call: 4,032 / 27,137 and 9,818
+  / 66,052 (the 6,157-neuron row is the bench's). On a settled creature, 2.4×
+  the neurons costs 7× (2,275 → 15,922 ms). The settled figure is the one that
+  matters at the field size: about 16 s per `SUB_CONN` at 9,818 neurons / 66,052
+  synapses, every call, with a first call on new `IDENTITY` structure costing
+  several times more.
 - Inside core (a native release build of NEAT-AI-core `1d44889`, the revision
   `deno.json` pins), `prune_synapse` runs `cleanup_creature_with` with
   `splice_identity: true`. On a creature that cleanup has already settled (one
@@ -1104,10 +1111,15 @@ They are indicative timings from a shared host, not a gate.
 **What this answers for the generation-11 case**
 
 - Measured: the quadratic step is main-thread work in `mutation`, synchronous
-  WASM with no yield, and it costs about 85 s per `SUB_CONN` on an idle core at
-  the field creature size without any paging. Paging is therefore not needed to
-  explain a multi-minute block; the 2026-11-21 breach (no swap,
-  `inFlightPhase=mutation`) is that block measured.
+  WASM with no yield, and it costs about 16 s per `SUB_CONN` on a settled
+  creature, and up to 86 s when the call also splices new `IDENTITY` neurons, on
+  an idle core at the field creature size without any paging. `mutate` runs
+  these calls back to back on the main thread for the whole generation, so about
+  two dozen settled calls, or four or five first calls, add up to the 380 s
+  block, fewer on a loaded host. Paging is therefore not needed to explain a
+  multi-minute block. The 2026-11-21 breach (no swap, `inFlightPhase=mutation`)
+  measured a block of that size in that phase; it does not record which operator
+  was running, so attributing it to `SUB_CONN` is inferred.
 - Inferred, not measured: the 7.0.62 generation-11 block (8,802 neurons / 59,023
   synapses, popSize 3, 8 GB swap-backed host) is the same step. Its log shows
   generation 11's fitness starting (`Batch scorer partition` line) and nothing

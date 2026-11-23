@@ -27,9 +27,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 - **Issue #4096:** root cause of the main-loop wedges in `mutation`:
   NEAT-AI-core's `prune_synapse`, which `SUB_CONN` calls, spends O(identity
-  neurons × synapses) per cleanup pass in `splice_identity_neurons` — about 85 s
-  for one call at 10,257 neurons / 64,940 synapses. Recorded with measurements
-  in
+  neurons × synapses) per cleanup pass in `splice_identity_neurons` — about 16 s
+  per call on a settled creature of 9,818 neurons / 66,052 synapses, and 86 s
+  when the call also splices. Recorded with measurements in
   [docs/TIMEOUTS.md](./docs/TIMEOUTS.md#field-observation-2026-11-21-and-root-cause),
   with a reproducing bench `bench/PruneSynapseProductionScale.ts`. The fix is in
   NEAT-AI-core and arrives with a core bump; no behaviour changes here.

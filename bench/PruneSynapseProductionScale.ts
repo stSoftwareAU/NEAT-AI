@@ -1,38 +1,37 @@
 /**
- * Issue #4096 — Benchmark: one `corePruneSynapse` call at production scale.
+ * Issue #4096 — Benchmark: one `SUB_CONN` mutation at production scale.
  *
- * `SubConnection` (the `SUB_CONN` mutation) hands the whole creature to
- * NEAT-AI-core's `prune_synapse`, which runs a cleanup pass including
+ * `SubConnection` (the `SUB_CONN` mutation) picks a random forward synapse and
+ * hands the whole creature to NEAT-AI-core's `prune_synapse` through
+ * `corePruneSynapse`, which runs a cleanup pass including
  * `splice_identity_neurons`. That step costs O(identity neurons × synapses), so
- * one call is quadratic in creature size and runs synchronously on the main
- * thread. This bench times exactly that call, on the middle forward synapse of
- * a seeded creature, at two sizes:
+ * one mutation is quadratic in creature size and runs synchronously on the main
+ * thread. This bench drives the real operator through
+ * `Mutator.mutateCreature` on a seeded creature at two sizes, so its cost is
+ * the `corePruneSynapse` call:
  *
  * - 4,107 neurons / ~27k synapses
  * - 6,157 neurons / ~39k synapses
  *
  * The cost lives in NEAT-AI-core, not here; see "Field observation
  * (2026-11-21) and root cause" in `docs/TIMEOUTS.md`. Each case runs once
- * (`n: 1`) because each takes tens of seconds.
+ * (`n: 1`) because each takes seconds. The reported time is the settled
+ * creature's; the first call on the freshly built creature also splices its
+ * `IDENTITY` neurons and costs several times more.
  *
  * Run with:
  *   deno bench -A bench/PruneSynapseProductionScale.ts
  */
 
 import { Creature } from "@creature";
-import { neuronUuid } from "@neuron/NeuronSerialization.ts";
-import { corePruneSynapse } from "@wasm/WasmPruneSynapse.ts";
+import { Mutator } from "@neat/Mutator.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { Mutation } from "@neat/Mutation.ts";
 import { buildNetwork, seededRandom } from "./_productionScaleCreature.ts";
 
 const INPUT_COUNT = 2054;
 const OUTPUT_COUNT = 3;
 const MAX_FAN_OUT = 7;
-
-/** Same endpoint label `SubConnection` sends to core. */
-function endpointUuid(creature: Creature, index: number): string {
-  const neuron = creature.neurons[index];
-  return neuron.type === "input" ? `input-${index}` : neuronUuid(neuron);
-}
 
 function build(layers: readonly number[]): Creature {
   const creature = Creature.fromJSON(
@@ -50,21 +49,15 @@ function build(layers: readonly number[]): Creature {
 
 function register(name: string, layers: readonly number[]): void {
   const creature = build(layers);
-  const forward = creature.synapses.filter((s) => s.to > s.from);
-  const chosen = forward[Math.floor(forward.length / 2)];
-  const request = {
-    fromUUID: endpointUuid(creature, chosen.from),
-    toUUID: endpointUuid(creature, chosen.to),
-    type: chosen.type,
-  };
+  const mutator = new Mutator(createNeatConfig({ mutation: Mutation.FFW }));
 
   Deno.bench({
     name,
-    group: "corePruneSynapse",
+    group: "SUB_CONN",
     n: 1,
     warmup: 0,
     fn: () => {
-      corePruneSynapse(creature.exportJSON(), request);
+      mutator.mutateCreature(creature, { name: "SUB_CONN" });
     },
   });
 }
