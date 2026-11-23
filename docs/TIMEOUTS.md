@@ -1031,10 +1031,103 @@ MB limit inside the breeding window. The loop-2 logs carry no GC trace and
 predate the heap fields and the split of the breeding window, so they cannot
 confirm it. A breach line from a release carrying
 `lastHeartbeatHeapUsedMB`/`heapLimitMB` and the
-`parent-selection`/`result-processing` phases will.
+`parent-selection`/`result-processing` phases will. The 2026-11-21 breach below
+carries those fields; see it for what they showed.
 
 The generation-11 case in Issue #4096 (7.0.62, 8 GB swap-backed host) was not
-reproduced; these logs are from different hosts and generation 1.
+reproduced; these logs are from different hosts and generation 1. The root cause
+the next subsection identifies covers it; see there.
+
+#### Field observation (2026-11-21) and root cause
+
+Source: the downstream production log archive (commit `93d01786`, removed by
+that triage). Host grq@Mac-Ultra-M2 (24 CPUs, 64 GB RAM, 60.9 GB available at
+start), `option=learn` (`evolveDir`, popSize 40, 26 training workers), neat-ai
+7.1.31, failed 2026-11-20 20:31:55 AEDT. Creatures were about 10.3k neurons and
+66k synapses.
+
+```text
+[Neat] main loop stalled for 150673ms (heartbeat every 1000ms) at generation 0; phase at last heartbeat: untracked, phase now: untracked
+[Neat] main loop stalled for 67294ms (heartbeat every 1000ms) at generation 0; phase at last heartbeat: write-scores, phase now: breeding
+[Neat] main loop stalled for 51121ms (heartbeat every 1000ms) at generation 0; phase at last heartbeat: breeding, phase now: deduplication
+Generation 1 score 0.4276416426684555 (avg: -0.1896) error 0.5706408773565167 time 27m 19s 374ms
+[Neat] main loop stalled for 67263ms (heartbeat every 1000ms) at generation 1; phase at last heartbeat: fitness, phase now: fitness
+[Neat] main loop stalled for 100507ms (heartbeat every 1000ms) at generation 1; phase at last heartbeat: write-scores, phase now: breeding
+[Neat] Run wedged after 3900s at generation 1 (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=380135 inFlightPhase=mutation heartbeatIntervalMS=1000 lastHeartbeatHeapUsedMB=16257 heapLimitMB=20396
+```
+
+Measured from the last line: a 380 s main-thread block in `mutation`, with the
+heap at 80 % of its limit (16,257 of 20,396 MB), on a host with no swap
+pressure. Paging is not needed to explain it.
+
+**Root cause: `prune_synapse` in NEAT-AI-core is quadratic in creature size.**
+
+The measurements below come from one idle aarch64 Linux host running Deno 2.9.8.
+They are indicative timings from a shared host, not a gate.
+
+- `Mutator.mutate` on 40 clones of a seeded production-scale creature (10,257
+  neurons including 2,054 inputs, 64,940 synapses, built with `buildNetwork`
+  from `bench/_productionScaleCreature.ts` and repaired once with
+  `fix({ forwardOnly: true })`), mutationRate 1, took 92,074 ms in total. One
+  `SUB_CONN` took 85,292 ms. The other 39 mutations took about 7 s together
+  (`MOD_BIAS` 22 × 25.7 ms mean, `MOD_WEIGHT` 16 × 27.0 ms, `SUB_NODE` 65 ms;
+  `repairAfterMutation` 110 ms mean per creature).
+- `SubConnection` (`src/mutate/SubConnection.ts`) hands the creature to
+  `corePruneSynapse` (`src/wasm/WasmPruneSynapse.ts`). Timing that call
+  directly: export 8–11 ms, `loadFrom` 35–64 ms, and the core call itself:
+
+  | Neurons | Synapses | Core call                         |
+  | ------: | -------: | --------------------------------- |
+  |   4,107 |   26,930 | 11,246 ms                         |
+  |   6,157 |   39,486 | 25,801 ms                         |
+  |  10,257 |   64,940 | 84,077–85,519 ms (three synapses) |
+
+  That is roughly quadratic: 2.5× the neurons costs 7.5×.
+- Inside core (a native release build of NEAT-AI-core `1d44889`, the revision
+  `deno.json` pins), `prune_synapse` runs `cleanup_creature_with` with
+  `splice_identity: true`. On a creature that cleanup has already settled (one
+  pass, nothing changes), the pass took 1.41 s at 1,978 non-input neurons /
+  27,137 synapses and 18.27 s at 7,764 / 66,056. The `splice_identity_neurons`
+  step was 1.386 s of the 1.41 s (canonicalise 10.7 ms, every other step under 1
+  ms). For every hidden `IDENTITY` neuron (930 in the larger creature)
+  `plan_splice` rebuilds the squash map and clones the whole synapse list, then
+  scans it linearly once per rewired edge, and most of those plans are then
+  refused by the net-new-synapse cap (`MAX_NET_NEW_SYNAPSES_PER_SPLICE`). Each
+  pass therefore costs O(identity neurons × synapses).
+- Which releases: 7.0.62 and 7.1.31 (read from their published `deno.json` on
+  JSR) and the current `deno.json` all pin core
+  `1d44889e405e4e0cfb553321b44cc39e7d771f5f`, which has
+  `splice_identity_neurons` (added in core PR #703, 2026-09-16). `SubConnection`
+  has called `corePruneSynapse` since NEAT-AI PR #3988 (Issue #3976,
+  2026-09-09), so 7.0.62 shipped the same path.
+
+**What this answers for the generation-11 case**
+
+- Measured: the quadratic step is main-thread work in `mutation`, synchronous
+  WASM with no yield, and it costs about 85 s per `SUB_CONN` on an idle core at
+  the field creature size without any paging. Paging is therefore not needed to
+  explain a multi-minute block; the 2026-11-21 breach (no swap,
+  `inFlightPhase=mutation`) is that block measured.
+- Inferred, not measured: the 7.0.62 generation-11 block (8,802 neurons / 59,023
+  synapses, popSize 3, 8 GB swap-backed host) is the same step. Its log shows
+  generation 11's fitness starting (`Batch scorer partition` line) and nothing
+  more until the breach. `mutation` runs after fitness in each generation and
+  before the `Generation N score` line, as the 2026-11-21 log shows (the
+  `breeding` → `deduplication` stall precedes `Generation 1 score`). The 7.0.62
+  breach line predates the heartbeat, so it cannot confirm the phase, and paging
+  on that host may have stretched the call further.
+- The 2026-11-13 wedges (`inFlightPhase=breeding`) are not explained by this
+  step; they remain as recorded above.
+
+**Remedy**
+
+The fix belongs in NEAT-AI-core: refuse a splice the cap will refuse before
+cloning the synapse list, and build the squash map once per sweep. A fix is on
+the NEAT-AI-core branch `fix/splice-identity-quadratic-neat-ai-4096`; NEAT-AI
+picks it up through the ordinary core bump once a core release carries it. Until
+then every release pinning `1d44889` pays this cost on every `SUB_CONN`.
+
+To reproduce: `deno bench -A bench/PruneSynapseProductionScale.ts`.
 
 ## ✅ Verifying the guarantee
 

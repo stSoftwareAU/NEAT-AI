@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4096:** root cause of the main-loop wedges in `mutation`:
+  NEAT-AI-core's `prune_synapse`, which `SUB_CONN` calls, spends O(identity
+  neurons × synapses) per cleanup pass in `splice_identity_neurons` — about 85 s
+  for one call at 10,257 neurons / 64,940 synapses. Recorded with measurements
+  in
+  [docs/TIMEOUTS.md](./docs/TIMEOUTS.md#field-observation-2026-11-21-and-root-cause),
+  with a reproducing bench `bench/PruneSynapseProductionScale.ts`. The fix is in
+  NEAT-AI-core and arrives with a core bump; no behaviour changes here.
 - **Issue #4158:** opt-in `deno task protected-refinement-study` measures
   whether short protected refinement helps major topology mutations survive
   selection. It found no benefit: protection lowered retention of major
