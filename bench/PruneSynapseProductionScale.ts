@@ -15,9 +15,10 @@
  *
  * The cost lives in NEAT-AI-core, not here; see "Field observation
  * (2026-11-21) and root cause" in `docs/TIMEOUTS.md`. Each case runs once
- * (`n: 1`) because each takes seconds. The reported time is the settled
- * creature's; the first call on the freshly built creature also splices its
- * `IDENTITY` neurons and costs several times more.
+ * (`n: 1`) because each takes seconds. The first `SUB_CONN` on a freshly built
+ * creature also splices its spliceable `IDENTITY` neurons and costs several
+ * times more, so registration runs that call once, outside the bench, and the
+ * reported time is the second call on the settled creature.
  *
  * Run with:
  *   deno bench -A bench/PruneSynapseProductionScale.ts
@@ -50,6 +51,8 @@ function build(layers: readonly number[]): Creature {
 function register(name: string, layers: readonly number[]): void {
   const creature = build(layers);
   const mutator = new Mutator(createNeatConfig({ mutation: Mutation.FFW }));
+  // Settle the creature: the first call also splices its IDENTITY neurons.
+  mutator.mutateCreature(creature, { name: "SUB_CONN" });
 
   Deno.bench({
     name,

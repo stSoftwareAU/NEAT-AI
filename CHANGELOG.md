@@ -25,14 +25,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Issue #4096:** root cause of the main-loop wedges in `mutation`:
-  NEAT-AI-core's `prune_synapse`, which `SUB_CONN` calls, spends O(identity
-  neurons × synapses) per cleanup pass in `splice_identity_neurons` — about 16 s
-  per call on a settled creature of 9,818 neurons / 66,052 synapses, and 86 s
-  when the call also splices. Recorded with measurements in
+- **Issue #4096:** root cause of a main-loop wedge in `mutation` (the 2026-11-21
+  field breach): NEAT-AI-core's `prune_synapse`, which `SUB_CONN` calls, spends
+  O(identity neurons × synapses) per cleanup pass in `splice_identity_neurons` —
+  about 16 s per call on a settled creature of 9,818 neurons / 66,052 synapses,
+  and 86 s when the call also splices. Recorded with measurements in
   [docs/TIMEOUTS.md](./docs/TIMEOUTS.md#field-observation-2026-11-21-and-root-cause),
   with a reproducing bench `bench/PruneSynapseProductionScale.ts`. The fix is in
-  NEAT-AI-core and arrives with a core bump; no behaviour changes here.
+  NEAT-AI-core and arrives with a core bump; no behaviour changes here. The
+  generation-11 stall the issue reports ended inside fitness and is not
+  explained by it.
 - **Issue #4158:** opt-in `deno task protected-refinement-study` measures
   whether short protected refinement helps major topology mutations survive
   selection. It found no benefit: protection lowered retention of major

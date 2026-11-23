@@ -1036,8 +1036,8 @@ carries those fields; see it for what they showed.
 
 The generation-11 case in Issue #4096 (7.0.62, 8 GB swap-backed host) was not
 reproduced; these logs are from different hosts and generation 1. The next
-subsection measures a cause on the same core revision that is consistent with
-it, though not confirmed for that run; see there.
+subsection finds a cause for blocks in `mutation`; the generation-11 block ended
+inside fitness, so it is not that cause.
 
 #### Field observation (2026-11-21) and root cause
 
@@ -1108,7 +1108,7 @@ They are indicative timings from a shared host, not a gate.
   has called `corePruneSynapse` since NEAT-AI PR #3988 (Issue #3976,
   2026-09-09), so 7.0.62 shipped the same path.
 
-**What this answers for the generation-11 case**
+**What this answers, and what it does not**
 
 - Measured: the quadratic step is main-thread work in `mutation`, synchronous
   WASM with no yield, and it costs about 16 s per `SUB_CONN` on a settled
@@ -1120,14 +1120,21 @@ They are indicative timings from a shared host, not a gate.
   multi-minute block. The 2026-11-21 breach (no swap, `inFlightPhase=mutation`)
   measured a block of that size in that phase; it does not record which operator
   was running, so attributing it to `SUB_CONN` is inferred.
-- Inferred, not measured: the 7.0.62 generation-11 block (8,802 neurons / 59,023
-  synapses, popSize 3, 8 GB swap-backed host) is the same step. Its log shows
-  generation 11's fitness starting (`Batch scorer partition` line) and nothing
-  more until the breach. `mutation` runs after fitness in each generation and
-  before the `Generation N score` line, as the 2026-11-21 log shows (the
-  `breeding` → `deduplication` stall precedes `Generation 1 score`). The 7.0.62
-  breach line predates the heartbeat, so it cannot confirm the phase, and paging
-  on that host may have stretched the call further.
+- Not the same step, as far as the 7.0.62 log shows. Its abandon line reads
+  `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — stalled in fitness; interrupting and abandoning 1 in-flight task(s) (0 discovery, 1 training): 6c800994`.
+  At head, that line comes from `Neat.abandonInFlightPastHardDeadline`
+  (`src/NEAT/Neat.ts`), which prints `stalled in <phase>` only when
+  `inFlightPhase` is set. The only caller of `enterInFlightPhase` is the fitness
+  window in `src/NEAT/NeatEvolution.ts` (set at line 328, cleared by
+  `leaveInFlightPhase` at line 343), and the interval poll
+  (`pollHardDeadlineWatchdog`, line 332) runs only while `evolve()` awaits
+  `neat.fitness.calculate`. The published 7.0.62 `src/NEAT/NeatEvolution.ts` (on
+  JSR) has the same structure: the phase is set at line 323, polled at line 327
+  and cleared at line 338. So when the loop next turned, generation 11 was still
+  inside the fitness window, after generation 10's mutation had finished. The
+  generation-11 block was therefore main-thread work during fitness, not
+  `SUB_CONN` in mutation, and its cause is still not identified. Paging on that
+  host is neither confirmed nor excluded.
 - The 2026-11-13 wedges (`inFlightPhase=breeding`) are not explained by this
   step; they remain as recorded above.
 
